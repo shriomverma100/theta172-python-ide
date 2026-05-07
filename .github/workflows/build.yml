@@ -2,8 +2,11 @@ name: Build & Release
 
 on:
   push:
-    tags: ['v*']     # Triggers on version tags like v1.0.0
-  workflow_dispatch:  # Manual trigger from GitHub UI
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   # ── Build Windows (.exe) ───────────────────────────────────────
@@ -24,9 +27,7 @@ jobs:
         run: node scripts/make-icon.cjs
 
       - name: Build Electron app
-        run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish never
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -34,7 +35,6 @@ jobs:
           name: windows-build
           path: |
             release/*.exe
-            release/*.exe.blockmap
 
   # ── Build macOS (.dmg) ─────────────────────────────────────────
   build-macos:
@@ -56,10 +56,11 @@ jobs:
       - name: Generate .icns from iconset
         run: iconutil -c icns build-assets/icon.iconset -o build-assets/icon.icns
 
+      - name: Build Vite
+        run: npm run build
+
       - name: Build Electron app
-        run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish never
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -85,9 +86,7 @@ jobs:
         run: node scripts/make-icon.cjs
 
       - name: Build Electron app
-        run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --linux --publish never
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -100,8 +99,6 @@ jobs:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
