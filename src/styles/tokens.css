@@ -1,0 +1,77 @@
+/* ============================================
+   THETA172 — Design Tokens
+   ============================================ */
+
+:root {
+  /* Colors */
+  --bg:           #EAEAE8;
+  --bg-dark:      #0D0D0D;
+  --bg-darker:    #080808;
+  --accent:       #FF2D00;
+  --accent-dim:   #CC2400;
+  --accent-glow:  rgba(255, 45, 0, 0.15);
+  --text-primary: #0D0D0D;
+  --text-on-dark: #EAEAE8;
+  --text-muted:   #999997;
+  --text-dim:     #666664;
+  --border:       #C8C8C6;
+  --border-dark:  #222220;
+  --white:        #FFFFFF;
+  --surface:      #F2F2F0;
+  --surface-dark: #161616;
+
+  /* Terminal */
+  --terminal-bg:      #111111;
+  --terminal-text:    #EAEAE8;
+  --terminal-cursor:  #FF2D00;
+  --terminal-muted:   #6B6B69;
+  --terminal-error:   #FF5A3C;
+  --terminal-success: #A8E6A3;
+
+  /* Spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Typography */
+  --font-ui:   'Space Grotesk', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font sizes */
+  --fs-xs:   13px;
+  --fs-sm:   13px;
+  --fs-base: 15px;
+  --fs-md:   17px;
+  --fs-lg:   20px;
+  --fs-xl:   24px;
+  --fs-2xl:  32px;
+  --fs-3xl:  48px;
+  --fs-4xl:  72px;
+  --fs-5xl:  96px;
+  --fs-hero: clamp(72px, 10vw, 128px);
+
+  /* Line heights */
+  --lh-tight:  0.9;
+  --lh-snug:   1.1;
+  --lh-base:   1.5;
+  --lh-loose:  1.7;
+
+  /* Transitions */
+  --t-fast:   120ms ease;
+  --t-base:   180ms ease;
+  --t-slow:   320ms ease;
+  --t-page:   400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Layout */
+  --topbar-h:   56px;
+  --statusbar-h: 28px;
+  --pane-header-h: 40px;
+  --gutter-w:   4px;
+}

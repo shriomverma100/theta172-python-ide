@@ -1,0 +1,368 @@
+/* ============================================
+   THETA172 — TOPBAR  |  Editorial Brutalist
+   Palette: #EAEAE8 / #111111 / #FF3300 only
+   ============================================ */
+
+/* ── TOP BAR CONTAINER ── */
+.ide-topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #EAEAE8;
+  border-bottom: 2px solid #111111;
+  padding: 0 0 0 0;
+  flex-shrink: 0;
+  gap: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.ide-topbar::after { display: none; }
+
+.ide-topbar__left,
+.ide-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  height: 100%;
+}
+
+.ide-topbar__right { justify-content: flex-end; }
+.ide-topbar__center { flex-shrink: 0; height: 100%; display: flex; align-items: center; }
+
+/* ── LOGO BUTTON ── */
+.topbar-logo-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  height: 100%;
+  border-right: 1px solid #C8C8C6;
+  background: #111111;
+  transition: background 150ms ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.topbar-logo-btn::before { display: none; }
+
+.topbar-logo-btn:hover {
+  background: #FF3300;
+  transform: none;
+}
+
+.topbar-logo-btn:active {
+  transform: none;
+  background: #CC2800;
+}
+
+.topbar-logo-btn svg {
+  border-radius: 0;
+  transition: transform 200ms ease;
+}
+
+.topbar-logo-btn:hover svg {
+  transform: scale(1.08);
+  box-shadow: none;
+}
+
+.topbar-brand {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #EAEAE8;
+  transition: none;
+}
+
+.topbar-logo-btn:hover .topbar-brand { color: #EAEAE8; }
+
+/* ── DIVIDER ── */
+.topbar-divider {
+  width: 1px;
+  height: 100%;
+  background: #C8C8C6;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* ── FILE NAME ── */
+.topbar-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: #777775;
+  padding: 0 16px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-right: 1px solid #C8C8C6;
+  transition: background 150ms ease;
+}
+
+.topbar-file:hover {
+  background: #DDDBD8;
+}
+
+.topbar-file #file-name {
+  color: #111111;
+  font-weight: 600;
+  transition: color var(--t-fast);
+}
+
+.save-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #FF3300;
+  border-radius: 0;
+  margin-left: 4px;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 250ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.save-dot.visible {
+  opacity: 1;
+  transform: scale(1);
+  animation: savePulse 1.5s ease infinite;
+}
+
+@keyframes savePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ═══════════════════════════════════════════════════
+   TOPBAR BUTTONS — Flat brutalist, red on hover
+   ═══════════════════════════════════════════════════ */
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #888886;
+  padding: 0 16px;
+  height: 100%;
+  border: none;
+  border-right: 1px solid #C8C8C6;
+  border-left: none;
+  border-radius: 0;
+  background: transparent;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: background 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 200ms ease,
+              transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  min-height: unset;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.topbar-btn::before,
+.topbar-btn::after { display: none; }
+
+.topbar-btn:hover {
+  color: #EAEAE8;
+  background: #111111;
+  border-color: #111111;
+  transform: scale(1.05);
+  box-shadow: none;
+}
+
+.topbar-btn:active {
+  background: #FF3300;
+  color: #EAEAE8;
+  border-color: #FF3300;
+  transform: scale(0.97);
+  box-shadow: none;
+  transition-duration: 60ms;
+}
+
+/* Button SVG icons */
+.topbar-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+
+.topbar-btn:hover svg {
+  transform: scale(1.1);
+}
+
+/* IMPORT — highlight red on hover */
+#btn-import-file:hover {
+  background: #111111;
+  color: #EAEAE8;
+  border-color: #111111;
+}
+
+#btn-import-file:hover svg { transform: scale(1.1) translateY(-1px); }
+
+/* SAVE — highlight red on hover */
+#btn-save-file:hover {
+  background: #FF3300;
+  color: #EAEAE8;
+  border-color: #FF3300;
+}
+
+#btn-save-file:hover svg { transform: scale(1.1) translateY(1px); }
+
+/* CLEAR — stays dark but with red tint */
+#btn-clear:hover {
+  background: #111111;
+  color: #EAEAE8;
+  border-color: #111111;
+}
+
+#btn-clear:hover svg { transform: scale(1.1) rotate(45deg); }
+
+/* ── RUN BUTTON — Full red CTA ── */
+.btn-run {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #EAEAE8;
+  background: #FF3300;
+  padding: 0 28px;
+  height: 100%;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  min-width: 110px;
+  justify-content: center;
+  border: none;
+  border-left: 2px solid #111111;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.btn-run::before,
+.btn-run::after { display: none; }
+
+.btn-run:hover {
+  background: #111111;
+  color: #EAEAE8;
+  transform: none;
+  box-shadow: none;
+  border-color: #111111;
+}
+
+.btn-run:active {
+  background: #CC2800;
+  transform: none;
+  box-shadow: none;
+  transition-duration: 60ms;
+}
+
+.btn-run svg {
+  transition: transform 200ms ease;
+}
+
+.btn-run:hover svg {
+  transform: scale(1.15);
+}
+
+/* Running state */
+.btn-run.running {
+  background: #111111;
+  border-color: #111111;
+  color: #EAEAE8;
+}
+
+.btn-run.running:hover {
+  background: #FF3300;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── RUN STATUS (Center) ── */
+.run-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #888886;
+  text-transform: uppercase;
+  padding: 0 16px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-left: 1px solid #C8C8C6;
+  transition: all 200ms ease;
+}
+
+.run-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
+  background: #C8C8C6;
+  flex-shrink: 0;
+  transition: background 300ms ease;
+}
+
+.run-status--idle   .run-status__dot { background: #C8C8C6; }
+.run-status--ready  .run-status__dot { background: #111111; }
+.run-status--running .run-status__dot {
+  background: #FF3300;
+  animation: pulseDot 700ms ease infinite;
+}
+.run-status--running {
+  color: #FF3300;
+}
+.run-status--done  .run-status__dot { background: #111111; }
+.run-status--error .run-status__dot { background: #FF3300; }
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(0.4); opacity: 0.3; }
+}
+
+/* ── WINDOW CONTROLS ── */
+.window-controls {
+  margin-left: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-left: 1px solid #C8C8C6;
+}
+
+.wc-btn {
+  border-radius: 0;
+  margin: 0;
+  width: 42px;
+  height: 100%;
+  color: #888886;
+  transition: background 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 150ms ease,
+              transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+}
+
+.wc-btn:hover {
+  background: #DDDBD8;
+  color: #111111;
+  transform: scale(1.08);
+}
+
+.wc-close:hover {
+  background: #FF3300;
+  color: #EAEAE8;
+}

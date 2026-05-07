@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Python by THETA172 — A fast, precision Python coding environment. Real terminal I/O, instant execution." />
+  <title>Python by THETA172</title>
+  <style>
+    .ide-topbar,.landing-nav{-webkit-app-region:drag}
+    .ide-topbar button,.ide-topbar input,.landing-nav button,.topbar-file,.run-status,.window-controls{-webkit-app-region:no-drag}
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/src/styles/tokens.css" />
+  <link rel="stylesheet" href="/src/styles/base.css" />
+  <link rel="stylesheet" href="/src/styles/landing.css" />
+  <link rel="stylesheet" href="/src/styles/ide.css" />
+  <link rel="stylesheet" href="/src/styles/topbar.css" />
+  <link rel="stylesheet" href="/src/styles/editor.css" />
+  <link rel="stylesheet" href="/src/styles/terminal.css" />
+</head>
+<body>
+
+  <!-- Global top progress bar -->
+  <div id="run-progress-bar" class="run-progress-bar"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LANDING PAGE
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="landing" class="landing">
+    <!-- Floating particles -->
+    <div class="landing-particles" id="landing-particles"></div>
+    <nav class="landing-nav">
+      <div class="landing-nav__logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" fill="#111111"/>
+          <rect x="3" y="3" width="22" height="22" stroke="#FF3300" stroke-width="2" fill="none"/>
+          <text x="14" y="19" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="13" fill="#FF3300">Θ</text>
+        </svg>
+        <span class="landing-nav__brand">THETA172</span>
+      </div>
+      <div class="landing-nav__links">
+        <span class="landing-nav__tag">Python Runtime v3.11</span>
+        <button id="launch-ide-nav" class="btn-launch-small">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7H11M11 7L7.5 3.5M11 7L7.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Launch IDE
+        </button>
+        <div class="window-controls landing-wc">
+          <button class="wc-btn wc-minimize" id="landing-wc-min" title="Minimize">
+            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6H10" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <button class="wc-btn wc-maximize" id="landing-wc-max" title="Maximize">
+            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+          </button>
+          <button class="wc-btn wc-close" id="landing-wc-close" title="Close">
+            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-hero">
+      <div class="landing-hero__left">
+        <div class="landing-hero__label">
+          <span class="label-tag">THETA172 / PYTHON</span>
+        </div>
+        <h1 class="landing-hero__title">
+          <span class="title-line title-line--thin">CODE</span>
+          <span class="title-line title-line--bold">WITHOUT<br/>LIMITS.</span>
+        </h1>
+        <p class="landing-hero__sub">
+          A precision Python environment.<br/>
+          Real terminal. Instant execution. No friction.
+        </p>
+        <button id="launch-ide-main" class="btn-launch-main">
+          <span>Start Coding</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="landing-hero__meta">
+          <div class="meta-item">
+            <div class="meta-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="#0D0D0D" stroke-width="1.4"/>
+                <path d="M8 5V8.5L10.5 11" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span>~50ms cold start</span>
+          </div>
+          <div class="meta-item">
+            <div class="meta-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="3" width="12" height="10" rx="1" stroke="#0D0D0D" stroke-width="1.4"/>
+                <path d="M5 7L7.5 9.5L11 6" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span>Real terminal I/O</span>
+          </div>
+          <div class="meta-item">
+            <div class="meta-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 4H13M3 8H9M3 12H11" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span>In-browser runtime</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-hero__right">
+        <div class="landing-accent-block">
+          <div class="accent-block__number">001</div>
+          <div class="accent-block__label">
+            <span>PYTHON</span>
+            <span>EXECUTION</span>
+            <span>ENGINE</span>
+          </div>
+        </div>
+        <div class="landing-code-preview">
+          <div class="code-preview__bar">
+            <div class="code-preview__dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="code-preview__filename">main.py</span>
+          </div>
+          <pre class="code-preview__content"><code id="typing-code"></code></pre>
+          <div class="code-preview__terminal" id="typing-terminal"></div>
+        </div>
+      </div>
+    </main>
+
+    <div class="landing-footer">
+      <span>THETA172 &copy; 2025 · designed by nothing frontend team</span>
+      <span>Python 3.11 &middot; WebAssembly &middot; In-Browser</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       IDE PAGE
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="ide" class="ide hidden">
+
+    <!-- Top Bar -->
+    <header class="ide-topbar">
+      <div class="ide-topbar__left">
+        <button id="back-to-landing" class="topbar-logo-btn" title="Back to home">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <rect width="26" height="26" fill="#FF3300"/>
+            <rect x="3" y="3" width="20" height="20" stroke="#EAEAE8" stroke-width="1.5" fill="none"/>
+            <text x="13" y="17" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="11" fill="#EAEAE8">Θ</text>
+          </svg>
+          <span class="topbar-brand">THETA172</span>
+        </button>
+        <div class="topbar-divider"></div>
+        <div class="topbar-file">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 1.5H8L11 4.5V12.5H3V1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M8 1.5V4.5H11" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M5.5 7H8.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+            <path d="M5.5 9H7.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+          <span id="file-name">main.py</span>
+          <span id="save-dot" class="save-dot" title="Unsaved changes"></span>
+        </div>
+      </div>
+
+      <div class="ide-topbar__center">
+        <div id="run-status" class="run-status run-status--idle">
+          <div class="run-status__dot"></div>
+          <span id="run-status-text">Ready</span>
+        </div>
+      </div>
+
+      <div class="ide-topbar__right">
+        <input type="file" id="import-file-input" accept=".py,.pyw,.txt" style="display:none" />
+        <button id="btn-import-file" class="topbar-btn" title="Import .py file">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M2 4H7L8.5 2H15V14H2V4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <path d="M9 7V12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M7 9L9 7L11 9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Import</span>
+        </button>
+        <button id="btn-shortcuts" class="topbar-btn" title="Keyboard Shortcuts">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="1.5" y="4.5" width="15" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="4" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
+            <rect x="7.75" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
+            <rect x="11.5" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
+            <rect x="5.5" y="10.5" width="7" height="1.5" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          </svg>
+          <span>Keys</span>
+        </button>
+        <button id="btn-save-file" class="topbar-btn" title="Save as .py file">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M3 2H12L15 5V15H3V2Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <rect x="6" y="9" width="6" height="6" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+            <path d="M6 2V5H11V2" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+            <path d="M9 11V14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M7.5 12.5L9 14L10.5 12.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Save</span>
+        </button>
+        <button id="btn-clear" class="topbar-btn" title="Clear Terminal">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+            <path d="M6 12L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M6 6L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Clear</span>
+        </button>
+        <div class="window-controls">
+          <button id="btn-wc-min" class="wc-btn wc-min" title="Minimize">
+            <svg width="11" height="1" viewBox="0 0 11 1"><rect width="11" height="1" fill="currentColor"/></svg>
+          </button>
+          <button id="btn-wc-max" class="wc-btn wc-max" title="Maximize / Restore">
+            <svg id="wc-max-icon" width="10" height="10" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+          </button>
+          <button id="btn-wc-close" class="wc-btn wc-close" title="Close">
+            <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <button id="btn-run" class="btn-run" title="Run Code">
+          <svg class="run-icon-play" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4.5 2L13 8L4.5 14V2Z" fill="currentColor"/>
+          </svg>
+          <svg class="run-icon-stop hidden" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/>
+          </svg>
+          <span id="run-btn-text">Run</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Split Area -->
+    <div class="ide-body">
+      <div id="editor-pane" class="ide-pane ide-pane--editor theme-dark">
+        <div class="pane-header">
+          <div class="pane-header__title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M2.5 4L5.5 7L2.5 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 10H10.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            Editor
+          </div>
+          <div class="pane-header__actions">
+            <span id="cursor-pos" class="status-item" style="font-size:12px; border:none; padding:0;">Ln 1, Col 1</span>
+            <button id="btn-copy-code" class="pane-action-btn" title="Copy code">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="3.5" y="3.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                <path d="M3.5 3.5V2A1 1 0 012 1H1M1 1V8A1 1 0 002 9H3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+              </svg>
+              Copy
+            </button>
+            <button id="btn-font-dec" class="pane-action-btn" title="Decrease font">A−</button>
+            <button id="btn-font-inc" class="pane-action-btn" title="Increase font">A+</button>
+          </div>
+        </div>
+        <!-- Tab bar for multi-file support -->
+        <div class="editor-tabs" id="editor-tabs">
+          <div class="editor-tab active" data-tab-id="tab-0">
+            <span class="editor-tab__name">main.py</span>
+            <span class="editor-tab__dot" title="Unsaved changes"></span>
+          </div>
+          <button class="editor-tab-add" id="btn-new-tab" title="New file">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M5.5 1V10M1 5.5H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div id="monaco-container" class="monaco-container"></div>
+      </div>
+
+      <div class="ide-gutter" id="split-gutter">
+        <div class="gutter-handle"></div>
+      </div>
+
+      <div id="terminal-pane" class="ide-pane ide-pane--terminal">
+        <div class="pane-header">
+          <div class="pane-header__title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M3.5 4.5L6 7L3.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7.5 9.5H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+            Terminal
+          </div>
+          <div class="pane-header__actions">
+            <span id="exec-time" class="exec-time"></span>
+          </div>
+        </div>
+        <!-- Pip Install Bar -->
+        <div class="pip-bar" id="pip-bar">
+          <span class="pip-bar__prefix">pip install</span>
+          <input id="pip-input" class="pip-bar__input" placeholder="package-name" autocomplete="off" spellcheck="false" />
+          <button id="pip-install-btn" class="pip-bar__btn" title="Install">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 2V10M2 6H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button id="pip-list-btn" class="pip-bar__btn" title="Show installed packages">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M3 3H9M3 6H9M3 9H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <span id="pip-status" class="pip-bar__status"></span>
+        </div>
+        <!-- Installed Packages Panel (hidden by default) -->
+        <div id="pip-packages-panel" class="pip-packages-panel hidden">
+          <div class="pip-packages-header">
+            <span>Installed Packages</span>
+            <button id="pip-packages-close" class="pip-packages-close">&times;</button>
+          </div>
+          <div id="pip-packages-list" class="pip-packages-list">
+            <span class="pip-packages-empty">No packages installed yet</span>
+          </div>
+        </div>
+        <div id="terminal-container" class="terminal-container"></div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="ide-statusbar">
+      <div class="statusbar__left">
+        <div class="status-item">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <path d="M1.5 5.5C1.5 3.29 3.29 1.5 5.5 1.5S9.5 3.29 9.5 5.5 7.71 9.5 5.5 9.5 1.5 7.71 1.5 5.5z" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M5.5 3.5V5.5L7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+          </svg>
+          Python <span id="python-version">3.11</span>
+        </div>
+        <div class="status-sep"></div>
+        <div class="status-item"><span id="runtime-type">Pyodide &middot; WASM</span></div>
+        <div class="status-sep"></div>
+        <div class="status-item"><span id="line-count">1 line</span></div>
+        <div class="status-sep"></div>
+        <div class="status-item"><span id="char-count">0 chars</span></div>
+      </div>
+      <div class="statusbar__right">
+        <div id="status-theme" class="status-theme-indicator" title="Toggle editor theme">
+          <span class="theme-dot"></span>
+          <span id="status-theme-text">Dark</span>
+        </div>
+        <div class="status-sep"></div>
+        <div class="status-item">UTF-8</div>
+        <div class="status-sep"></div>
+        <div class="status-item">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <rect x="1.5" y="1.5" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M4 5.5L5 6.5L7.5 4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="pyodide-status">Loading runtime...</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Pyodide Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-content">
+        <div class="loading-logo">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect width="52" height="52" fill="#111111"/>
+            <rect x="5" y="5" width="42" height="42" stroke="#FF3300" stroke-width="2.5" fill="none"/>
+            <text x="26" y="33" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="20" fill="#FF3300">Θ</text>
+          </svg>
+        </div>
+        <div class="loading-text">
+          <span class="loading-brand">THETA172</span>
+          <span class="loading-sub">Python by THETA172</span>
+        </div>
+        <div class="loading-bar-wrap">
+          <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <div class="loading-steps">
+          <span class="loading-step" id="lstep-0">Loading editor...</span>
+          <span class="loading-step" id="lstep-1">Initializing runtime...</span>
+          <span class="loading-step" id="lstep-2">Loading Pyodide engine...</span>
+          <span class="loading-step" id="lstep-3">Setting up environment...</span>
+          <span class="loading-step" id="lstep-4">Ready.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Examples Modal -->
+    <div id="examples-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">Code Examples</span>
+          <button id="close-examples" class="modal-close">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="examples-list" id="examples-list"></div>
+      </div>
+    </div>
+
+    <!-- Shortcuts Modal (Editable) -->
+    <div id="shortcuts-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-content--shortcuts">
+        <div class="modal-header">
+          <span class="modal-title">Keyboard Shortcuts</span>
+          <div class="modal-header-actions">
+            <button id="reset-shortcuts" class="modal-header-btn" title="Reset to defaults">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M2 6.5C2 4 4 2 6.5 2S11 4 11 6.5 9 11 6.5 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <path d="M2 3.5V6.5H5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Reset
+            </button>
+            <button id="close-shortcuts" class="modal-close">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="shortcuts-list" id="shortcuts-list">
+          <!-- Dynamically populated by JS -->
+        </div>
+        <div class="shortcuts-footer">
+          <span>Click the key binding to edit · Press Escape to cancel</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Palette -->
+    <div id="cmd-palette" class="cmd-palette hidden">
+      <div class="cmd-palette-backdrop"></div>
+      <div class="cmd-palette-box">
+        <div class="cmd-input-wrap">
+          <svg class="cmd-input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M11 11L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <input id="cmd-input" class="cmd-input" placeholder="Type a command..." autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="cmd-results" id="cmd-results"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

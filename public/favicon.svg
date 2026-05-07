@@ -1,0 +1,5 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" fill="#111111"/>
+  <rect x="3" y="3" width="26" height="26" stroke="#FF3300" stroke-width="2.5" fill="none"/>
+  <text x="16" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="16" fill="#FF3300">Θ</text>
+</svg>

@@ -1,0 +1,39 @@
+/* ============================================
+   THETA172 — xterm.js Terminal Overrides
+   ============================================ */
+
+.terminal-container {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  padding: var(--sp-3);
+  background: var(--terminal-bg);
+}
+
+/* Make xterm fill its container */
+.terminal-container .xterm {
+  height: 100%;
+}
+
+.terminal-container .xterm-viewport {
+  border-radius: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+.terminal-container .xterm-viewport::-webkit-scrollbar {
+  width: 4px;
+}
+
+.terminal-container .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #333;
+}
+
+.terminal-container .xterm-screen {
+  padding: 0;
+}
+
+/* Selection color */
+.terminal-container .xterm-selection div {
+  background: rgba(255, 45, 0, 0.3) !important;
+}

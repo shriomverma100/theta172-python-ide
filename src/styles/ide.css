@@ -1,0 +1,776 @@
+/* ============================================
+   THETA172 — IDE Layout (DUAL TONE)
+   WHITE editor. BLACK terminal. SPLIT.
+   ============================================ */
+
+.ide {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+
+/* NOTE: Topbar styles are in topbar.css */
+
+
+/* ── IDE BODY ── */
+.ide-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── PANES ── */
+.ide-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 180px;
+  contain: layout size;
+}
+
+/* ═══ DUAL TONE: EDITOR = WHITE ═══ */
+.ide-pane--editor {
+  width: 50%;
+  background: #FAFAF9;
+  transition: background 300ms ease;
+}
+
+/* ── Editor Tabs Bar ── */
+.editor-tabs {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background: #EAEAE8;
+  border-bottom: 1px solid #D0D0CE;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.editor-tabs::-webkit-scrollbar { display: none; }
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 100%;
+  font-family: var(--font-code);
+  font-size: 13px;
+  font-weight: 500;
+  color: #7A7A78;
+  cursor: pointer;
+  border-right: 1px solid #D0D0CE;
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease;
+  position: relative;
+  user-select: none;
+}
+
+.editor-tab:hover { background: rgba(0,0,0,0.04); color: #1A1A18; }
+
+.editor-tab.active {
+  background: #FAFAF9;
+  color: #1A1A18;
+  font-weight: 600;
+}
+
+.editor-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FF3300;
+}
+
+.editor-tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 200ms ease;
+}
+
+.editor-tab__dot.unsaved { background: #FF3300; }
+
+.editor-tab__close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #BBBBBB;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.editor-tab:hover .editor-tab__close { display: flex; }
+.editor-tab__close:hover {
+  color: #FF3300;
+  background: rgba(255, 51, 0, 0.12);
+  border-color: rgba(255, 51, 0, 0.4);
+  transform: scale(1.25);
+}
+
+.editor-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 100%;
+  color: #AAAAAA;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  flex-shrink: 0;
+}
+
+.editor-tab-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+.editor-tab-add:hover {
+  color: #1A1A18;
+  background: rgba(0,0,0,0.08);
+  border-color: rgba(0,0,0,0.15);
+  transform: scale(1.2);
+}
+
+/* ── Dark theme tabs ── */
+.ide-pane--editor.theme-dark .editor-tabs {
+  background: #111111;
+  border-bottom-color: #222220;
+}
+
+.ide-pane--editor.theme-dark .editor-tab {
+  color: #888886;
+  border-right-color: #222220;
+}
+
+.ide-pane--editor.theme-dark .editor-tab:hover {
+  background: rgba(255,255,255,0.04);
+  color: #EAEAE8;
+}
+
+.ide-pane--editor.theme-dark .editor-tab.active {
+  background: #111111;
+  color: #EAEAE8;
+}
+
+.ide-pane--editor.theme-dark .editor-tab-add { color: #AAAAAA; }
+.ide-pane--editor.theme-dark .editor-tab-add:hover {
+  color: #FFFFFF;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  transform: scale(1.2);
+}
+
+/* Editor pane header — light variant */
+.ide-pane--editor .pane-header {
+  background: #F2F2F0;
+  border-bottom: 1px solid #E0E0DE;
+}
+
+.ide-pane--editor .pane-header__title {
+  color: #7A7A78;
+}
+
+.ide-pane--editor .pane-header__title svg {
+  color: #7A7A78;
+}
+
+.ide-pane--editor .pane-action-btn {
+  color: #7A7A78;
+  border: 1px solid transparent;
+}
+
+.ide-pane--editor .pane-action-btn:hover {
+  color: #1A1A18;
+  border-color: #D0D0CE;
+  background: #E8E8E6;
+}
+
+.ide-pane--editor .status-item {
+  color: #7A7A78;
+}
+
+/* ═══ DUAL TONE: TERMINAL = BLACK ═══ */
+.ide-pane--terminal {
+  flex: 1;
+  background: var(--terminal-bg);
+}
+
+/* ── Pip Install Bar ── */
+.pip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--sp-4);
+  height: 30px;
+  background: #0A0A0A;
+  border-bottom: 1px solid var(--border-dark);
+  flex-shrink: 0;
+}
+
+.pip-bar__prefix {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 600;
+  color: #28C840;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pip-bar__input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-on-dark);
+  font-family: var(--font-code);
+  font-size: 11px;
+  caret-color: var(--accent);
+  min-width: 0;
+}
+
+.pip-bar__input::placeholder {
+  color: #555553;
+}
+
+.pip-bar__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #BBBBBB;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  flex-shrink: 0;
+}
+
+.pip-bar__btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pip-bar__btn:hover {
+  color: #28C840;
+  border-color: #28C840;
+  background: rgba(40, 200, 64, 0.1);
+  transform: scale(1.2);
+}
+
+.pip-bar__status {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.pip-bar__status.installing {
+  color: var(--accent);
+  animation: timerPulse 1s ease infinite;
+}
+
+.pip-bar__status.success {
+  color: #28C840;
+}
+
+.pip-bar__status.error {
+  color: var(--terminal-error);
+}
+
+/* ── Installed Packages Panel ── */
+.pip-packages-panel {
+  background: #0A0A0A;
+  border-top: 1px solid #222220;
+  max-height: 160px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.pip-packages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid #1A1A1A;
+}
+
+.pip-packages-close {
+  color: #AAAAAA;
+  font-size: 18px;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+}
+
+.pip-packages-close:hover {
+  color: #FF3300;
+  background: rgba(255, 51, 0, 0.12);
+  border-color: rgba(255, 51, 0, 0.4);
+  transform: scale(1.25);
+}
+
+.pip-packages-list {
+  padding: 4px 0;
+}
+
+.pip-packages-empty {
+  display: block;
+  padding: 12px;
+  text-align: center;
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: #444;
+}
+
+.pip-package-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: #AAAAAA;
+  transition: background 120ms ease;
+}
+
+.pip-package-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.pip-package-item__name {
+  font-weight: 600;
+  color: #DDDDD8;
+}
+
+.pip-package-item__version {
+  color: #666;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+.pip-package-item__uninstall {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: #AAAAAA;
+  padding: 4px 10px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: transparent;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  cursor: pointer;
+}
+
+.pip-package-item__uninstall:hover {
+  color: #FF3300;
+  border-color: #FF3300;
+  background: rgba(255,51,0,0.1);
+  transform: scale(1.12);
+}
+
+/* ── Pane header (dark — terminal side) ── */
+.pane-header {
+  height: var(--pane-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--border-dark);
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+}
+
+.pane-header__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pane-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.pane-action-btn {
+  font-family: var(--font-code);
+  font-size: 13px;
+  color: #BBBBBB;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  line-height: 1;
+  font-weight: 600;
+}
+
+.pane-action-btn:hover {
+  color: var(--text-on-dark);
+  border-color: var(--border-dark);
+  background: var(--surface-dark);
+  transform: scale(1.1);
+}
+
+.exec-time {
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  transition: color 300ms ease;
+  min-width: 60px;
+  text-align: right;
+}
+
+.exec-time.running {
+  color: var(--accent);
+  animation: timerPulse 1s ease infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* ── GUTTER ── */
+.ide-gutter {
+  width: 2px;
+  background: #111111;
+  cursor: col-resize !important;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, width 150ms ease;
+  position: relative;
+}
+
+.ide-gutter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  right: -5px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.ide-gutter:hover,
+.ide-gutter.dragging {
+  background: #FF3300;
+  width: 3px;
+}
+
+.gutter-handle {
+  display: none;
+}
+
+/* ── STATUS BAR ── */
+.ide-statusbar {
+  height: var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111111;
+  border-top: 1px solid #111111;
+  padding: 0 var(--sp-4);
+  flex-shrink: 0;
+}
+
+.statusbar__left,
+.statusbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  color: #8A8A88;
+  letter-spacing: 0.04em;
+  transition: color var(--t-fast);
+  white-space: nowrap;
+}
+
+.status-item:hover { color: #EAEAE8; }
+
+.status-sep {
+  width: 1px;
+  height: 10px;
+  background: #333330;
+}
+
+/* ── Theme indicator in status bar ── */
+.status-theme-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  color: #555553;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color var(--t-fast);
+}
+
+.status-theme-indicator:hover { color: #EAEAE8; }
+
+.theme-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
+  background: #FF3300;
+}
+
+.theme-dot::before,
+.theme-dot::after { display: none; }
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #EAEAE8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: opacity 400ms cubic-bezier(0.25,0.46,0.45,0.94);
+}
+
+.loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.loading-logo {
+  animation: loadingPulse 2s cubic-bezier(0.4,0,0.2,1) infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.05); opacity: 0.7; }
+}
+
+.loading-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.loading-brand {
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #111111;
+}
+
+.loading-sub {
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  color: #555553;
+  letter-spacing: 0.06em;
+}
+
+.loading-bar-wrap {
+  width: 160px;
+  height: 2px;
+  background: #C8C8C6;
+  overflow: hidden;
+}
+
+.loading-bar {
+  height: 100%;
+  background: #FF3300;
+  animation: loadingSlide 1.4s cubic-bezier(0.4,0,0.2,1) infinite;
+}
+
+@keyframes loadingSlide {
+  0%   { transform: translateX(-100%) scaleX(0.3); }
+  50%  { transform: translateX(50%) scaleX(0.7); }
+  100% { transform: translateX(200%) scaleX(0.3); }
+}
+
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.loading-step {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: #777775;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.loading-step.active {
+  opacity: 1;
+  transform: translateY(0);
+  color: #111111;
+}
+
+.loading-step.done {
+  opacity: 0.35;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════
+   DARK EDITOR MODE — when toggled to dark
+   ═══════════════════════════════════════════ */
+.ide-pane--editor.theme-dark {
+  background: var(--bg-dark);
+}
+
+.ide-pane--editor.theme-dark .pane-header {
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.ide-pane--editor.theme-dark .pane-header__title {
+  color: var(--text-muted);
+}
+
+.ide-pane--editor.theme-dark .pane-action-btn {
+  color: var(--text-muted);
+}
+
+.ide-pane--editor.theme-dark .pane-action-btn:hover {
+  color: var(--text-on-dark);
+  border-color: var(--border-dark);
+  background: var(--surface-dark);
+}
+
+.ide-pane--editor.theme-dark .status-item {
+  color: var(--text-muted);
+}
+
+/* ── Responsive Breakpoints ── */
+
+/* Narrow window: stack editor + terminal vertically */
+@media (max-width: 900px) {
+  .ide-body {
+    flex-direction: column;
+  }
+
+  .ide-pane--editor,
+  .ide-pane--terminal {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .ide-pane--editor {
+    height: 55%;
+  }
+
+  .ide-pane--terminal {
+    height: 45%;
+  }
+
+  .ide-gutter {
+    width: 100%;
+    height: 5px;
+    cursor: row-resize !important;
+  }
+
+  .ide-gutter .gutter-handle {
+    width: 40px;
+    height: 3px;
+  }
+
+  /* Hide less important topbar items */
+  .topbar-group--secondary .status-item:not(:first-child) {
+    display: none;
+  }
+}
+
+/* Very narrow */
+@media (max-width: 700px) {
+  .editor-tabs {
+    height: 28px;
+  }
+
+  .editor-tab {
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .pane-header__actions {
+    gap: 2px;
+  }
+
+  .pane-header__actions .pane-action-btn {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .topbar-file {
+    max-width: 100px;
+  }
+}

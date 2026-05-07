@@ -1,0 +1,109 @@
+/* ============================================
+   THETA172 — Editor Pane (CodeMirror 6)
+   ============================================ */
+
+.monaco-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+/* Drag-over indicator */
+.monaco-container.drag-over {
+  outline: 2px dashed #FF3300;
+  outline-offset: -4px;
+  background: rgba(255, 45, 0, 0.04);
+}
+
+/* CodeMirror fills its container */
+.monaco-container .cm-editor {
+  height: 100%;
+  width: 100%;
+}
+
+.monaco-container .cm-scroller {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+/* Smooth caret animation */
+.cm-cursor {
+  transition: left 80ms ease, top 80ms ease;
+}
+
+/* Scrollbar styling */
+.monaco-container .cm-scroller::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.monaco-container .cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.monaco-container .cm-scroller::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 0;
+}
+
+.monaco-container .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.4);
+}
+
+/* Autocomplete tooltip styling */
+.cm-tooltip-autocomplete {
+  border-radius: 0 !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 12px !important;
+}
+
+/* Search panel styling */
+.cm-panels {
+  font-family: 'Space Grotesk', system-ui, sans-serif !important;
+  font-size: 12px !important;
+}
+
+.cm-panel input[type="text"],
+.cm-panel input[type="checkbox"] {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+/* Fold gutter markers */
+.cm-foldGutter .cm-gutterElement {
+  font-size: 10px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+/* CodeMirror text cursor — override body's cursor:default */
+.cm-editor .cm-content {
+  cursor: text;
+}
+
+.cm-editor .cm-gutters {
+  cursor: default;
+}
+
+/* Selection must be clearly visible */
+.cm-editor .cm-selectionBackground {
+  background-color: rgba(255, 45, 0, 0.4) !important;
+}
+
+.cm-editor.cm-focused .cm-selectionBackground {
+  background-color: rgba(255, 45, 0, 0.45) !important;
+}
+
+.cm-editor .cm-content ::selection {
+  background-color: rgba(255, 45, 0, 0.45) !important;
+}
+
+.cm-editor .cm-line::selection,
+.cm-editor .cm-line *::selection {
+  background-color: rgba(255, 45, 0, 0.45) !important;
+}
+
+/* Error line highlight (Python traceback) */
+.cm-error-line {
+  background-color: rgba(255, 40, 40, 0.15) !important;
+  border-left: 3px solid #FF3333;
+}
