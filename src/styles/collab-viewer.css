@@ -1,0 +1,334 @@
+/* ══════════════════════════════════════════════════════════════════
+   THETA172 — Collab Viewer Overlay Styles
+   Full-screen read-only view of the sharer's IDE.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay Container ───────────────────────────────────────────── */
+.collab-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+.collab-viewer-overlay.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+
+/* ── Status Bar ──────────────────────────────────────────────────── */
+.collab-viewer-overlay__status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 16px;
+  background: #111111;
+  border-bottom: 1px solid #1e1e1e;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.collab-viewer-overlay__live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF3300;
+  animation: cvo-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes cvo-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 51, 0, 0.5); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(255, 51, 0, 0); }
+}
+
+.collab-viewer-overlay__live-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #FF3300;
+  text-transform: uppercase;
+}
+
+.collab-viewer-overlay__host-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collab-viewer-overlay__run-indicator {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #555;
+  padding: 2px 8px;
+  border: 1px solid #333;
+  border-radius: 3px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.collab-viewer-overlay__run-indicator.running {
+  color: #28C840;
+  border-color: #28C840;
+  background: rgba(40, 200, 64, 0.08);
+}
+
+.collab-viewer-overlay__error-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: #555;
+  transition: color 0.2s;
+}
+
+.collab-viewer-overlay__error-count.has-errors {
+  color: #FF5A3C;
+}
+
+.collab-viewer-overlay__disconnect-btn {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #aaa;
+  background: transparent;
+  border: 1px solid #333;
+  padding: 4px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.collab-viewer-overlay__disconnect-btn:hover {
+  color: #FF3300;
+  border-color: #FF3300;
+  background: rgba(255, 51, 0, 0.06);
+}
+
+
+/* ── Tab Bar ─────────────────────────────────────────────────────── */
+.collab-viewer-overlay__tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 32px;
+  padding: 0 8px;
+  background: #0e0e0e;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+  overflow-x: auto;
+  user-select: none;
+}
+
+.collab-viewer-overlay__file-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ccc;
+  padding: 0 12px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid #FF3300;
+}
+
+.collab-viewer-overlay__tab {
+  font-size: 11px;
+  color: #555;
+  padding: 0 12px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.collab-viewer-overlay__tab.active {
+  color: #ccc;
+  border-bottom-color: #FF3300;
+}
+
+
+/* ── Content Area ────────────────────────────────────────────────── */
+.collab-viewer-overlay__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+
+/* ── Code Wrapper ────────────────────────────────────────────────── */
+.collab-viewer-overlay__code-wrapper {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: auto;
+  min-height: 0;
+  background: #0a0a0a;
+}
+
+.collab-viewer-overlay__line-numbers {
+  width: 48px;
+  flex-shrink: 0;
+  padding: 8px 8px 8px 0;
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: #333;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #1a1a1a;
+}
+
+.collab-viewer-overlay__line-numbers span {
+  display: block;
+  height: 20px;
+}
+
+.collab-viewer-overlay__code {
+  flex: 1;
+  margin: 0;
+  padding: 8px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 14px;
+  line-height: 20px;
+  color: #d4d4d4;
+  tab-size: 4;
+  white-space: pre;
+  overflow: visible;
+  position: relative;
+}
+
+
+/* ── Syntax Highlighting ─────────────────────────────────────────── */
+.cvo-kw       { color: #C586C0; }
+.cvo-str      { color: #CE9178; }
+.cvo-comment  { color: #6A9955; font-style: italic; }
+.cvo-num      { color: #B5CEA8; }
+.cvo-builtin  { color: #DCDCAA; }
+.cvo-decorator { color: #D7BA7D; }
+.cvo-funcname { color: #4EC9B0; }
+
+
+/* ── Remote Cursor ───────────────────────────────────────────────── */
+.collab-viewer-overlay__remote-cursor {
+  position: absolute;
+  top: 8px;
+  left: 64px; /* 48px line numbers + 16px padding */
+  pointer-events: none;
+  z-index: 10;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.collab-viewer-overlay__cursor-line {
+  width: 2px;
+  height: 20px;
+  background: #FF3300;
+  border-radius: 1px;
+  animation: cvo-cursor-blink 1s steps(2) infinite;
+}
+
+@keyframes cvo-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.collab-viewer-overlay__cursor-label {
+  position: absolute;
+  top: -18px;
+  left: -4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: #FF3300;
+  padding: 1px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.collab-viewer-overlay__remote-cursor.flash .collab-viewer-overlay__cursor-label {
+  opacity: 1;
+}
+
+.collab-viewer-overlay__remote-cursor.flash .collab-viewer-overlay__cursor-line {
+  animation: none;
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(255, 51, 0, 0.5);
+}
+
+
+/* ── Terminal ────────────────────────────────────────────────────── */
+.collab-viewer-overlay__terminal-wrapper {
+  height: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #1e1e1e;
+  background: #0c0c0c;
+}
+
+.collab-viewer-overlay__terminal-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #555;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-bottom: 1px solid #1a1a1a;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.collab-viewer-overlay__terminal {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 18px;
+  color: #28C840;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Scrollbar styling */
+.collab-viewer-overlay__code-wrapper::-webkit-scrollbar,
+.collab-viewer-overlay__terminal::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.collab-viewer-overlay__code-wrapper::-webkit-scrollbar-track,
+.collab-viewer-overlay__terminal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collab-viewer-overlay__code-wrapper::-webkit-scrollbar-thumb,
+.collab-viewer-overlay__terminal::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.collab-viewer-overlay__code-wrapper::-webkit-scrollbar-thumb:hover,
+.collab-viewer-overlay__terminal::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

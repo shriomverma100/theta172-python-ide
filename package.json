@@ -10,14 +10,22 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "vite build && electron-builder",
-    "electron:preview": "vite build && cross-env NODE_ENV=production electron ."
+    "electron:start": "cross-env NODE_ENV=development electron .",
+    "electron:dev": "concurrently -k -s first -n VITE,ELECTRON -c cyan,magenta \"vite\" \"npx wait-on tcp:5173 -t 15000 && npm run electron:start\"",
+    "electron:build": "vite build && electron-builder --win --x64",
+    "electron:build:dir": "vite build && electron-builder --win --x64 --dir",
+    "electron:preview": "vite build && cross-env NODE_ENV=production electron .",
+    "relay:start": "node relay-server/index.js"
   },
   "build": {
     "appId": "com.theta172.python",
     "productName": "Python by THETA172",
     "copyright": "Copyright © 2025 THETA172",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/bonjour-service/**/*",
+      "node_modules/ws/**/*"
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build-assets"
@@ -25,8 +33,17 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "public/**/*",
-      "package.json"
+      "package.json",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,LICENSE,license,LICENCE}",
+      "!**/*.{ts,map,md}",
+      "!relay-server/**/*",
+      "!scripts/**/*",
+      "!src/**/*",
+      "!public/**/*",
+      "!.git/**/*",
+      "!.github/**/*",
+      "!.gitignore",
+      "!vite.config.js"
     ],
     "extraMetadata": {
       "main": "electron/main.cjs"
@@ -38,23 +55,42 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "build-assets/icon.png",
-      "requestedExecutionLevel": "asInvoker"
+      "icon": "build-assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "Python-by-THETA172-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "Python by THETA172"
+      "shortcutName": "Python by THETA172",
+      "uninstallDisplayName": "Python by THETA172",
+      "installerIcon": "build-assets/icon.ico",
+      "uninstallerIcon": "build-assets/icon.ico",
+      "installerHeader": "build-assets/installer-header.bmp",
+      "installerSidebar": "build-assets/installer-sidebar.bmp",
+      "installerHeaderIcon": "build-assets/icon.ico",
+      "menuCategory": "THETA172",
+      "license": null,
+      "runAfterFinish": true
     },
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "build-assets/icon.icns",
@@ -91,25 +127,34 @@
     }
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
-    "cross-env": "^7.0.3",
-    "electron": "^42.0.0",
-    "electron-builder": "^26.8.1",
-    "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
-    "vite": "^8.0.10",
-    "wait-on": "^9.0.5"
-  },
-  "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/lint": "^6.9.6",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/theme-one-dark": "^6.1.3",
     "@codemirror/view": "^6.42.0",
     "@replit/codemirror-minimap": "^0.5.2",
     "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
     "codemirror": "^6.0.2",
-    "gsap": "^3.15.0"
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.8.1",
+    "gsap": "^3.15.0",
+    "lib0": "^0.2.117",
+    "png-to-ico": "^3.0.1",
+    "puppeteer": "^25.1.0",
+    "sharp": "^0.34.5",
+    "vite": "^8.0.10",
+    "wait-on": "^9.0.5",
+    "y-codemirror.next": "^0.3.5",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.30"
+  },
+  "dependencies": {
+    "bonjour-service": "^1.4.0",
+    "ws": "^8.21.0"
   }
 }

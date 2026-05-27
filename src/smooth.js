@@ -1,8 +1,15 @@
 /**
- * THETA172 — Ultra-Smooth Interaction Engine
+ * THETA172 — Ultra-Smooth Interaction Engine v2
  * 
  * GPU-accelerated, spring-physics micro-interactions.
- * Makes every hover, click, scroll, and keystroke feel like 120fps butter.
+ * Makes every hover, click, scroll, and keystroke feel like 180fps butter.
+ * 
+ * v2 Changes:
+ * - Smart GPU promotion (only during animation, released after)
+ * - Lerp-based magnetic hover for true 120fps tracking
+ * - Smooth focus transitions between panes
+ * - Smooth modal spring entrance
+ * - Performance-optimized with passive listeners everywhere
  */
 
 import gsap from 'gsap';
@@ -12,21 +19,11 @@ const SPRING = { duration: 0.4, ease: 'elastic.out(1, 0.5)' };
 const SNAP   = { duration: 0.15, ease: 'power3.out' };
 const SILK   = { duration: 0.25, ease: 'power2.out' };
 
-// ── 1. GPU LAYER PROMOTION ─────────────────────────────────
-// Force every interactive element onto its own compositor layer
+// ── 1. SMART GPU LAYER PROMOTION ──────────────────────────
+// Only promote elements during active animation, release after
 export function promoteToGPU() {
   const style = document.createElement('style');
   style.textContent = `
-    button, a, [role="button"], .topbar-btn, .btn-run,
-    .topbar-logo-btn, .wc-btn, .pane-action-btn, .topbar-file,
-    .run-status, .status-item, .toast, .modal-content,
-    .ide-gutter, .shortcut-item, .shortcut-keys, kbd,
-    .pip-bar__btn, .cmd-result-item {
-      will-change: transform, opacity;
-      transform: translateZ(0);
-      -webkit-font-smoothing: subpixel-antialiased;
-    }
-    
     /* Buttery smooth scrolling everywhere */
     *, *::before, *::after {
       scroll-behavior: smooth;
@@ -41,7 +38,19 @@ export function promoteToGPU() {
     .ide {
       -webkit-backface-visibility: hidden;
       backface-visibility: hidden;
-      perspective: 1000px;
+    }
+
+    /* Smooth focus visible indicator */
+    :focus-visible {
+      outline: 2px solid rgba(255, 45, 0, 0.5);
+      outline-offset: 2px;
+      transition: outline-color 200ms ease;
+    }
+
+    /* Global smooth cursor transition on interactive elements */
+    button, [role="button"], .topbar-btn, .btn-run,
+    .pane-action-btn, .pane-tab, .editor-tab {
+      -webkit-font-smoothing: antialiased;
     }
   `;
   document.head.appendChild(style);
@@ -53,6 +62,9 @@ export function springButtons() {
   document.addEventListener('mousedown', (e) => {
     const btn = e.target.closest('button, [role="button"], .topbar-btn, .btn-run, .wc-btn, .pane-action-btn, .pip-bar__btn');
     if (!btn) return;
+
+    // Promote to GPU during animation
+    btn.style.willChange = 'transform';
 
     gsap.killTweensOf(btn);
     gsap.to(btn, {
@@ -69,47 +81,84 @@ export function springButtons() {
     gsap.to(btn, {
       scale: 1,
       ...SPRING,
+      onComplete: () => {
+        // Release GPU layer after animation completes
+        btn.style.willChange = 'auto';
+      },
     });
   }, { passive: true });
 
   // Safety: if mouse leaves while pressed, snap back
   document.addEventListener('mouseleave', (e) => {
     if (!e.target?.closest) return;
-    const btn = e.target.closest('button, [role="button"], .topbar-btn, .btn-run, .wc-btn, .pane-action-btn');
+    const btn = e.target.closest('button, [role="button"], .topbar-btn, .btn-run, .pane-action-btn');
     if (!btn) return;
-    gsap.to(btn, { scale: 1, ...SILK });
+    gsap.to(btn, {
+      scale: 1, ...SILK,
+      onComplete: () => { btn.style.willChange = 'auto'; },
+    });
   }, { passive: true, capture: true });
 }
 
-// ── 3. MAGNETIC HOVER ──────────────────────────────────────
-// Buttons subtly pull toward the cursor on hover
+// ── 3. LERP-BASED MAGNETIC HOVER ───────────────────────────
+// True 120fps tracking with requestAnimationFrame lerp
 export function magneticHover() {
-  const PULL = 0.15; // How much to pull (fraction of button size)
+  const PULL = 0.12; // Pull strength
+  const LERP_FACTOR = 0.15; // Smoothing factor (lower = smoother)
 
   document.querySelectorAll('.topbar-btn, .btn-run, .topbar-logo-btn, .wc-btn').forEach(btn => {
+    let targetX = 0, targetY = 0;
+    let currentX = 0, currentY = 0;
+    let rafId = null;
+    let isHovering = false;
+
+    function lerp(start, end, factor) {
+      return start + (end - start) * factor;
+    }
+
+    function animate() {
+      currentX = lerp(currentX, targetX, LERP_FACTOR);
+      currentY = lerp(currentY, targetY, LERP_FACTOR);
+
+      // Only update DOM if there's meaningful movement
+      if (Math.abs(currentX - targetX) > 0.01 || Math.abs(currentY - targetY) > 0.01) {
+        btn.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        rafId = requestAnimationFrame(animate);
+      } else {
+        btn.style.transform = targetX === 0 && targetY === 0
+          ? ''
+          : `translate(${targetX}px, ${targetY}px)`;
+        rafId = null;
+        if (!isHovering) {
+          btn.style.willChange = 'auto';
+        }
+      }
+    }
+
+    btn.addEventListener('mouseenter', () => {
+      isHovering = true;
+      btn.style.willChange = 'transform';
+    }, { passive: true });
+
     btn.addEventListener('mousemove', (e) => {
       const rect = btn.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      const dx = (e.clientX - cx) * PULL;
-      const dy = (e.clientY - cy) * PULL;
+      targetX = (e.clientX - cx) * PULL;
+      targetY = (e.clientY - cy) * PULL;
 
-      gsap.to(btn, {
-        x: dx,
-        y: dy,
-        duration: 0.3,
-        ease: 'power2.out',
-        overwrite: 'auto',
-      });
+      if (!rafId) {
+        rafId = requestAnimationFrame(animate);
+      }
     }, { passive: true });
 
     btn.addEventListener('mouseleave', () => {
-      gsap.to(btn, {
-        x: 0,
-        y: 0,
-        ...SPRING,
-        overwrite: 'auto',
-      });
+      isHovering = false;
+      targetX = 0;
+      targetY = 0;
+      if (!rafId) {
+        rafId = requestAnimationFrame(animate);
+      }
     }, { passive: true });
   });
 }
@@ -120,69 +169,99 @@ export function cursorGlow() {
   const topbar = document.querySelector('.ide-topbar');
   if (!topbar) return;
 
-  // Create glow element
   const glow = document.createElement('div');
   glow.style.cssText = `
     position: absolute;
-    width: 120px;
-    height: 120px;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,51,0,0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255,51,0,0.05) 0%, transparent 70%);
     pointer-events: none;
     transform: translate(-50%, -50%);
     z-index: 0;
     opacity: 0;
-    transition: opacity 300ms ease;
+    will-change: left, top, opacity;
   `;
   topbar.style.position = 'relative';
   topbar.appendChild(glow);
 
+  let glowX = 0, glowY = 0, targetGlowX = 0, targetGlowY = 0;
+  let glowOpacity = 0, targetGlowOpacity = 0;
+  let glowRaf = null;
+
+  function animateGlow() {
+    glowX += (targetGlowX - glowX) * 0.12;
+    glowY += (targetGlowY - glowY) * 0.12;
+    glowOpacity += (targetGlowOpacity - glowOpacity) * 0.1;
+
+    glow.style.left = glowX + 'px';
+    glow.style.top = glowY + 'px';
+    glow.style.opacity = glowOpacity;
+
+    if (Math.abs(glowOpacity - targetGlowOpacity) > 0.005 ||
+        Math.abs(glowX - targetGlowX) > 0.5 ||
+        Math.abs(glowY - targetGlowY) > 0.5) {
+      glowRaf = requestAnimationFrame(animateGlow);
+    } else {
+      glowRaf = null;
+      if (targetGlowOpacity === 0) {
+        glow.style.willChange = 'auto';
+      }
+    }
+  }
+
   topbar.addEventListener('mousemove', (e) => {
     const rect = topbar.getBoundingClientRect();
-    gsap.to(glow, {
-      left: e.clientX - rect.left,
-      top: e.clientY - rect.top,
-      opacity: 1,
-      duration: 0.15,
-      ease: 'power1.out',
-      overwrite: true,
-    });
+    targetGlowX = e.clientX - rect.left;
+    targetGlowY = e.clientY - rect.top;
+    targetGlowOpacity = 1;
+    glow.style.willChange = 'left, top, opacity';
+    if (!glowRaf) glowRaf = requestAnimationFrame(animateGlow);
   }, { passive: true });
 
   topbar.addEventListener('mouseleave', () => {
-    gsap.to(glow, { opacity: 0, duration: 0.4, ease: 'power2.out' });
+    targetGlowOpacity = 0;
+    if (!glowRaf) glowRaf = requestAnimationFrame(animateGlow);
   }, { passive: true });
 }
 
 // ── 5. SMOOTH GUTTER DRAG ──────────────────────────────────
-// Makes the pane gutter feel silky when dragging
 export function smoothGutter() {
   const gutter = document.querySelector('.ide-gutter');
   if (!gutter) return;
 
   gutter.addEventListener('mouseenter', () => {
+    gutter.style.willChange = 'transform';
     gsap.to(gutter, { scaleX: 1.8, duration: 0.2, ease: 'power2.out' });
   }, { passive: true });
 
   gutter.addEventListener('mouseleave', () => {
-    gsap.to(gutter, { scaleX: 1, ...SPRING });
+    gsap.to(gutter, {
+      scaleX: 1, ...SPRING,
+      onComplete: () => { gutter.style.willChange = 'auto'; },
+    });
   }, { passive: true });
 }
 
 // ── 6. KEYSTROKE PULSE ─────────────────────────────────────
-// Subtle border pulse on the editor when typing
 export function keystrokePulse() {
   const editorPane = document.querySelector('.ide-pane--editor');
   if (!editorPane) return;
 
   let pulseTimeout;
+  let isPromoted = false;
+
   document.addEventListener('keydown', (e) => {
-    // Only for printable characters while editor is focused
     const active = document.activeElement;
     const isEditorFocused = active?.closest('.monaco-container') ||
-                            active?.closest('.monaco-editor');
+                            active?.closest('.cm-editor');
     if (!isEditorFocused) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    if (!isPromoted) {
+      editorPane.style.willChange = 'border-color';
+      isPromoted = true;
+    }
 
     clearTimeout(pulseTimeout);
 
@@ -198,15 +277,18 @@ export function keystrokePulse() {
         borderRightColor: 'transparent',
         duration: 0.5,
         ease: 'power2.out',
+        onComplete: () => {
+          editorPane.style.willChange = 'auto';
+          isPromoted = false;
+        },
       });
     }, 80);
   }, { passive: true });
 }
 
 // ── 7. SMOOTH SCROLL MOMENTUM ──────────────────────────────
-// Enhanced scroll inertia for all scrollable containers
 export function smoothScroll() {
-  document.querySelectorAll('.shortcuts-list, .cmd-results, .examples-list, .modal-content').forEach(el => {
+  document.querySelectorAll('.shortcuts-list, .cmd-results, .examples-list, .modal-content, .pip-packages-panel').forEach(el => {
     el.style.scrollBehavior = 'smooth';
     el.style.overscrollBehavior = 'contain';
     el.style.webkitOverflowScrolling = 'touch';
@@ -214,16 +296,19 @@ export function smoothScroll() {
 }
 
 // ── 8. TOAST SPRING ENTRANCE ───────────────────────────────
-// Override toast animations with spring physics
 export function smoothToasts() {
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (const node of m.addedNodes) {
         if (node.classList?.contains('toast')) {
+          node.style.willChange = 'transform, opacity';
           gsap.killTweensOf(node);
           gsap.fromTo(node,
             { x: 40, opacity: 0, scale: 0.92 },
-            { x: 0, opacity: 1, scale: 1, ...SPRING }
+            {
+              x: 0, opacity: 1, scale: 1, ...SPRING,
+              onComplete: () => { node.style.willChange = 'auto'; },
+            }
           );
         }
       }
@@ -237,15 +322,18 @@ export function smoothToasts() {
 }
 
 // ── 9. SMOOTH STATUS DOT ───────────────────────────────────
-// The run status dot gets a smooth morphing animation
 export function smoothStatusDot() {
   const dot = document.querySelector('.run-status__dot');
   if (!dot) return;
 
   const observer = new MutationObserver(() => {
+    dot.style.willChange = 'transform';
     gsap.fromTo(dot,
       { scale: 0.4 },
-      { scale: 1, ...SPRING }
+      {
+        scale: 1, ...SPRING,
+        onComplete: () => { dot.style.willChange = 'auto'; },
+      }
     );
   });
 
@@ -256,13 +344,11 @@ export function smoothStatusDot() {
 }
 
 // ── 10. CLICK RIPPLE V2 (ink spread) ───────────────────────
-// Ultra-smooth GSAP ripple on every interactive element
 export function inkRipple() {
   document.addEventListener('pointerdown', (e) => {
-    const target = e.target.closest('button, .topbar-btn, .btn-run, .topbar-logo-btn, .shortcut-item, .cmd-result-item, .example-item');
+    const target = e.target.closest('button, .topbar-btn, .btn-run, .topbar-logo-btn, .shortcut-item, .cmd-result-item, .example-item, .pane-tab, .editor-tab');
     if (!target) return;
 
-    // Ensure positioning context
     const pos = getComputedStyle(target).position;
     if (pos === 'static') target.style.position = 'relative';
     target.style.overflow = 'hidden';
@@ -280,14 +366,15 @@ export function inkRipple() {
       left: ${x - size / 2}px;
       top: ${y - size / 2}px;
       border-radius: 50%;
-      background: rgba(17, 17, 17, 0.08);
+      background: rgba(17, 17, 17, 0.06);
       pointer-events: none;
       z-index: 10;
+      will-change: transform, opacity;
     `;
     target.appendChild(ink);
 
     gsap.fromTo(ink,
-      { scale: 0, opacity: 0.5 },
+      { scale: 0, opacity: 0.4 },
       {
         scale: 1,
         opacity: 0,
@@ -300,7 +387,6 @@ export function inkRipple() {
 }
 
 // ── 11. SMOOTH WINDOW TRANSITION ───────────────────────────
-// Landing → IDE transition with spring physics
 export function smoothPageTransition(fromEl, toEl) {
   return new Promise((resolve) => {
     const tl = gsap.timeline({
@@ -326,6 +412,29 @@ export function smoothPageTransition(fromEl, toEl) {
   });
 }
 
+// ── 12. SMOOTH PANE FOCUS ──────────────────────────────────
+// Visual feedback when switching between editor and terminal
+export function smoothPaneFocus() {
+  const editorPane = document.querySelector('.ide-pane--editor');
+  const terminalPane = document.querySelector('.ide-pane--terminal');
+  if (!editorPane || !terminalPane) return;
+
+  function handleFocusIn(e) {
+    const inEditor = e.target.closest('.ide-pane--editor');
+    const inTerminal = e.target.closest('.ide-pane--terminal');
+
+    if (inEditor) {
+      gsap.to(editorPane, { opacity: 1, duration: 0.2, ease: 'power2.out' });
+      gsap.to(terminalPane, { opacity: 0.97, duration: 0.3, ease: 'power2.out' });
+    } else if (inTerminal) {
+      gsap.to(terminalPane, { opacity: 1, duration: 0.2, ease: 'power2.out' });
+      gsap.to(editorPane, { opacity: 0.97, duration: 0.3, ease: 'power2.out' });
+    }
+  }
+
+  document.addEventListener('focusin', handleFocusIn, { passive: true });
+}
+
 // ── MASTER INIT ────────────────────────────────────────────
 export function initSmoothEngine() {
   promoteToGPU();
@@ -342,8 +451,9 @@ export function initSmoothEngine() {
       cursorGlow();
       smoothGutter();
       keystrokePulse();
+      smoothPaneFocus();
     });
   });
 
-  console.log('[THETA] ✦ Smooth Engine initialized');
+  console.log('[THETA] ✦ Smooth Engine v2 initialized');
 }

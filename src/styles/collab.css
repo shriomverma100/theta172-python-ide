@@ -1,0 +1,1403 @@
+/* ============================================
+   THETA172 — COLLAB PANEL  |  Editorial Brutalist
+   Palette: #EAEAE8 / #111111 / #FF3300 only
+   Matches reference image: bold lowercase hero,
+   asymmetric editorial layout, red accent block.
+   ============================================ */
+
+/* ── PANEL OVERLAY ── */
+.collab-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #EAEAE8;
+  z-index: 9999;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  transform: translateX(-100%);
+  will-change: transform;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  contain: layout style;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.collab-panel.visible {
+  transform: translateX(0);
+}
+
+.collab-panel.closing {
+  transform: translateX(-100%);
+  transition: transform 350ms cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.collab-panel.hidden {
+  display: none;
+}
+
+/* ── SCROLLBAR (MATCHES THETA172 BRAND) ── */
+.collab-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.collab-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collab-panel::-webkit-scrollbar-thumb {
+  background: #C8C8C6;
+  border-radius: 3px;
+  transition: background 300ms var(--ease-smooth, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.collab-panel::-webkit-scrollbar-thumb:hover {
+  background: #888886;
+}
+
+
+/* ══════════════════════════════════════════════
+   TOP NAVIGATION BAR
+   ══════════════════════════════════════════════ */
+
+.collab-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 32px;
+  border-bottom: 2px solid #111111;
+  background: #EAEAE8;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.collab-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.collab-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Back Button */
+.collab-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #111111;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px 6px 8px;
+  border: 1.5px solid #111111;
+  transition: background 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              color 150ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-back-btn:hover {
+  background: #111111;
+  color: #EAEAE8;
+  transform: scale(1.02);
+}
+
+.collab-back-btn:active {
+  transform: scale(0.97);
+}
+
+.collab-back-btn svg {
+  flex-shrink: 0;
+}
+
+/* Version Label */
+.collab-version {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #888886;
+}
+
+/* Brand Text */
+.collab-brand {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #111111;
+}
+
+
+/* ══════════════════════════════════════════════
+   HERO SECTION — "collab." large bold text
+   Matches reference image "lab." hero style
+   ══════════════════════════════════════════════ */
+
+.collab-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 420px;
+  padding: 0 32px;
+  border-bottom: 2px solid #111111;
+  overflow: hidden;
+  position: relative;
+}
+
+.collab-hero__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px 40px 60px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.collab-hero__right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Large Bold Hero Text — matches "lab." in reference */
+.collab-hero__title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: clamp(72px, 10vw, 120px);
+  font-weight: 900;
+  line-height: 0.9;
+  color: #111111;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px 0;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: collabHeroIn 600ms cubic-bezier(0.22, 1, 0.36, 1) 100ms forwards;
+}
+
+/* Small description text above hero */
+.collab-hero__label {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #111111;
+  margin-bottom: 8px;
+  opacity: 0;
+  animation: collabFadeIn 500ms ease 200ms forwards;
+}
+
+/* Subtitle description */
+.collab-hero__subtitle {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #888886;
+  line-height: 1.8;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: collabFadeIn 500ms ease 350ms forwards;
+}
+
+/* Number label — matches "001" in reference */
+.collab-hero__number {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 900;
+  color: #111111;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: collabFadeIn 500ms ease 500ms forwards;
+}
+
+/* Red Accent Block — matches orange-red block in reference */
+.collab-hero__accent {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  width: 65%;
+  height: 70%;
+  background: #FF3300;
+  z-index: 0;
+  animation: collabAccentIn 600ms cubic-bezier(0.16, 1, 0.3, 1) 200ms forwards;
+}
+
+/* Graphic overlay on red block */
+.collab-hero__graphic {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px;
+}
+
+/* Connection illustration in hero */
+.collab-hero__illustration {
+  width: 100%;
+  max-width: 280px;
+  opacity: 0;
+  animation: collabFadeIn 600ms ease 500ms forwards;
+}
+
+/* Vertical text on right side — matches reference */
+.collab-hero__vertical-text {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #EAEAE8;
+  white-space: nowrap;
+  z-index: 2;
+  opacity: 0;
+  animation: collabFadeIn 500ms ease 600ms forwards;
+}
+
+/* Arrow button at bottom of hero — matches reference */
+.collab-hero__arrow {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  width: 44px;
+  height: 44px;
+  background: #111111;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #EAEAE8;
+  z-index: 3;
+  transition: background 200ms ease, transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+  opacity: 0;
+  animation: collabFadeIn 400ms ease 700ms forwards;
+}
+
+.collab-hero__arrow:hover {
+  background: #FF3300;
+  transform: scale(1.06);
+}
+
+.collab-hero__arrow:active {
+  transform: scale(0.94);
+}
+
+/* Three dots — matches reference image top-right */
+.collab-hero__dots {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 4px;
+  z-index: 3;
+  opacity: 0;
+  animation: collabFadeIn 400ms ease 400ms forwards;
+}
+
+.collab-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #111111;
+}
+
+
+/* ══════════════════════════════════════════════
+   ROLE SELECTION CARDS — Share / View
+   ══════════════════════════════════════════════ */
+
+.collab-roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 2px solid #111111;
+}
+
+.collab-role-card {
+  padding: 48px 40px;
+  cursor: pointer;
+  border: none;
+  background: #EAEAE8;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  transition: background 250ms ease;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.collab-role-card:first-child {
+  border-right: 1px solid #C8C8C6;
+  animation: collabCardIn 400ms cubic-bezier(0.22, 1, 0.36, 1) 300ms forwards;
+}
+
+.collab-role-card:last-child {
+  animation: collabCardIn 400ms cubic-bezier(0.22, 1, 0.36, 1) 400ms forwards;
+}
+
+.collab-role-card:hover {
+  background: #E0E0DE;
+}
+
+.collab-role-card:active {
+  background: #D8D8D6;
+}
+
+/* Active role state */
+.collab-role-card.active {
+  background: #111111;
+}
+
+.collab-role-card.active .collab-role-card__title,
+.collab-role-card.active .collab-role-card__desc,
+.collab-role-card.active .collab-role-card__label {
+  color: #EAEAE8;
+}
+
+.collab-role-card.active .collab-role-card__icon {
+  color: #FF3300;
+}
+
+.collab-role-card.active .collab-role-card__cta {
+  background: #FF3300;
+  color: #EAEAE8;
+  border-color: #FF3300;
+}
+
+/* Card label — small uppercase */
+.collab-role-card__label {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Card icon */
+.collab-role-card__icon {
+  color: #111111;
+  margin-bottom: 20px;
+  display: block;
+  transition: color 250ms ease;
+}
+
+/* Card title */
+.collab-role-card__title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #111111;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  transition: color 250ms ease;
+}
+
+/* Card description */
+.collab-role-card__desc {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #888886;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 320px;
+  transition: color 250ms ease;
+}
+
+/* CTA Button */
+.collab-role-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: none;
+  border: 1.5px solid #111111;
+  color: #111111;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              color 150ms ease,
+              border-color 200ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-role-card__cta:hover {
+  background: #111111;
+  color: #EAEAE8;
+  transform: scale(1.03);
+}
+
+.collab-role-card__cta:active {
+  transform: scale(0.96);
+}
+
+.collab-role-card.active .collab-role-card__cta:hover {
+  background: #EAEAE8;
+  color: #111111;
+  border-color: #EAEAE8;
+}
+
+
+/* ══════════════════════════════════════════════
+   SHARE PANEL — Go Live, Room Key, Viewers
+   ══════════════════════════════════════════════ */
+
+.collab-share-panel,
+.collab-viewer-panel {
+  padding: 48px 40px;
+  border-bottom: 2px solid #111111;
+  display: none;
+}
+
+.collab-share-panel.visible,
+.collab-viewer-panel.visible {
+  display: block;
+  animation: collabPanelReveal 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Section title */
+.collab-section-title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #C8C8C6;
+}
+
+/* Password Input Group */
+.collab-password-group {
+  margin-bottom: 24px;
+}
+
+.collab-password-label {
+  display: block;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+  margin-bottom: 8px;
+}
+
+.collab-password-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.collab-password-input {
+  flex: 1;
+  max-width: 320px;
+  padding: 12px 16px;
+  background: #FFFFFF;
+  border: 2px solid #111111;
+  border-right: none;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  letter-spacing: 0.1em;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.collab-password-input::placeholder {
+  color: #C8C8C6;
+  letter-spacing: 0.05em;
+  font-weight: 400;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.collab-password-input:focus {
+  border-color: #FF3300;
+  box-shadow: 0 0 0 2px rgba(255, 51, 0, 0.1);
+}
+
+.collab-password-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  background: #111111;
+  border: 2px solid #111111;
+  color: #888886;
+  cursor: pointer;
+  transition: color 200ms ease, background 200ms ease;
+  padding: 0;
+}
+
+.collab-password-toggle:hover {
+  color: #FF3300;
+  background: #222222;
+}
+
+/* Go Live Button */
+.collab-go-live-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: #FF3300;
+  border: none;
+  color: #EAEAE8;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              box-shadow 200ms ease;
+  transform: scale(1);
+  box-shadow: 0 0 0 0 rgba(255, 51, 0, 0);
+}
+
+.collab-go-live-btn:hover {
+  background: #E62E00;
+  transform: scale(1.03);
+  box-shadow: 0 4px 20px rgba(255, 51, 0, 0.25);
+}
+
+.collab-go-live-btn:active {
+  transform: scale(0.97);
+}
+
+/* Live pulse animation on the Go Live button when active */
+.collab-go-live-btn.live {
+  background: #111111;
+  animation: collabLivePulse 2s ease-in-out infinite;
+}
+
+/* Stop sharing button */
+.collab-stop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: none;
+  border: 1.5px solid #FF3300;
+  color: #FF3300;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-left: 16px;
+  transition: background 200ms ease,
+              color 150ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-stop-btn:hover {
+  background: #FF3300;
+  color: #EAEAE8;
+  transform: scale(1.03);
+}
+
+.collab-stop-btn:active {
+  transform: scale(0.96);
+}
+
+/* View Dashboard Button */
+.collab-dashboard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #111111;
+  border: 1.5px solid #111111;
+  color: #EAEAE8;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-left: 12px;
+  transition: background 200ms ease,
+              color 150ms ease,
+              border-color 200ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-dashboard-btn:hover {
+  background: #FF3300;
+  border-color: #FF3300;
+  transform: scale(1.03);
+}
+
+.collab-dashboard-btn:active {
+  transform: scale(0.96);
+}
+
+/* Room Key Display */
+.collab-room-key {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 32px;
+  padding: 24px;
+  background: #111111;
+  position: relative;
+}
+
+.collab-room-key__label {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+}
+
+.collab-room-key__code {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 32px;
+  font-weight: 800;
+  color: #FF3300;
+  letter-spacing: 0.15em;
+  user-select: all;
+}
+
+.collab-room-key__copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid #555;
+  color: #EAEAE8;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-room-key__copy:hover {
+  background: #333;
+  border-color: #888;
+  transform: scale(1.04);
+}
+
+.collab-room-key__copy:active {
+  transform: scale(0.95);
+}
+
+/* Viewers count */
+.collab-viewers {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.collab-viewers__count {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.collab-viewers__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4CAF50;
+  animation: collabDotPulse 1.5s ease-in-out infinite;
+}
+
+.collab-viewers__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.collab-viewer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: #111111;
+  color: #EAEAE8;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+
+/* ══════════════════════════════════════════════
+   VIEWER PANEL — Connect to Sharer
+   ══════════════════════════════════════════════ */
+
+/* Connection key input */
+.collab-connect-form {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 32px;
+}
+
+.collab-connect-input {
+  flex: 1;
+  max-width: 320px;
+  padding: 14px 20px;
+  background: #FFFFFF;
+  border: 2px solid #111111;
+  border-right: none;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.collab-connect-input::placeholder {
+  color: #C8C8C6;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.collab-connect-input:focus {
+  border-color: #FF3300;
+  box-shadow: 0 0 0 2px rgba(255, 51, 0, 0.1);
+}
+
+.collab-connect-btn {
+  padding: 14px 24px;
+  background: #111111;
+  border: 2px solid #111111;
+  color: #EAEAE8;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 200ms ease,
+              color 150ms ease,
+              transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-connect-btn:hover {
+  background: #FF3300;
+  border-color: #FF3300;
+  transform: scale(1.02);
+}
+
+.collab-connect-btn:active {
+  transform: scale(0.97);
+}
+
+/* Nearby devices section */
+.collab-nearby {
+  margin-top: 32px;
+}
+
+.collab-nearby__title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collab-nearby__scanning {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #FF3300;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: collabSpin 800ms linear infinite;
+}
+
+.collab-nearby__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.collab-nearby__empty {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #888886;
+  padding: 24px 0;
+}
+
+/* Device card in nearby list */
+.collab-device-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #EAEAE8;
+  border: 1px solid #C8C8C6;
+  border-bottom: none;
+  cursor: pointer;
+  transition: background 200ms ease, transform 100ms ease;
+  transform: scale(1);
+}
+
+.collab-device-card:last-child {
+  border-bottom: 1px solid #C8C8C6;
+}
+
+.collab-device-card:hover {
+  background: #E0E0DE;
+}
+
+.collab-device-card:active {
+  transform: scale(0.995);
+}
+
+.collab-device-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collab-device-card__name {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.collab-device-card__meta {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #888886;
+  letter-spacing: 0.05em;
+}
+
+.collab-device-card__connect {
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid #111111;
+  color: #111111;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease, color 150ms ease, transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-device-card__connect:hover {
+  background: #111111;
+  color: #EAEAE8;
+  transform: scale(1.05);
+}
+
+/* Connected status overlay */
+.collab-connected-status {
+  display: none;
+  padding: 32px 40px;
+  border-bottom: 2px solid #111111;
+  background: #111111;
+  color: #EAEAE8;
+}
+
+.collab-connected-status.visible {
+  display: block;
+  animation: collabPanelReveal 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.collab-connected-status__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.collab-connected-status__title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #EAEAE8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.collab-connected-status__host {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #888886;
+}
+
+.collab-connected-status__indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4CAF50;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.collab-connected-status__indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4CAF50;
+  animation: collabDotPulse 1.5s ease-in-out infinite;
+}
+
+.collab-disconnect-btn {
+  padding: 8px 18px;
+  background: none;
+  border: 1px solid #FF3300;
+  color: #FF3300;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease, color 150ms ease, transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transform: scale(1);
+}
+
+.collab-disconnect-btn:hover {
+  background: #FF3300;
+  color: #EAEAE8;
+  transform: scale(1.04);
+}
+
+
+/* ══════════════════════════════════════════════
+   HOW IT WORKS — Editorial Steps
+   ══════════════════════════════════════════════ */
+
+.collab-how {
+  padding: 48px 40px;
+  border-bottom: 2px solid #111111;
+}
+
+.collab-how__title {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #888886;
+  margin-bottom: 32px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #C8C8C6;
+}
+
+.collab-how__steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.collab-how__step {
+  padding: 24px 24px 24px 0;
+  border-right: 1px solid #C8C8C6;
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.collab-how__step:last-child {
+  border-right: none;
+}
+
+.collab-how__step:nth-child(1) { animation: collabStepIn 400ms ease 400ms forwards; }
+.collab-how__step:nth-child(2) { animation: collabStepIn 400ms ease 500ms forwards; }
+.collab-how__step:nth-child(3) { animation: collabStepIn 400ms ease 600ms forwards; }
+.collab-how__step:nth-child(4) { animation: collabStepIn 400ms ease 700ms forwards; }
+
+.collab-how__step-number {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: #111111;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.collab-how__step-text {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #888886;
+  line-height: 1.7;
+}
+
+
+/* ══════════════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════════════ */
+
+.collab-footer {
+  padding: 32px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collab-footer__left {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #888886;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.collab-footer__right {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #C8C8C6;
+}
+
+
+/* ══════════════════════════════════════════════
+   DASHBOARD SKELETON (Phase 5)
+   ══════════════════════════════════════════════ */
+
+.collab-dashboard {
+  display: none;
+  padding: 32px 40px;
+  border-bottom: 2px solid #111111;
+}
+
+.collab-dashboard.visible {
+  display: block;
+}
+
+.collab-dashboard__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.collab-dashboard__tile {
+  background: #FFFFFF;
+  border: 1.5px solid #C8C8C6;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 200ms ease, transform 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)), box-shadow 200ms ease;
+  transform: scale(1);
+}
+
+.collab-dashboard__tile:hover {
+  border-color: #111111;
+  transform: scale(1.01);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.collab-dashboard__tile--error {
+  border-color: #FF3300;
+}
+
+.collab-dashboard__tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.collab-dashboard__tile-name {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.collab-dashboard__tile-status {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+}
+
+.collab-dashboard__tile-status--idle    { color: #888886; background: #E0E0DE; }
+.collab-dashboard__tile-status--running { color: #EAEAE8; background: #FF3300; }
+.collab-dashboard__tile-status--error   { color: #EAEAE8; background: #D32F2F; }
+.collab-dashboard__tile-status--done    { color: #EAEAE8; background: #111111; }
+
+.collab-dashboard__tile-preview {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #888886;
+  background: #F5F5F3;
+  padding: 8px;
+  overflow: hidden;
+  max-height: 80px;
+  white-space: pre;
+}
+
+
+/* ══════════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════════ */
+
+@keyframes collabHeroIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collabFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes collabAccentIn {
+  from {
+    transform: translateY(-50%) scaleX(0);
+  }
+  to {
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+@keyframes collabCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collabStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collabPanelReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collabLivePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 51, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 51, 0, 0);
+  }
+}
+
+@keyframes collabDotPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes collabSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE — Small Viewports
+   ══════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .collab-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .collab-hero__right {
+    min-height: 240px;
+  }
+
+  .collab-roles {
+    grid-template-columns: 1fr;
+  }
+
+  .collab-role-card:first-child {
+    border-right: none;
+    border-bottom: 1px solid #C8C8C6;
+  }
+
+  .collab-how__steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .collab-how__step:nth-child(2) {
+    border-right: none;
+  }
+
+  .collab-how__step:nth-child(3),
+  .collab-how__step:nth-child(4) {
+    border-top: 1px solid #C8C8C6;
+    padding-top: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .collab-topbar {
+    padding: 0 16px;
+  }
+
+  .collab-hero {
+    padding: 0 16px;
+  }
+
+  .collab-hero__left {
+    padding: 40px 0;
+  }
+
+  .collab-hero__title {
+    font-size: 56px;
+  }
+
+  .collab-roles {
+    grid-template-columns: 1fr;
+  }
+
+  .collab-role-card {
+    padding: 32px 24px;
+  }
+
+  .collab-how__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .collab-how__step {
+    border-right: none;
+    border-bottom: 1px solid #C8C8C6;
+    padding: 20px 0;
+  }
+
+  .collab-how__step:last-child {
+    border-bottom: none;
+  }
+
+  .collab-share-panel,
+  .collab-viewer-panel {
+    padding: 32px 16px;
+  }
+
+  .collab-how {
+    padding: 32px 16px;
+  }
+
+  .collab-connect-form {
+    flex-direction: column;
+  }
+
+  .collab-connect-input {
+    max-width: none;
+    border-right: 2px solid #111111;
+    border-bottom: none;
+  }
+
+  .collab-room-key {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

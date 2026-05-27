@@ -1,0 +1,156 @@
+/* ════════════════════════════════════════════════════════════════
+   THETA172 — Cloud Relay Styles
+   Connection mode toggle, relay URL input, cloud status indicators
+   ════════════════════════════════════════════════════════════════ */
+
+
+/* ── CONNECTION MODE TOGGLE ──────────────────────────────────── */
+
+.collab-mode-toggle {
+  display: flex;
+  gap: 0;
+  margin: 12px 0;
+  border: 1.5px solid #333330;
+  overflow: hidden;
+}
+
+.collab-mode-toggle__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #0A0A0A;
+  border: none;
+  color: #6E6E6C;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.25s ease,
+              color 0.25s ease;
+}
+
+.collab-mode-toggle__btn:first-child {
+  border-right: 1px solid #333330;
+}
+
+.collab-mode-toggle__btn:hover {
+  color: #AAAAAA;
+  background: #151513;
+}
+
+.collab-mode-toggle__btn.active {
+  background: #1A1A18;
+  color: #E8E8E6;
+}
+
+.collab-mode-toggle__btn.active svg {
+  color: #00D4FF;
+}
+
+
+/* ── RELAY URL INPUT ─────────────────────────────────────────── */
+
+.collab-relay-group {
+  margin: 8px 0 12px 0;
+  display: none;
+}
+
+.collab-relay-group.visible {
+  display: block;
+}
+
+.collab-relay-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #8E8E8C;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.collab-relay-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #0A0A0A;
+  border: 1.5px solid #333330;
+  color: #E8E8E6;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.collab-relay-input:focus {
+  border-color: #00D4FF;
+}
+
+.collab-relay-input::placeholder {
+  color: #4E4E4C;
+}
+
+
+/* ── CLOUD STATUS BADGE ──────────────────────────────────────── */
+
+.collab-cloud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: #00D4FF12;
+  border: 1px solid #00D4FF44;
+  color: #00D4FF;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-left: 8px;
+}
+
+.collab-cloud-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+
+/* ── RELAY STATUS LINE ───────────────────────────────────────── */
+
+.collab-relay-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: #0A0A0A;
+  border-left: 3px solid #333330;
+  color: #8E8E8C;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.collab-relay-status.visible {
+  display: flex;
+}
+
+.collab-relay-status.connected {
+  border-left-color: #00E676;
+  color: #00E676;
+}
+
+.collab-relay-status.error {
+  border-left-color: #FF2D00;
+  color: #FF2D00;
+}
+
+.collab-relay-status svg {
+  flex-shrink: 0;
+}

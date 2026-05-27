@@ -10,21 +10,25 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
+const { CollabServer } = require('./collab-server.cjs');
+const { CollabDiscovery } = require('./collab-discovery.cjs');
 
 // Enable SharedArrayBuffer (required for Pyodide Atomics)
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
 
-// Prevent multiple instances
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  app.quit();
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+// Prevent multiple instances (skip in dev so restarts work)
+if (!isDev) {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+  } else {
+    app.on('second-instance', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+  }
 }
 
 let mainWindow = null;
@@ -33,13 +37,24 @@ let pythonProcess = null;
 let tmpFile = null;
 
 function createWindow() {
-  // Set COEP/COOP headers before any request
+  // Set COEP/COOP + CSP headers before any request
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' ws: wss: https://api.groq.com https://cdn.jsdelivr.net https://files.pythonhosted.org https://pypi.org",
+      "img-src 'self' data: blob:",
+      "worker-src 'self' blob:",
+    ].join('; ');
+
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Cross-Origin-Opener-Policy':   ['same-origin'],
         'Cross-Origin-Embedder-Policy': ['require-corp'],
+        'Content-Security-Policy':      [csp],
       },
     });
   });
@@ -87,6 +102,13 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // Block DevTools in production to protect stored API keys
+  if (!isDev) {
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
+  }
+
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('Renderer crashed:', details.reason);
     if (details.reason !== 'clean-exit') {
@@ -104,6 +126,45 @@ function createWindow() {
       defaultId: 0,
     });
     if (choice === 1) mainWindow.reload();
+  });
+
+  // Unsaved changes confirmation on close
+  let forceClose = false;
+  mainWindow.on('close', (e) => {
+    if (forceClose) return; // already confirmed
+
+    e.preventDefault();
+    mainWindow.webContents.send('check-unsaved');
+  });
+
+  ipcMain.on('unsaved-status', (_, hasUnsaved) => {
+    if (!mainWindow) return;
+
+    if (!hasUnsaved) {
+      forceClose = true;
+      mainWindow.close();
+      return;
+    }
+
+    // Show custom in-app dialog instead of native OS dialog
+    mainWindow.webContents.send('show-unsaved-dialog');
+  });
+
+  ipcMain.on('unsaved-dialog-response', (_, choice) => {
+    if (!mainWindow) return;
+    if (choice === 'save') {
+      mainWindow.webContents.send('save-and-close');
+    } else if (choice === 'discard') {
+      forceClose = true;
+      mainWindow.close();
+    }
+    // 'cancel' → do nothing
+  });
+
+  ipcMain.on('close-confirmed', () => {
+    if (!mainWindow) return;
+    forceClose = true;
+    mainWindow.close();
   });
 
   mainWindow.on('closed', () => { mainWindow = null; });
@@ -146,8 +207,8 @@ ipcMain.handle('python-detect', async () => {
 // Run Python code via local interpreter
 ipcMain.on('python-run', (event, code) => {
   if (!pythonPath) {
-    event.sender.send('python-stderr', 'Python not found on system.\n');
-    event.sender.send('python-done', 1);
+    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', 'Python not found on system.\n');
+    if (!event.sender.isDestroyed()) event.sender.send('python-done', 1);
     return;
   }
 
@@ -167,23 +228,23 @@ ipcMain.on('python-run', (event, code) => {
   });
 
   pythonProcess.stdout.on('data', (data) => {
-    event.sender.send('python-stdout', data.toString());
+    if (!event.sender.isDestroyed()) event.sender.send('python-stdout', data.toString());
   });
 
   pythonProcess.stderr.on('data', (data) => {
-    event.sender.send('python-stderr', data.toString());
+    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', data.toString());
   });
 
   pythonProcess.on('close', (code) => {
     pythonProcess = null;
     try { if (tmpFile) fs.unlinkSync(tmpFile); } catch (_) {}
     tmpFile = null;
-    event.sender.send('python-done', code ?? 0);
+    if (!event.sender.isDestroyed()) event.sender.send('python-done', code ?? 0);
   });
 
   pythonProcess.on('error', (err) => {
-    event.sender.send('python-stderr', `Failed to start Python: ${err.message}\n`);
-    event.sender.send('python-done', 1);
+    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', `Failed to start Python: ${err.message}\n`);
+    if (!event.sender.isDestroyed()) event.sender.send('python-done', 1);
   });
 });
 
@@ -209,8 +270,16 @@ ipcMain.on('python-kill', () => {
 // Install package via real pip
 ipcMain.on('pip-install', (event, pkg) => {
   if (!pythonPath) {
-    event.sender.send('pip-stdout', 'Python not found on system.\n');
-    event.sender.send('pip-done', 1, pkg);
+    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', 'Python not found on system.\n');
+    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
+    return;
+  }
+
+  // Validate package name server-side as well
+  const VALID_PKG = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?(([><=!~]=?|===?)[a-zA-Z0-9.*]+)?$/;
+  if (!VALID_PKG.test(pkg) || pkg.startsWith('-')) {
+    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', 'Invalid package name.\n');
+    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
     return;
   }
 
@@ -220,21 +289,78 @@ ipcMain.on('pip-install', (event, pkg) => {
   });
 
   pip.stdout.on('data', (data) => {
-    event.sender.send('pip-stdout', data.toString());
+    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', data.toString());
   });
 
   pip.stderr.on('data', (data) => {
-    event.sender.send('pip-stdout', data.toString());
+    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', data.toString());
   });
 
   pip.on('close', (code) => {
-    event.sender.send('pip-done', code ?? 0, pkg);
+    if (!event.sender.isDestroyed()) event.sender.send('pip-done', code ?? 0, pkg);
   });
 
   pip.on('error', (err) => {
-    event.sender.send('pip-stdout', `pip error: ${err.message}\n`);
-    event.sender.send('pip-done', 1, pkg);
+    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', `pip error: ${err.message}\n`);
+    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
   });
+});
+
+// ── IPC: Interactive REPL ───────────────────────────────────────
+let replProcess = null;
+
+ipcMain.on('repl-start', (event) => {
+  if (!pythonPath) {
+    event.sender.send('repl-stderr', 'Python not found on system.\r\n');
+    return;
+  }
+
+  // Kill existing REPL if any
+  if (replProcess) {
+    try { replProcess.kill('SIGTERM'); } catch (_) {}
+    replProcess = null;
+  }
+
+  replProcess = spawn(pythonPath, ['-i', '-u'], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONSTARTUP: '',
+    },
+  });
+
+  replProcess.stdout.on('data', (data) => {
+    if (!event.sender.isDestroyed()) event.sender.send('repl-stdout', data.toString());
+  });
+
+  replProcess.stderr.on('data', (data) => {
+    if (!event.sender.isDestroyed()) event.sender.send('repl-stderr', data.toString());
+  });
+
+  replProcess.on('close', (code) => {
+    replProcess = null;
+    if (!event.sender.isDestroyed()) event.sender.send('repl-exit', code ?? 0);
+  });
+
+  replProcess.on('error', (err) => {
+    if (!event.sender.isDestroyed()) event.sender.send('repl-stderr', `REPL error: ${err.message}\r\n`);
+    replProcess = null;
+  });
+});
+
+ipcMain.on('repl-input', (_, text) => {
+  if (replProcess?.stdin?.writable) {
+    replProcess.stdin.write(text + '\n');
+  }
+});
+
+ipcMain.on('repl-kill', () => {
+  if (replProcess) {
+    try { replProcess.kill('SIGTERM'); } catch (_) {}
+    replProcess = null;
+  }
 });
 
 // ── IPC: File System ────────────────────────────────────────────
@@ -303,9 +429,184 @@ ipcMain.on('set-title', (_, title) => {
   mainWindow?.setTitle(title);
 });
 
+// ── IPC: Collab WebSocket Server ────────────────────────────────
+const collabServer = new CollabServer();
+const collabDiscovery = new CollabDiscovery();
+
+// Start collab server (sharer clicks Go Live)
+ipcMain.handle('collab-start-server', async (event, options) => {
+  try {
+    const result = await collabServer.start(options);
+
+    // Wire viewer change notifications to renderer
+    collabServer.onViewerChange = (viewers) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-viewers-changed', viewers);
+      }
+    };
+
+    // Wire highlight requests to renderer
+    collabServer.onHighlightRequest = (highlight) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-highlight-request', highlight);
+      }
+    };
+
+    // Wire errors to renderer
+    collabServer.onError = (errMsg) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-server-error', errMsg);
+      }
+    };
+
+    // Wire student state forwarding to renderer (teacher dashboard)
+    collabServer.onStudentState = (data) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-student-state', data);
+      }
+    };
+
+    // Wire interaction forwarding from viewer to teacher
+    collabServer.onInteraction = (data) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-interaction', data);
+      }
+    };
+
+    // Wire chat forwarding from viewer to teacher
+    collabServer.onChat = (data) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('collab-chat', data);
+      }
+    };
+
+    // Wire CRDT sync forwarding from viewer to teacher
+    collabServer.onCrdtSync = (data) => {
+      if (!event.sender.isDestroyed()) {
+        if (data.isAwareness) {
+          event.sender.send('collab-crdt-awareness', data);
+        } else {
+          event.sender.send('collab-crdt-sync', data);
+        }
+      }
+    };
+
+    // Auto-publish via mDNS so nearby devices discover us
+    collabDiscovery.publish({
+      port: result.port,
+      roomKey: options.roomKey,
+      hostName: options.hostName,
+      hostId: options.hostId,
+    });
+
+    return { success: true, ...result };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Stop collab server (sharer clicks Stop Sharing)
+ipcMain.handle('collab-stop-server', async () => {
+  // Unpublish mDNS service
+  collabDiscovery.unpublish();
+  collabServer.stop();
+  return { success: true };
+});
+
+// Get server info (port, addresses, viewer count)
+ipcMain.handle('collab-server-info', async () => {
+  return collabServer.getServerInfo();
+});
+
+// Update full IDE state (sharer sends periodic snapshots)
+ipcMain.on('collab-state-full', (_, state) => {
+  collabServer.updateFullState(state);
+});
+
+// Send state delta (sharer sends incremental changes)
+ipcMain.on('collab-state-delta', (_, delta) => {
+  collabServer.broadcastStateDelta(delta);
+});
+
+// Send highlight to all viewers
+ipcMain.on('collab-highlight', (_, highlight) => {
+  collabServer.broadcastHighlight(highlight);
+});
+
+// Send interaction from teacher to all viewers
+ipcMain.on('collab-interaction-send', (_, interaction) => {
+  collabServer.broadcastInteraction(interaction);
+});
+
+// Send chat message from teacher to all viewers
+ipcMain.on('collab-chat-send', (_, chatMsg) => {
+  collabServer.broadcastChat(chatMsg);
+});
+
+// Send CRDT sync from teacher to all viewers
+ipcMain.on('collab-crdt-send', (_, crdtData) => {
+  collabServer.broadcastCrdt(crdtData);
+});
+
+// Send CRDT awareness from teacher to all viewers
+ipcMain.on('collab-awareness-send', (_, awarenessData) => {
+  collabServer.broadcastAwareness(awarenessData);
+});
+
+// Send collab mode change from teacher to all viewers
+ipcMain.on('collab-mode-send', (_, modeData) => {
+  collabServer.broadcastCollabMode(modeData);
+});
+
+// ── IPC: Collab mDNS Discovery ─────────────────────────────────
+
+// Start browsing for nearby collab services
+ipcMain.handle('collab-browse-start', async (event) => {
+  collabDiscovery.onDevicesChanged = (devices) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send('collab-nearby-devices', devices);
+    }
+  };
+  collabDiscovery.startBrowsing();
+  return { success: true };
+});
+
+// Stop browsing
+ipcMain.handle('collab-browse-stop', async () => {
+  collabDiscovery.stopBrowsing();
+  return { success: true };
+});
+
+// Get current nearby devices
+ipcMain.handle('collab-nearby-list', async () => {
+  return collabDiscovery.getDeviceList();
+});
+
+// Look up a room key in the shared local registry (cross-instance fallback)
+ipcMain.handle('collab-registry-lookup', async (_, roomKey) => {
+  try {
+    const reg = collabDiscovery._readRegistry();
+    for (const [key, svc] of Object.entries(reg)) {
+      if (svc.roomKey === roomKey && (Date.now() - svc.timestamp < 3600000)) {
+        return {
+          found: true,
+          host: svc.host || '127.0.0.1',
+          addresses: svc.addresses || [svc.host || '127.0.0.1'],
+          port: svc.port,
+          name: svc.name,
+          roomKey: svc.roomKey,
+        };
+      }
+    }
+  } catch (_) {}
+  return { found: false };
+});
+
 // ── App Lifecycle ───────────────────────────────────────────────
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  // Init mDNS discovery
+  collabDiscovery.init();
   createWindow();
 });
 
@@ -318,8 +619,13 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
-  if (pythonProcess) pythonProcess.kill('SIGTERM');
+  // Stop collab server and discovery gracefully
+  collabDiscovery.destroy();
+  collabServer.stop();
+  if (pythonProcess) { try { pythonProcess.kill('SIGTERM'); } catch (_) {} }
+  if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
   try { if (tmpFile) fs.unlinkSync(tmpFile); } catch (_) {}
+  if (!isDev) app.releaseSingleInstanceLock();
 });
 
 process.on('uncaughtException', (err) => {

@@ -9,16 +9,51 @@ import { createEditor, STARTER_CODE, toggleEditorTheme, getEditorTheme,
          getLineCount, getCharCount, layout as editorLayout,
          onContentChange, onCursorChange,
          highlightErrorLine, clearErrorHighlights, gotoLine,
-         getEditorState, setEditorState } from './editor.js';
+         getEditorState, setEditorState, openFindReplace } from './editor.js';
 import { TerminalManager } from './terminal.js';
 import { WorkerManager } from './worker-manager.js';
+import { ReplManager } from './repl.js';
 import { EXAMPLES } from './examples.js';
 import { showToast } from './toast.js';
 import { addRipple } from './ripple.js';
 import { initSmoothEngine } from './smooth.js';
+import { handleThemeToggle, initTheme } from './theme-manager.js';
+import { PipManager } from './pip-manager.js';
+import { FileSystemService } from './services/FileSystemService.js';
+import { initLanding } from './landing.js';
 import gsap from 'gsap';
+import { initCollabPanel, openCollabPanel, closeCollabPanel,
+         toggleCollabPanel, isCollabPanelOpen, isSharing,
+         handleCollabKeydown, getStateCapture } from './collab/collab.js';
 
-// ── DOM ────────────────────────────────────────────────────────
+// ————————————————————————————————————————————————————————————————————————————
+// Catches uncaught exceptions and unhandled promise rejections
+// so the app doesn't silently break.
+window.onerror = (message, source, line, col, error) => {
+  console.error('[THETA] Uncaught error:', { message, source, line, col, error });
+  try { showToast(`Error: ${message}`, 'error', 4000); } catch (_) {}
+  return true; // prevent default browser error handling
+};
+
+window.onunhandledrejection = (event) => {
+  const msg = event.reason?.message || String(event.reason);
+  console.error('[THETA] Unhandled rejection:', event.reason);
+  try { showToast(`Error: ${msg}`, 'error', 4000); } catch (_) {}
+};
+
+// â”€â”€ Safe localStorage helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Prevents crashes in private browsing or quota-exceeded scenarios
+function storageGet(key, fallback = null) {
+  try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (_) {}
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch (_) {}
+}
+
+// â”€â”€ DOM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -75,10 +110,12 @@ const $pipInput        = $('pip-input');
 const $pipBtn          = $('pip-install-btn');
 const $pipStatus       = $('pip-status');
 
-// ── State ──────────────────────────────────────────────────────
+// â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let editor        = null;
 let terminal      = null;
 let workerManager = null;
+let replManager   = null;
+let pipManager    = null;
 let ideInitialized = false;
 let fontSize      = 15;
 let isRunning     = false;
@@ -87,8 +124,9 @@ let execTimer     = null;
 let execStart     = 0;
 let useLocalPython = false;
 let localPythonInfo = null;
+let activePane    = 'terminal'; // 'terminal' | 'repl'
 
-// ── Tab System ─────────────────────────────────────────────────
+// â”€â”€ Tab System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let tabs = [];
 let activeTabId = null;
 let tabCounter = 0;
@@ -126,7 +164,7 @@ function renderTabs() {
     if (tabs.length > 1) {
       const close = document.createElement('span');
       close.className = 'editor-tab__close';
-      close.innerHTML = '×';
+      close.innerHTML = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1 1L8 8M8 1L1 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
       close.addEventListener('click', (e) => {
         e.stopPropagation();
         closeTab(tab.id);
@@ -223,30 +261,42 @@ function markActiveTabSaved() {
   renderTabs();
 }
 
-// ── Default Shortcut Bindings ──────────────────────────────────
+// â”€â”€ Default Shortcut Bindings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEFAULT_SHORTCUTS = {
   'run':            { ctrl: true, shift: false, alt: false, key: 'Enter' },
   'stop':           { ctrl: true, shift: false, alt: false, key: 'c' },
   'clear':          { ctrl: true, shift: false, alt: false, key: 'l' },
   'copy':           { ctrl: true, shift: true,  alt: false, key: 'c' },
   'save':           { ctrl: true, shift: false, alt: false, key: 's' },
+  'save-as':        { ctrl: true, shift: true,  alt: false, key: 's' },
+  'open-file':      { ctrl: true, shift: false, alt: false, key: 'o' },
+  'new-tab':        { ctrl: true, shift: false, alt: false, key: 'n' },
+  'find-replace':   { ctrl: true, shift: false, alt: false, key: 'f' },
+  'fix-code':       { ctrl: true, shift: false, alt: false, key: 'i' },
+  'font-inc':       { ctrl: true, shift: false, alt: false, key: '=' },
+  'font-dec':       { ctrl: true, shift: false, alt: false, key: '-' },
   'focus-editor':   { ctrl: true, shift: false, alt: false, key: '1' },
   'focus-terminal': { ctrl: true, shift: false, alt: false, key: '2' },
   'toggle-theme':   { ctrl: true, shift: false, alt: false, key: 't' },
   'cmd-palette':    { ctrl: true, shift: true,  alt: false, key: 'p' },
+  'collab':          { ctrl: true, shift: true,  alt: false, key: 'l' },
 };
 
-// Load saved shortcuts or use defaults
+// Load saved shortcuts or use defaults (merges so new shortcuts appear)
 function loadShortcuts() {
   try {
-    const saved = localStorage.getItem('theta-shortcuts');
-    if (saved) return JSON.parse(saved);
+    const saved = storageGet('theta-shortcuts');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge: defaults provide any new shortcuts, saved overrides existing ones
+      return { ...JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS)), ...parsed };
+    }
   } catch (_) {}
   return JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS));
 }
 
 function saveShortcuts() {
-  localStorage.setItem('theta-shortcuts', JSON.stringify(shortcutBindings));
+  storageSet('theta-shortcuts', JSON.stringify(shortcutBindings));
 }
 
 let shortcutBindings = loadShortcuts();
@@ -261,10 +311,10 @@ function bindingToString(b) {
   if (keyLabel === ' ') keyLabel = 'Space';
   else if (keyLabel === 'Enter') keyLabel = 'Enter';
   else if (keyLabel === 'Escape') keyLabel = 'Esc';
-  else if (keyLabel === 'ArrowUp') keyLabel = '↑';
-  else if (keyLabel === 'ArrowDown') keyLabel = '↓';
-  else if (keyLabel === 'ArrowLeft') keyLabel = '←';
-  else if (keyLabel === 'ArrowRight') keyLabel = '→';
+  else if (keyLabel === 'ArrowUp') keyLabel = 'â†‘';
+  else if (keyLabel === 'ArrowDown') keyLabel = 'â†“';
+  else if (keyLabel === 'ArrowLeft') keyLabel = 'â†';
+  else if (keyLabel === 'ArrowRight') keyLabel = 'â†’';
   else if (keyLabel.length === 1) keyLabel = keyLabel.toUpperCase();
   parts.push(keyLabel);
   return parts.join('+');
@@ -282,7 +332,7 @@ function eventMatchesBinding(e, binding) {
   );
 }
 
-// ── Command Registry ───────────────────────────────────────────
+// â”€â”€ Command Registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const COMMANDS = [
   {
     id: 'run',
@@ -322,16 +372,23 @@ const COMMANDS = [
   {
     id: 'save-as',
     name: 'Save As...',
-    key: 'Ctrl+Shift+S',
+    get key() { return bindingToString(shortcutBindings['save-as']); },
     icon: `<path d="M2 3H9L12 6V13H2V3Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 1V5M5 3H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
     action: () => saveAsFile(),
   },
   {
     id: 'open-file',
     name: 'Open File...',
-    key: 'Ctrl+O',
+    get key() { return bindingToString(shortcutBindings['open-file']); },
     icon: `<path d="M2 4H5L7 2H12V12H2V4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>`,
     action: () => openFile(),
+  },
+  {
+    id: 'find-replace',
+    name: 'Find & Replace',
+    get key() { return bindingToString(shortcutBindings['find-replace']); },
+    icon: `<circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9L13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>`,
+    action: () => openFindReplace(),
   },
   {
     id: 'examples',
@@ -339,6 +396,20 @@ const COMMANDS = [
     key: '',
     icon: `<rect x="2" y="2" width="10" height="10" stroke="currentColor" stroke-width="1.2"/><path d="M5 5H9M5 7H7M5 9H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
     action: () => $examplesModal?.classList.remove('hidden'),
+  },
+  {
+    id: 'new-tab',
+    name: 'New Tab',
+    get key() { return bindingToString(shortcutBindings['new-tab']); },
+    icon: `<path d="M7 3V11M3 7H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>`,
+    action: () => addNewTab(null, '# New file\n'),
+  },
+  {
+    id: 'fix-code',
+    name: 'Fix Code (AI)',
+    get key() { return bindingToString(shortcutBindings['fix-code']); },
+    icon: `<path d="M2 2L5 6L2 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 6H11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="2" r="1.2" stroke="currentColor" stroke-width="0.8" fill="none"/>`,
+    action: () => fixCode(),
   },
   {
     id: 'focus-editor',
@@ -357,14 +428,14 @@ const COMMANDS = [
   {
     id: 'font-inc',
     name: 'Increase Font Size',
-    key: '',
+    get key() { return bindingToString(shortcutBindings['font-inc']); },
     icon: `<path d="M3 2.5H8M5.5 2.5V7.5M3 10H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
     action: () => { fontSize = Math.min(fontSize + 1, 24); setFontSize(fontSize); showToast(`Font size: ${fontSize}px`, 'info', 1400); },
   },
   {
     id: 'font-dec',
     name: 'Decrease Font Size',
-    key: '',
+    get key() { return bindingToString(shortcutBindings['font-dec']); },
     icon: `<path d="M3 5H8M3 9H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
     action: () => { fontSize = Math.max(fontSize - 1, 10); setFontSize(fontSize); showToast(`Font size: ${fontSize}px`, 'info', 1400); },
   },
@@ -390,60 +461,31 @@ const COMMANDS = [
     action: () => openCommandPalette(),
   },
   {
-    id: 'home',
-    name: 'Go to Home / Landing',
-    key: '',
-    icon: `<path d="M2 7L7 2L12 7V13H8.5V9.5H5.5V13H2V7Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>`,
-    action: goToLanding,
+    id: 'collab',
+    name: 'Open Collab Panel',
+    get key() { return bindingToString(shortcutBindings['collab']); },
+    icon: `<circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M3 3a7 7 0 0 1 8 0" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><path d="M11 11a7 7 0 0 1-8 0" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>`,
+    action: () => toggleCollabPanel(),
   },
 ];
 
-// ── Landing (GSAP-powered transitions) ────────────────────────
+// ── Direct IDE Boot (no landing page) ──────────────────────────────
 function launchIDE() {
-  const tl = gsap.timeline();
-  tl.to($landing, {
-    opacity: 0, scale: 0.985, y: -12,
-    duration: 0.35, ease: 'power2.in',
-    onComplete: () => {
-      $landing.classList.add('hidden');
-      gsap.set($landing, { clearProps: 'all' });
-      $ide.classList.remove('hidden');
-      gsap.fromTo($ide,
-        { opacity: 0, scale: 0.985, y: 14 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' }
-      );
-      if (!ideInitialized) {
-        ideInitialized = true;
-        initIDE();
-      } else {
-        terminal?.focus();
-      }
-    }
-  });
+  if (!ideInitialized) {
+    ideInitialized = true;
+    initIDE();
+  }
 }
 
 function goToLanding() {
-  const tl = gsap.timeline();
-  tl.to($ide, {
-    opacity: 0, scale: 0.985, y: -12,
-    duration: 0.35, ease: 'power2.in',
-    onComplete: () => {
-      $ide.classList.add('hidden');
-      gsap.set($ide, { clearProps: 'all' });
-      $landing.classList.remove('hidden');
-      gsap.fromTo($landing,
-        { opacity: 0, scale: 0.985, y: 14 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' }
-      );
-    }
-  });
+  // Repurposed: now opens collab panel
+  openCollabPanel();
 }
 
-$launchMain?.addEventListener('click', launchIDE);
-$launchNav?.addEventListener('click', launchIDE);
-$backBtn?.addEventListener('click', goToLanding);
+// Auto-boot the IDE
+launchIDE();
 
-// ── IDE Init ───────────────────────────────────────────────────
+// ── IDE Init ──────────────────────────────────────────────────────────────────
 async function initIDE() {
   // Animate loading steps
   animateLoadingSteps();
@@ -452,7 +494,12 @@ async function initIDE() {
   $lstep0?.classList.add('active');
 
   // Restore saved code
-  const savedCode = localStorage.getItem('theta-code');
+  const savedCode = storageGet('theta-code');
+
+  // Groq API key should be set via Settings UI, not hardcoded
+  // if (!storageGet('theta-groq-api-key')) {
+  //   storageSet('theta-groq-api-key', 'YOUR_KEY_HERE');
+  // }
 
   // Init editor
   editor = await createEditor($monacoContainer);
@@ -479,24 +526,29 @@ async function initIDE() {
     addNewTab(null, '# New file\n');
   });
 
-  // Live cursor position
-  const cursorPoll = setInterval(() => {
-    const pos = getCursorPosition();
+  // Live cursor position — event-driven, no polling
+  onCursorChange((pos) => {
     if ($cursorPos) $cursorPos.textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
-  }, 200);
+    // Stream cursor to viewers if sharing
+    const sc = getStateCapture();
+    if (sc) sc.onCursorMove();
+  });
 
-  // Live code stats + auto-save + tab unsaved indicator
-  let lastDocLen = getCharCount();
-  const docObserver = setInterval(() => {
-    const newLen = getCharCount();
-    if (newLen !== lastDocLen) {
-      lastDocLen = newLen;
+  // Live code stats + auto-save + tab unsaved indicator — event-driven
+  let _contentChangeDebounce = null;
+  onContentChange(() => {
+    // Debounce to avoid rebuilding tabs on every keystroke
+    clearTimeout(_contentChangeDebounce);
+    _contentChangeDebounce = setTimeout(() => {
       updateCodeStats();
       markUnsaved();
       markActiveTabUnsaved();
       scheduleAutoSave();
-    }
-  }, 300);
+      // Stream code changes to viewers if sharing
+      const sc = getStateCapture();
+      if (sc) sc.onCodeChange();
+    }, 150);
+  });
 
   updateCodeStats();
 
@@ -512,6 +564,14 @@ async function initIDE() {
     }
     workerManager?.provideInput(value);
   };
+
+  // Init REPL (lazy — created now, started on tab click)
+  const $replContainer = $('repl-container');
+  replManager = new ReplManager();
+  replManager.init($replContainer);
+
+  // Init pane tabs (Terminal / REPL)
+  initPaneTabs();
 
   // Init gutter
   initGutter();
@@ -537,6 +597,38 @@ async function initIDE() {
   setTimeout(() => {
     initSmoothEngine();
   }, 200);
+
+  // Init collab panel
+  initCollabPanel({
+    onLiveChange: (isLive) => {
+      // Show/hide LIVE indicator on the Θ logo button
+      const logoBtn = document.getElementById('back-to-landing');
+      if (logoBtn) {
+        if (isLive) {
+          logoBtn.classList.add('collab-live');
+        } else {
+          logoBtn.classList.remove('collab-live');
+        }
+      }
+    },
+    editorGetters: {
+      getCode: () => getValue() || '',
+      getCursor: () => {
+        const pos = getCursorPosition();
+        return { line: pos?.lineNumber || 1, col: pos?.column || 1 };
+      },
+      getSelection: () => null,
+      getFileName: () => {
+        const activeTab = tabs.find((t) => t.id === activeTabId);
+        return activeTab?.name || 'main.py';
+      },
+      getTabs: () => tabs.map((t) => ({ name: t.name, active: t.id === activeTabId })),
+      getErrors: () => [],
+      getIsRunning: () => isRunning,
+      getFontSize: () => fontSize,
+      getTheme: () => getEditorTheme(),
+    },
+  });
 
   // ── Drag-and-drop .py files onto editor ──
   const $dropTarget = $monacoContainer || document.querySelector('.ide-body');
@@ -602,7 +694,7 @@ async function initIDE() {
   initWorker();
 }
 
-// ── Local Python Event Listeners ──────────────────────────────
+// ── Local Python Event Listeners ──────────────────────────────────────────────
 function setupLocalPythonListeners() {
   const api = window.electronAPI;
 
@@ -660,23 +752,36 @@ function setupLocalPythonListeners() {
   api.onPipDone((exitCode, pkg) => {
     if (exitCode === 0) {
       if ($pipStatus) {
-        $pipStatus.textContent = `✓ ${pkg} installed`;
+        $pipStatus.textContent = `[OK] ${pkg} installed`;
         $pipStatus.className = 'pip-bar__status success';
         setTimeout(() => { $pipStatus.textContent = ''; $pipStatus.className = 'pip-bar__status'; }, 4000);
       }
       showToast(`${pkg} installed`, 'success', 2500);
     } else {
       if ($pipStatus) {
-        $pipStatus.textContent = `✗ Failed`;
+        $pipStatus.textContent = `[FAIL] Failed`;
         $pipStatus.className = 'pip-bar__status error';
         setTimeout(() => { $pipStatus.textContent = ''; $pipStatus.className = 'pip-bar__status'; }, 5000);
       }
       showToast(`Failed to install ${pkg}`, 'error', 3000);
     }
   });
+
+  // ── Unsaved Changes Handlers ──
+  api.onCheckUnsaved(() => {
+    const hasUnsaved = tabs.some(t => t.unsaved);
+    api.sendUnsavedStatus(hasUnsaved);
+  });
+
+  api.onSaveAndClose(async () => {
+    try {
+      await saveToFile();
+    } catch (_) {}
+    api.sendCloseConfirmed();
+  });
 }
 
-// ── Code Stats ─────────────────────────────────────────────────
+// ── Code Stats ────────────────────────────────────────────────────────────────
 function updateCodeStats() {
   if (!editor) return;
   const lines = getLineCount();
@@ -685,7 +790,7 @@ function updateCodeStats() {
   if ($charCount) $charCount.textContent = `${chars} ${chars === 1 ? 'char' : 'chars'}`;
 }
 
-// ── Auto-Save ──────────────────────────────────────────────────
+// ── Auto-Save ─────────────────────────────────────────────────────────────────
 function markUnsaved() {
   $saveDot?.classList.add('visible');
 }
@@ -698,11 +803,11 @@ function scheduleAutoSave() {
 function saveCode() {
   if (!editor) return;
   const code = getValue();
-  localStorage.setItem('theta-code', code);
+  storageSet('theta-code', code);
   $saveDot?.classList.remove('visible');
 }
 
-// ── Worker ─────────────────────────────────────────────────────
+// ── Worker ────────────────────────────────────────────────────────────────────
 function initWorker() {
   workerManager = new WorkerManager();
 
@@ -819,41 +924,54 @@ function initWorker() {
 
   workerManager.onInstallDone = (pkg) => {
     if ($pipStatus) {
-      $pipStatus.textContent = `✓ ${pkg} installed`;
+      $pipStatus.textContent = `[OK] ${pkg} installed`;
       $pipStatus.className = 'pip-bar__status success';
       setTimeout(() => { $pipStatus.textContent = ''; $pipStatus.className = 'pip-bar__status'; }, 4000);
     }
-    terminal?.writeSystem(`[pip] ✓ ${pkg} installed\n`);
+    terminal?.writeSystem(`[pip] ${pkg} installed successfully\n`);
     showToast(`${pkg} installed`, 'success', 2500);
   };
 
   workerManager.onInstallError = (pkg, msg) => {
     if ($pipStatus) {
-      $pipStatus.textContent = `✗ Failed`;
+      $pipStatus.textContent = `[FAIL] Failed`;
       $pipStatus.className = 'pip-bar__status error';
       setTimeout(() => { $pipStatus.textContent = ''; $pipStatus.className = 'pip-bar__status'; }, 5000);
     }
-    terminal?.writeError(`[pip] ✗ ${pkg} — ${msg}\n`);
+    terminal?.writeError(`[pip] ${pkg} failed -- ${msg}\n`);
     showToast(`Failed to install ${pkg}`, 'error', 3000);
+  };
+
+  // Pyodide failed to load (offline, CDN down, timeout)
+  workerManager.onLoadError = (msg) => {
+    console.error('[THETA] Pyodide load error:', msg);
+    if ($loadingOverlay) {
+      $loadingOverlay.classList.add('hidden');
+    }
+    showToast(`Python runtime failed: ${msg}`, 'error', 6000);
+    terminal?.writeError(`[runtime] ${msg}\n`);
   };
 }
 
-// ── Execution Timer ────────────────────────────────────────────
+// ── Execution Timer ──────────────────────────────────────────────────────────
 function startExecTimer() {
   execStart = performance.now();
   if ($execTime) $execTime.classList.add('running');
-  execTimer = setInterval(() => {
+  // Use rAF instead of setInterval for jank-free timer updates
+  function tick() {
     const elapsed = (performance.now() - execStart) / 1000;
     if ($execTime) $execTime.textContent = elapsed.toFixed(1) + 's';
-  }, 100);
+    execTimer = requestAnimationFrame(tick);
+  }
+  execTimer = requestAnimationFrame(tick);
 }
 
 function stopExecTimer() {
-  clearInterval(execTimer);
+  cancelAnimationFrame(execTimer);
   execTimer = null;
 }
 
-// ── Progress Bar ───────────────────────────────────────────────
+// ── Progress Bar ─────────────────────────────────────────────────────────────
 function startProgressBar() {
   if (!$progressBar) return;
   $progressBar.className = 'run-progress-bar indeterminate';
@@ -865,7 +983,7 @@ function finishProgressBar(isError = false) {
   setTimeout(() => { $progressBar.className = 'run-progress-bar'; }, 500);
 }
 
-// ── Loading Steps Animation ────────────────────────────────────
+// ── Loading Steps Animation ──────────────────────────────────────────────────
 function animateLoadingSteps() {
   const steps = [$lstep1, $lstep2, $lstep3];
   steps.forEach((s, i) => {
@@ -876,7 +994,7 @@ function animateLoadingSteps() {
   });
 }
 
-// ── Run State ──────────────────────────────────────────────────
+// ── Run State ────────────────────────────────────────────────────────────────
 function setRunState(state) {
   if ($runStatus) $runStatus.className = 'run-status run-status--' + state;
   const labels = { idle: 'Ready', ready: 'Ready', running: 'Running', done: 'Done', error: 'Error' };
@@ -895,7 +1013,7 @@ function setRunState(state) {
   }
 }
 
-// ── Run / Stop ─────────────────────────────────────────────────
+// ── Run / Stop ───────────────────────────────────────────────────────────────
 function runCode() {
   clearErrorHighlights();
   const runtimeReady = useLocalPython || workerManager?.isReady;
@@ -920,6 +1038,12 @@ function runCode() {
 
   isRunning = true;
   setRunState('running');
+
+  // Auto-switch to terminal tab so user sees the output
+  if (activePane !== 'terminal') {
+    switchPane('terminal');
+  }
+
   if ($execTime) $execTime.textContent = '';
   terminal?.exitInputMode();
   terminal?.writeRunSeparator();
@@ -943,7 +1067,7 @@ function stopCode() {
   isRunning = false;
 }
 
-// ── Copy Code ─────────────────────────────────────────────────
+// ── Copy Code ────────────────────────────────────────────────────────────────
 function copyCode() {
   const code = getValue();
   navigator.clipboard.writeText(code).then(() => {
@@ -953,7 +1077,123 @@ function copyCode() {
   });
 }
 
-// ── Save to .py File ──────────────────────────────────────────
+// ── Fix Code (Groq AI) ───────────────────────────────────────────────────────
+// API key is stored in localStorage — never in source code.
+// On first use, the user is prompted to enter their key.
+const GROQ_STORAGE_KEY = 'theta-groq-api-key';
+let isFixingCode = false;
+
+function getGroqApiKey() {
+  let key = storageGet(GROQ_STORAGE_KEY);
+  if (key) return key;
+
+  // Prompt the user for their API key
+  const input = prompt(
+    'Enter your Groq API key to enable AI code fixing.\n' +
+    'Get one free at https://console.groq.com/keys\n\n' +
+    'Your key is stored locally and never sent anywhere except Groq.'
+  );
+  if (input && input.trim().startsWith('gsk_')) {
+    storageSet(GROQ_STORAGE_KEY, input.trim());
+    return input.trim();
+  }
+  return null;
+}
+
+async function fixCode() {
+  if (isFixingCode) return;
+
+  const code = getValue();
+  if (!code.trim()) {
+    showToast('Nothing to fix — write some code first', 'info', 2000);
+    return;
+  }
+
+  const apiKey = getGroqApiKey();
+  if (!apiKey) {
+    showToast('API key required — click Fix Code again to set it', 'info', 3000);
+    return;
+  }
+
+  const $btn = $('btn-fix-indent');
+  isFixingCode = true;
+  if ($btn) {
+    $btn.classList.add('loading');
+    $btn.setAttribute('disabled', '');
+  }
+  showToast('Fixing code...', 'info', 1500);
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a Python code fixer. You receive Python code and return the corrected version.
+
+RULES:
+1. Fix ALL bugs: syntax errors, indentation, logic errors, typos in keywords/builtins, missing colons, wrong operators, unclosed brackets/strings, incorrect function calls.
+2. PRESERVE the user's exact coding style, approach, structure, and variable names. Do NOT refactor or restructure.
+3. Do NOT add any comments the user did not write. Do NOT remove any comments the user wrote.
+4. Do NOT add extra functionality, imports, or code the user did not write.
+5. Do NOT change the user's algorithm or approach — only fix what is broken.
+6. Keep the same blank lines, spacing style, and formatting the user used.
+7. Return ONLY the corrected Python code. No markdown, no explanations, no code fences, no backticks. Raw code only.`
+          },
+          {
+            role: 'user',
+            content: code
+          }
+        ],
+        temperature: 0,
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let fixedCode = data.choices?.[0]?.message?.content;
+
+    if (!fixedCode || !fixedCode.trim()) {
+      throw new Error('Empty response from AI');
+    }
+
+    // Strip any markdown code fences the model might add
+    fixedCode = fixedCode.replace(/^```(?:python)?\n?/i, '').replace(/\n?```$/i, '').trim();
+
+    // Only update if the code actually changed
+    if (fixedCode !== code.trim()) {
+      setValue(fixedCode + '\n');
+      markActiveTabUnsaved();
+      scheduleAutoSave();
+      showToast('Code fixed successfully', 'success', 2000);
+    } else {
+      showToast('Code looks good — no fixes needed', 'info', 2000);
+    }
+
+  } catch (err) {
+    console.error('Fix code error:', err);
+    showToast(`Fix failed: ${err.message}`, 'error', 3500);
+  } finally {
+    isFixingCode = false;
+    if ($btn) {
+      $btn.classList.remove('loading');
+      $btn.removeAttribute('disabled');
+    }
+  }
+}
+
+// ── Save to .py File ──────────────────────────────────────────────────────────
 let currentFilePath = null; // Track the on-disk file path
 
 function setFileName(name) {
@@ -970,39 +1210,20 @@ async function saveToFile() {
 
   const fileName = document.getElementById('file-name')?.textContent?.trim() || 'main.py';
 
-  // Electron native save
-  if (window.electronAPI?.saveFile) {
-    // If we already have a file path, save directly
-    if (currentFilePath) {
-      const result = await window.electronAPI.saveFile(currentFilePath, code);
-      if (result?.error) {
-        showToast(`Save failed: ${result.error}`, 'error', 3000);
-      } else {
-        $saveDot?.classList.remove('visible');
-        markActiveTabSaved();
-        showToast(`Saved: ${fileName}`, 'save', 1800);
-      }
-      return;
+  if (currentFilePath) {
+    const result = await FileSystemService.saveFile(currentFilePath, code);
+    if (result && !result.error) {
+      $saveDot?.classList.remove('visible');
+      markActiveTabSaved();
+      showToast(`Saved: ${fileName}`, 'save', 1800);
+    } else {
+      showToast(`Save failed: ${result?.error}`, 'error', 3000);
     }
-
-    // No path yet — show Save As dialog
-    await saveAsFile();
     return;
   }
 
-  // Fallback: browser download
-  const finalName = fileName.endsWith('.py') ? fileName : fileName + '.py';
-  const blob = new Blob([code], { type: 'text/x-python;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = finalName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  setFileName(finalName);
-  showToast(`Downloaded: ${finalName}`, 'success', 2000);
+  // No path yet — show Save As dialog
+  await saveAsFile();
 }
 
 async function saveAsFile() {
@@ -1013,45 +1234,53 @@ async function saveAsFile() {
   }
 
   const defaultName = document.getElementById('file-name')?.textContent?.trim() || 'main.py';
+  const result = await FileSystemService.saveFileAs(code, defaultName);
 
-  if (window.electronAPI?.saveFileAs) {
-    const result = await window.electronAPI.saveFileAs(code, defaultName);
-    if (!result) return; // Cancelled
-    if (result.error) {
-      showToast(`Save failed: ${result.error}`, 'error', 3000);
-      return;
-    }
+  if (result.canceled) return;
+  if (!result.success) {
+    showToast(`Save failed: ${result.error}`, 'error', 3000);
+    return;
+  }
+
+  // If it's a native path (not web fallback)
+  if (result.filePath && window.electronAPI) {
     currentFilePath = result.filePath;
-    setFileName(result.fileName);
+    setFileName(result.fileName || result.filePath.split('\\').pop().split('/').pop());
+    
     // Update current tab
     const tab = tabs.find(t => t.id === activeTabId);
-    if (tab) { tab.filePath = result.filePath; tab.name = result.fileName; tab.unsaved = false; }
+    if (tab) { 
+      tab.filePath = result.filePath; 
+      tab.name = result.fileName || result.filePath.split('\\').pop().split('/').pop(); 
+      tab.unsaved = false; 
+    }
     $saveDot?.classList.remove('visible');
     renderTabs();
-    showToast(`Saved: ${result.fileName}`, 'save', 2000);
+    showToast(`Saved: ${tab?.name || 'File'}`, 'save', 2000);
   }
 }
 
 async function openFile() {
-  if (!window.electronAPI?.openFile) {
-    // Fallback to file input for browser mode
-    document.getElementById('import-file-input')?.click();
-    return;
-  }
-
-  const result = await window.electronAPI.openFile();
-  if (!result) return; // Cancelled
-  if (result.error) {
+  const result = await FileSystemService.openFile();
+  if (result.canceled) return;
+  
+  if (!result.success) {
     showToast(`Open failed: ${result.error}`, 'error', 3000);
     return;
   }
 
+  // Extract filename safely
+  let name = result.fileName;
+  if (!name && result.filePath) {
+    name = result.filePath.split('\\').pop().split('/').pop();
+  }
+
   // Open in a new tab
-  addNewTab(result.fileName, result.content, result.filePath);
-  showToast(`Opened: ${result.fileName}`, 'success', 2000);
+  addNewTab(name || 'Untitled', result.content, result.filePath || null);
+  showToast(`Opened: ${name || 'File'}`, 'success', 2000);
 }
 
-// ── Import .py File (browser fallback) ────────────────────────
+// ── Import .py File (browser fallback) ────────────────────────────────────────
 function importFromFile(file) {
   if (!file) return;
 
@@ -1067,11 +1296,56 @@ function importFromFile(file) {
   reader.readAsText(file);
 }
 
-// ── Buttons ────────────────────────────────────────────────────
+// ── Terminal/REPL Pane Tabs ───────────────────────────────────────────────────
+function switchPane(pane) {
+  if (pane === activePane) return;
+  activePane = pane;
+
+  const $tabTerminal = $('tab-terminal');
+  const $tabRepl = $('tab-repl');
+  const $termC = $('terminal-container');
+  const $replC = $('repl-container');
+
+  // Toggle tab active state
+  $tabTerminal?.classList.toggle('active', pane === 'terminal');
+  $tabRepl?.classList.toggle('active', pane === 'repl');
+
+  // Toggle container visibility
+  $termC?.classList.toggle('hidden', pane !== 'terminal');
+  $replC?.classList.toggle('hidden', pane !== 'repl');
+
+  if (pane === 'repl') {
+    // Start REPL on first activation (or if it was destroyed)
+    if (replManager && !replManager.started) {
+      const mode = useLocalPython ? 'local' : 'pyodide';
+      const worker = workerManager?.worker || null;
+      replManager.start(mode, worker);
+    }
+    // Fit REPL terminal
+    setTimeout(() => replManager?.fit(), 50);
+  } else {
+    // Fit main terminal when switching back
+    setTimeout(() => terminal?.fit(), 50);
+  }
+}
+
+function initPaneTabs() {
+  $('tab-terminal')?.addEventListener('click', () => switchPane('terminal'));
+  $('tab-repl')?.addEventListener('click', () => switchPane('repl'));
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
 function initButtons() {
   $runBtn?.addEventListener('click', runCode);
-  $clearBtn?.addEventListener('click', () => terminal?.clear());
+  $clearBtn?.addEventListener('click', () => {
+    if (activePane === 'repl' && replManager?.term) {
+      replManager.term.clear();
+    } else {
+      terminal?.clear();
+    }
+  });
   $copyBtn?.addEventListener('click', copyCode);
+  $('btn-fix-indent')?.addEventListener('click', fixCode);
 
   // Save to .py file (Ctrl+S saves to current path, or Save As if new)
   const $saveFileBtn = $('btn-save-file');
@@ -1102,6 +1376,7 @@ function initButtons() {
   $examplesBtn?.addEventListener('click', () => $examplesModal?.classList.remove('hidden'));
   $shortcutsBtn?.addEventListener('click', () => { renderShortcutsModal(); $shortcutsModal?.classList.remove('hidden'); });
   $paletteBtn?.addEventListener('click', openCommandPalette);
+  $backBtn?.addEventListener('click', () => openCollabPanel());
   $closeExamples?.addEventListener('click', () => $examplesModal?.classList.add('hidden'));
   $closeShortcuts?.addEventListener('click', () => { cancelRecording(); $shortcutsModal?.classList.add('hidden'); });
 
@@ -1120,7 +1395,7 @@ function initButtons() {
   $cmdPalette?.querySelector('.cmd-palette-backdrop')?.addEventListener('click', closeCommandPalette);
 }
 
-// ── Command Palette ────────────────────────────────────────────
+// ── Command Palette ──────────────────────────────────────────────────────────
 let cmdQuery = '';
 let selectedCmd = 0;
 let filteredCmds = [...COMMANDS];
@@ -1200,21 +1475,29 @@ function initCommandPalette() {
   });
 }
 
-// ── Keyboard Shortcuts (Editable System) ──────────────────────
+// ── Keyboard Shortcuts (Editable System) ──────────────────────────────────────
 let recordingShortcutId = null;
 
 const SHORTCUT_ACTIONS = {
   'run':            () => runCode(),
   'stop':           () => stopCode(),
-  'clear':          () => terminal?.clear(),
+  'clear':          () => { if (activePane === 'repl' && replManager?.term) replManager.term.clear(); else terminal?.clear(); },
   'copy':           () => copyCode(),
   'save':           () => { saveCode(); saveToFile(); },
+  'save-as':        () => saveAsFile(),
+  'open-file':      () => openFile(),
+  'new-tab':        () => addNewTab(null, '# New file\n'),
+  'find-replace':   () => openFindReplace(),
+  'fix-code':       () => fixCode(),
+  'font-inc':       () => { fontSize = Math.min(fontSize + 1, 24); setFontSize(fontSize); showToast(`Font size: ${fontSize}px`, 'info', 1400); },
+  'font-dec':       () => { fontSize = Math.max(fontSize - 1, 10); setFontSize(fontSize); showToast(`Font size: ${fontSize}px`, 'info', 1400); },
   'focus-editor':   () => focusEditor(),
   'focus-terminal': () => terminal?.focus(),
   'toggle-theme':   () => handleThemeToggle(),
   'cmd-palette':    () => {
     $cmdPalette?.classList.contains('hidden') ? openCommandPalette() : closeCommandPalette();
   },
+  'collab':          () => toggleCollabPanel(),
 };
 
 const SHORTCUT_LABELS = {
@@ -1223,10 +1506,18 @@ const SHORTCUT_LABELS = {
   'clear':          'Clear Terminal',
   'copy':           'Copy Code',
   'save':           'Save',
+  'save-as':        'Save As...',
+  'open-file':      'Open File',
+  'new-tab':        'New Tab',
+  'find-replace':   'Find & Replace',
+  'fix-code':       'Fix Code (AI)',
+  'font-inc':       'Increase Font Size',
+  'font-dec':       'Decrease Font Size',
   'focus-editor':   'Focus Editor',
   'focus-terminal': 'Focus Terminal',
   'toggle-theme':   'Toggle Theme',
   'cmd-palette':    'Command Palette',
+  'collab':          'Collab Panel',
 };
 
 function initShortcuts() {
@@ -1270,7 +1561,7 @@ function initShortcuts() {
       saveShortcuts();
 
       if (conflicts.length > 0) {
-        showToast(`⚠ ${label} conflicts with: ${conflicts.join(', ')}`, 'error', 4000);
+        showToast(`Conflict: ${label} clashes with: ${conflicts.join(', ')}`, 'error', 4000);
       } else {
         showToast(`Shortcut updated: ${label}`, 'success', 2000);
       }
@@ -1318,8 +1609,9 @@ function initShortcuts() {
       }
     }
 
-    // Escape closes modals
+    // Escape closes modals (collab panel first, then others)
     if (e.key === 'Escape') {
+      if (handleCollabKeydown(e)) return;
       $examplesModal?.classList.add('hidden');
       $shortcutsModal?.classList.add('hidden');
       if (!$cmdPalette?.classList.contains('hidden')) closeCommandPalette();
@@ -1327,7 +1619,7 @@ function initShortcuts() {
   });
 }
 
-// ── Editable Shortcuts Modal ──────────────────────────────────
+// ── Editable Shortcuts Modal ──────────────────────────────────────────────────
 function renderShortcutsModal() {
   const $list = $('shortcuts-list');
   if (!$list) return;
@@ -1395,7 +1687,7 @@ function cancelRecording() {
   renderShortcutsModal();
 }
 
-// ── Examples ──────────────────────────────────────────────────
+// ── Examples ──────────────────────────────────────────────────────────────────
 function initExamples() {
   if (!$examplesList) return;
   EXAMPLES.forEach((ex) => {
@@ -1421,7 +1713,7 @@ function initExamples() {
   });
 }
 
-// ── Gutter / Panel Resize ──────────────────────────────────────
+// ── Gutter / Panel Resize ─────────────────────────────────────────────────────
 function initGutter() {
   let isDragging = false;
   let startX = 0;
@@ -1498,389 +1790,256 @@ if (window.electronAPI) {
   document.querySelectorAll('.wc-btn').forEach(b => b.style.display = 'none');
 }
 
-// ── Landing ripples ────────────────────────────────────────────
-document.querySelectorAll('.btn-launch-main, .btn-launch-small').forEach(addRipple);
+// ── Unsaved Changes Dialog (Custom Themed) ────────────────────
+if (window.electronAPI) {
+  // Check if there are unsaved tabs
+  window.electronAPI.onCheckUnsaved(() => {
+    const hasUnsaved = tabs.some(t => t.unsaved);
+    window.electronAPI.sendUnsavedStatus(hasUnsaved);
+  });
 
-// ── Theme Toggle ──────────────────────────────────────────────
-const SUN_ICON = `<circle cx="7" cy="7" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M7 1.5V3M7 11V12.5M1.5 7H3M11 7H12.5M3.1 3.1L4.2 4.2M9.8 9.8L10.9 10.9M3.1 10.9L4.2 9.8M9.8 4.2L10.9 3.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`;
-const MOON_ICON = `<path d="M10.5 7A5 5 0 114.5 3.5 3.5 3.5 0 0010.5 7Z" stroke="currentColor" stroke-width="1.3" fill="none"/>`;
+  // Save then close
+  window.electronAPI.onSaveAndClose(async () => {
+    saveCode();
+    await saveToFile();
+    window.electronAPI.sendCloseConfirmed();
+  });
 
-function handleThemeToggle() {
-  const newTheme = toggleEditorTheme();
-  const isLight = newTheme === 'light';
+  // Build custom unsaved dialog modal
+  const unsavedOverlay = document.createElement('div');
+  unsavedOverlay.className = 'unsaved-dialog-overlay';
+  unsavedOverlay.id = 'unsaved-dialog';
+  unsavedOverlay.innerHTML = `
+    <div class="unsaved-dialog" role="alertdialog" aria-modal="true" aria-label="Unsaved Changes">
+      <div class="unsaved-dialog__header">
+        <svg class="unsaved-dialog__graphic" width="44" height="44" viewBox="0 0 44 44" fill="none">
+          <rect x="6" y="3" width="22" height="30" rx="2" stroke="#3a3a38" stroke-width="1.5" fill="#1e1e1c"/>
+          <rect x="10" y="9" width="14" height="1.5" rx=".75" fill="#3a3a38"/>
+          <rect x="10" y="13.5" width="10" height="1.5" rx=".75" fill="#3a3a38"/>
+          <rect x="10" y="18" width="12" height="1.5" rx=".75" fill="#3a3a38"/>
+          <rect x="10" y="22.5" width="8" height="1.5" rx=".75" fill="#3a3a38"/>
+          <circle cx="32" cy="30" r="9" fill="#1a1a18" stroke="#2e2e2c" stroke-width="1.5"/>
+          <circle cx="32" cy="30" r="5.5" fill="none" stroke="#ff3300" stroke-width="1.4" stroke-dasharray="3.5 2"/>
+          <circle cx="32" cy="30" r="2" fill="#ff3300" class="unsaved-pulse"/>
+        </svg>
+        <div class="unsaved-dialog__title-group">
+          <h3 class="unsaved-dialog__title">Unsaved changes</h3>
+          <p class="unsaved-dialog__subtitle">Your edits will be lost if you close without saving.</p>
+        </div>
+      </div>
+      <div class="unsaved-dialog__divider"></div>
+      <div class="unsaved-dialog__actions">
+        <button class="unsaved-btn unsaved-btn--save" id="unsaved-btn-save">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2.5C2 2.22 2.22 2 2.5 2H8.29L12 5.71V11.5C12 11.78 11.78 12 11.5 12H2.5C2.22 12 2 11.78 2 11.5V2.5Z" stroke="currentColor" stroke-width="1.2"/><rect x="4" y="7.5" width="6" height="4" stroke="currentColor" stroke-width="1"/></svg>
+          Save
+        </button>
+        <button class="unsaved-btn unsaved-btn--discard" id="unsaved-btn-discard">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3.5H11L10.3 12H3.7L3 3.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M2 3.5H12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 2H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          Discard
+        </button>
+        <button class="unsaved-btn unsaved-btn--cancel" id="unsaved-btn-cancel">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 4L10 10M10 4L4 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(unsavedOverlay);
 
-  // Update editor pane background
-  if (isLight) {
-    $editorPane?.classList.remove('theme-dark');
-  } else {
-    $editorPane?.classList.add('theme-dark');
-  }
+  // Show dialog when main process requests
+  window.electronAPI.onShowUnsavedDialog(() => {
+    unsavedOverlay.classList.add('visible');
+    document.getElementById('unsaved-btn-save')?.focus();
+  });
 
-  // Update topbar button
-  if ($themeIcon) $themeIcon.innerHTML = isLight ? SUN_ICON : MOON_ICON;
-  if ($themeLabel) $themeLabel.textContent = isLight ? 'Light' : 'Dark';
+  // Button handlers
+  document.getElementById('unsaved-btn-save')?.addEventListener('click', () => {
+    unsavedOverlay.classList.remove('visible');
+    window.electronAPI.sendUnsavedDialogResponse('save');
+  });
 
-  // Update status bar
-  if ($statusThemeText) $statusThemeText.textContent = isLight ? 'Light' : 'Dark';
+  document.getElementById('unsaved-btn-discard')?.addEventListener('click', () => {
+    unsavedOverlay.classList.remove('visible');
+    window.electronAPI.sendUnsavedDialogResponse('discard');
+  });
 
-  showToast(`Editor theme: ${isLight ? 'Light' : 'Dark'}`, 'info', 1400);
-}
+  document.getElementById('unsaved-btn-cancel')?.addEventListener('click', () => {
+    unsavedOverlay.classList.remove('visible');
+    window.electronAPI.sendUnsavedDialogResponse('cancel');
+  });
 
-$themeBtn?.addEventListener('click', handleThemeToggle);
-$statusTheme?.addEventListener('click', handleThemeToggle);
-
-// ── Floating Particles (Landing) ──────────────────────────────
-function createParticles() {
-  if (!$particles) return;
-  for (let i = 0; i < 12; i++) {
-    const p = document.createElement('div');
-    p.className = 'landing-particle';
-    p.style.left = Math.random() * 100 + '%';
-    p.style.top = Math.random() * 100 + '%';
-    p.style.setProperty('--dur', (4 + Math.random() * 6) + 's');
-    p.style.setProperty('--delay', (Math.random() * 4) + 's');
-    p.style.setProperty('--dx', (Math.random() * 40 - 20) + 'px');
-    p.style.setProperty('--dy', (Math.random() * 30 - 15) + 'px');
-    p.style.setProperty('--opa', (0.08 + Math.random() * 0.2).toFixed(2));
-    const size = 2 + Math.random() * 3;
-    p.style.width = size + 'px';
-    p.style.height = size + 'px';
-    $particles.appendChild(p);
-  }
-}
-
-createParticles();
-
-// ── GSAP Landing Entrance Animation ───────────────────────────
-function animateLandingEntrance() {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-  // Nav fade down
-  tl.fromTo('.landing-nav',
-    { opacity: 0, y: -20 },
-    { opacity: 1, y: 0, duration: 0.5 }
-  );
-
-  // Label tag
-  tl.fromTo('.label-tag',
-    { opacity: 0, x: -20 },
-    { opacity: 1, x: 0, duration: 0.4 },
-    '-=0.2'
-  );
-
-  // Hero title lines — staggered
-  tl.fromTo('.title-line--thin',
-    { opacity: 0, x: -30 },
-    { opacity: 1, x: 0, duration: 0.6 },
-    '-=0.15'
-  );
-
-  tl.fromTo('.title-line--bold',
-    { opacity: 0, x: -30 },
-    { opacity: 1, x: 0, duration: 0.6 },
-    '-=0.3'
-  );
-
-  // Subtitle
-  tl.fromTo('.landing-hero__sub',
-    { opacity: 0, y: 12 },
-    { opacity: 1, y: 0, duration: 0.45 },
-    '-=0.25'
-  );
-
-  // CTA button
-  tl.fromTo('.btn-launch-main',
-    { opacity: 0, y: 12 },
-    { opacity: 1, y: 0, duration: 0.45 },
-    '-=0.2'
-  );
-
-  // Meta items — staggered
-  tl.fromTo('.meta-item',
-    { opacity: 0, y: 10 },
-    { opacity: 1, y: 0, duration: 0.35, stagger: 0.08 },
-    '-=0.2'
-  );
-
-  // Right side — accent block
-  tl.fromTo('.landing-accent-block',
-    { opacity: 0, x: 40 },
-    { opacity: 1, x: 0, duration: 0.55 },
-    '-=0.4'
-  );
-
-  // Code preview
-  tl.fromTo('.landing-code-preview',
-    { opacity: 0, x: 40, scale: 0.97 },
-    { opacity: 1, x: 0, scale: 1, duration: 0.55,
-      onComplete: () => startTypewriter()
-    },
-    '-=0.35'
-  );
-
-  // Footer
-  tl.fromTo('.landing-footer',
-    { opacity: 0, y: 10 },
-    { opacity: 1, y: 0, duration: 0.35 },
-    '-=0.2'
-  );
-}
-
-// Kill CSS landing animations (GSAP takes over)
-document.querySelectorAll('.landing-nav, .label-tag, .title-line--thin, .title-line--bold, .landing-hero__sub, .btn-launch-main, .landing-hero__meta, .landing-accent-block, .landing-code-preview, .landing-footer').forEach(el => {
-  el.style.animation = 'none';
-  el.style.opacity = '0';
-});
-
-// Fire after fonts are loaded for correct layout
-document.fonts?.ready?.then(() => {
-  animateLandingEntrance();
-}) || animateLandingEntrance();
-
-// ── Typewriter Animation (Landing Code Preview) ───────────────
-const TYPEWRITER_CODE = [
-  { text: 'def ', cls: 'cp-keyword' },
-  { text: 'fibonacci', cls: 'cp-fn' },
-  { text: '(n):\n' },
-  { text: '    a, b = ' },
-  { text: '0', cls: 'cp-num' },
-  { text: ', ' },
-  { text: '1', cls: 'cp-num' },
-  { text: '\n    ' },
-  { text: 'for', cls: 'cp-keyword' },
-  { text: ' _ ' },
-  { text: 'in', cls: 'cp-keyword' },
-  { text: ' ' },
-  { text: 'range', cls: 'cp-builtin' },
-  { text: '(n):\n' },
-  { text: '        ' },
-  { text: 'print', cls: 'cp-builtin' },
-  { text: '(a, end=' },
-  { text: '" "', cls: 'cp-str' },
-  { text: ')\n' },
-  { text: '        a, b = b, a + b\n\n' },
-  { text: 'name = ' },
-  { text: 'input', cls: 'cp-builtin' },
-  { text: '(' },
-  { text: '"Your name: "', cls: 'cp-str' },
-  { text: ')\n' },
-  { text: 'print', cls: 'cp-builtin' },
-  { text: '(' },
-  { text: 'f"Hello, ', cls: 'cp-str' },
-  { text: '{name}', cls: 'cp-interp' },
-  { text: '!"', cls: 'cp-str' },
-  { text: ')\n' },
-  { text: 'fibonacci(', },
-  { text: '10', cls: 'cp-num' },
-  { text: ')' },
-];
-
-const TYPEWRITER_TERMINAL = [
-  { text: 'Your name: ', cls: 'term-prompt', delay: 300 },
-  { text: 'Theta', cls: 'term-input', delay: 80, charByChar: true },
-  { text: '\n', delay: 400 },
-  { text: 'Hello, Theta!', cls: 'term-output', delay: 100 },
-  { text: '\n', delay: 200 },
-  { text: '0 1 1 2 3 5 8 13 21 34', cls: 'term-output', delay: 50 },
-];
-
-function startTypewriter() {
-  const codeEl = document.getElementById('typing-code');
-  const termEl = document.getElementById('typing-terminal');
-  if (!codeEl || !termEl) return;
-
-  let codeIndex = 0;
-  let charIndex = 0;
-  const cursor = document.createElement('span');
-  cursor.className = 'term-cursor';
-  cursor.innerHTML = '&nbsp;';
-
-  function typeNextCode() {
-    if (codeIndex >= TYPEWRITER_CODE.length) {
-      // Code done — start terminal output
-      setTimeout(() => typeTerminal(0), 500);
-      return;
+  // Escape key cancels
+  unsavedOverlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      unsavedOverlay.classList.remove('visible');
+      window.electronAPI.sendUnsavedDialogResponse('cancel');
     }
-    const chunk = TYPEWRITER_CODE[codeIndex];
-    const char = chunk.text[charIndex];
-
-    if (char === '\n') {
-      codeEl.appendChild(document.createTextNode('\n'));
-    } else {
-      if (chunk.cls) {
-        // Find or create the current span
-        let span = codeEl.querySelector(`[data-chunk="${codeIndex}"]`);
-        if (!span) {
-          span = document.createElement('span');
-          span.className = chunk.cls;
-          span.dataset.chunk = codeIndex;
-          codeEl.appendChild(span);
-        }
-        span.textContent += char;
-      } else {
-        // Plain text — append to last text node or create one
-        const last = codeEl.lastChild;
-        if (last && last.nodeType === 3 && !codeEl.querySelector(`[data-chunk="${codeIndex}"]`)) {
-          last.textContent += char;
-        } else {
-          let tn = codeEl.querySelector(`[data-tchunk="${codeIndex}"]`);
-          if (!tn) {
-            tn = document.createElement('span');
-            tn.dataset.tchunk = codeIndex;
-            codeEl.appendChild(tn);
-          }
-          tn.textContent += char;
-        }
-      }
-    }
-
-    charIndex++;
-    if (charIndex >= chunk.text.length) {
-      codeIndex++;
-      charIndex = 0;
-    }
-
-    const speed = 18 + Math.random() * 22;
-    setTimeout(typeNextCode, speed);
-  }
-
-  function typeTerminal(idx) {
-    if (idx >= TYPEWRITER_TERMINAL.length) return;
-    const item = TYPEWRITER_TERMINAL[idx];
-
-    if (item.text === '\n') {
-      termEl.appendChild(document.createElement('br'));
-      setTimeout(() => typeTerminal(idx + 1), item.delay || 100);
-      return;
-    }
-
-    const span = document.createElement('span');
-    if (item.cls) span.className = item.cls;
-    termEl.appendChild(span);
-
-    if (item.charByChar) {
-      let ci = 0;
-      function typeChar() {
-        if (ci >= item.text.length) {
-          setTimeout(() => typeTerminal(idx + 1), item.delay || 100);
-          return;
-        }
-        span.textContent += item.text[ci];
-        ci++;
-        setTimeout(typeChar, 60 + Math.random() * 40);
-      }
-      typeChar();
-    } else {
-      gsap.fromTo(span,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.2, ease: 'power2.out',
-          onComplete: () => setTimeout(() => typeTerminal(idx + 1), item.delay || 100)
-        }
-      );
-      span.textContent = item.text;
-    }
-  }
-
-  typeNextCode();
-}
-
-// Theme toggle shortcut is now handled by the editable shortcut system
-
-// ── Pip Install Handler ───────────────────────────────────────
-const installedPackages = []; // { name, version }
-
-function handlePipInstall() {
-  const pkg = $pipInput?.value?.trim();
-  if (!pkg) return;
-
-  if (useLocalPython) {
-    $pipInput.value = '';
-    if ($pipStatus) {
-      $pipStatus.textContent = `Installing ${pkg}...`;
-      $pipStatus.className = 'pip-bar__status installing';
-    }
-    terminal?.writeSystem(`\n[pip] Installing "${pkg}"...\n`);
-    window.electronAPI.pipInstall(pkg);
-    // Track the package (version unknown for local)
-    addInstalledPackage(pkg, 'local');
-    return;
-  }
-
-  if (!workerManager?.isReady) {
-    showToast('Python runtime not ready yet', 'error', 2000);
-    return;
-  }
-  $pipInput.value = '';
-  workerManager.installPackage(pkg);
-  // Track the package
-  addInstalledPackage(pkg, 'latest');
-}
-
-function addInstalledPackage(name, version) {
-  const existing = installedPackages.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-  if (existing >= 0) {
-    installedPackages[existing].version = version;
-  } else {
-    installedPackages.push({ name, version });
-  }
-  renderPackagesList();
-}
-
-function removeInstalledPackage(name) {
-  const idx = installedPackages.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-  if (idx >= 0) {
-    installedPackages.splice(idx, 1);
-    renderPackagesList();
-    showToast(`Removed: ${name}`, 'info', 1800);
-  }
-}
-
-function renderPackagesList() {
-  const $list = document.getElementById('pip-packages-list');
-  if (!$list) return;
-
-  if (installedPackages.length === 0) {
-    $list.innerHTML = '<span class="pip-packages-empty">No packages installed yet</span>';
-    return;
-  }
-
-  $list.innerHTML = '';
-  installedPackages.forEach(pkg => {
-    const item = document.createElement('div');
-    item.className = 'pip-package-item';
-
-    const left = document.createElement('span');
-    left.innerHTML = `<span class="pip-package-item__name">${pkg.name}</span><span class="pip-package-item__version">${pkg.version}</span>`;
-
-    const unBtn = document.createElement('button');
-    unBtn.className = 'pip-package-item__uninstall';
-    unBtn.textContent = 'remove';
-    unBtn.addEventListener('click', () => removeInstalledPackage(pkg.name));
-
-    item.appendChild(left);
-    item.appendChild(unBtn);
-    $list.appendChild(item);
   });
 }
 
-// List button toggle
-const $pipListBtn = $('pip-list-btn');
-const $pipPanel = $('pip-packages-panel');
-const $pipPanelClose = $('pip-packages-close');
+// ── Landing ripples ──────────────────────────────────────────
+document.querySelectorAll('.btn-launch-main, .btn-launch-small').forEach(addRipple);
 
-$pipListBtn?.addEventListener('click', () => {
-  $pipPanel?.classList.toggle('hidden');
+
+// ── Theme (now handled by theme-manager.js) ───────────────────
+const themeElements = {
+  $editorPane: $editorPane,
+  $themeIcon: $themeIcon,
+  $themeLabel: $themeLabel,
+  $statusThemeText: $statusThemeText,
+  $themeBtn: $themeBtn,
+  $statusTheme: $statusTheme,
+};
+initTheme(themeElements);
+
+// ── Landing (disabled — direct IDE boot) ───────────────────────
+// initLanding($particles);
+
+// ── Pip Manager (now handled by pip-manager.js) ───────────────
+pipManager = new PipManager();
+pipManager.init();
+pipManager.useLocalPython = useLocalPython;
+pipManager.terminal = terminal;
+pipManager.workerManager = workerManager;
+
+// ── Right-Click Context Menu ─────────────────────────────────
+const contextMenu = document.createElement('div');
+contextMenu.className = 'theta-context-menu';
+contextMenu.id = 'context-menu';
+contextMenu.setAttribute('role', 'menu');
+contextMenu.setAttribute('aria-label', 'Context menu');
+document.body.appendChild(contextMenu);
+
+const CONTEXT_ITEMS = [
+  { label: 'Cut', shortcut: 'Ctrl+X', action: () => document.execCommand('cut') },
+  { label: 'Copy', shortcut: 'Ctrl+C', action: () => document.execCommand('copy') },
+  { label: 'Paste', shortcut: 'Ctrl+V', action: async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.execCommand('insertText', false, text);
+    } catch (_) { document.execCommand('paste'); }
+  }},
+  { type: 'separator' },
+  { label: 'Select All', shortcut: 'Ctrl+A', action: () => document.execCommand('selectAll') },
+  { type: 'separator' },
+  { label: 'Find & Replace', shortcut: 'Ctrl+F', action: () => openFindReplace() },
+  { label: 'Run Code', shortcut: 'Ctrl+Enter', action: () => runCode() },
+];
+
+function showContextMenu(x, y) {
+  contextMenu.innerHTML = '';
+  CONTEXT_ITEMS.forEach((item, i) => {
+    if (item.type === 'separator') {
+      const sep = document.createElement('div');
+      sep.className = 'ctx-separator';
+      sep.setAttribute('role', 'separator');
+      contextMenu.appendChild(sep);
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'ctx-item';
+    el.setAttribute('role', 'menuitem');
+    el.setAttribute('tabindex', '-1');
+
+    const label = document.createElement('span');
+    label.textContent = item.label;
+    el.appendChild(label);
+
+    if (item.shortcut) {
+      const key = document.createElement('span');
+      key.className = 'ctx-shortcut';
+      key.textContent = item.shortcut;
+      el.appendChild(key);
+    }
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideContextMenu();
+      item.action();
+    });
+    contextMenu.appendChild(el);
+  });
+
+  // Position
+  const maxX = window.innerWidth - 200;
+  const maxY = window.innerHeight - contextMenu.offsetHeight - 10;
+  contextMenu.style.left = Math.min(x, maxX) + 'px';
+  contextMenu.style.top = Math.min(y, maxY) + 'px';
+  contextMenu.classList.add('visible');
+}
+
+function hideContextMenu() {
+  contextMenu.classList.remove('visible');
+}
+
+document.querySelector('.cm-editor')?.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY);
 });
 
-$pipPanelClose?.addEventListener('click', () => {
-  $pipPanel?.classList.add('hidden');
+document.addEventListener('click', hideContextMenu);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideContextMenu();
 });
 
-$pipInput?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    handlePipInstall();
+// ── ARIA Accessibility ───────────────────────────────────────
+// Add roles and labels to interactive elements
+// ($examplesModal, $shortcutsModal, $cmdPalette already declared at top)
+
+$examplesModal?.setAttribute('role', 'dialog');
+$examplesModal?.setAttribute('aria-modal', 'true');
+$examplesModal?.setAttribute('aria-label', 'Code Examples');
+
+$shortcutsModal?.setAttribute('role', 'dialog');
+$shortcutsModal?.setAttribute('aria-modal', 'true');
+$shortcutsModal?.setAttribute('aria-label', 'Keyboard Shortcuts');
+
+$cmdPalette?.setAttribute('role', 'dialog');
+$cmdPalette?.setAttribute('aria-modal', 'true');
+$cmdPalette?.setAttribute('aria-label', 'Command Palette');
+
+// Label icon-only buttons
+document.querySelectorAll('[id^="btn-"]').forEach(btn => {
+  if (!btn.getAttribute('aria-label')) {
+    const text = btn.textContent?.trim() || btn.id.replace('btn-', '').replace(/-/g, ' ');
+    btn.setAttribute('aria-label', text);
   }
 });
 
-$pipBtn?.addEventListener('click', handlePipInstall);
+// Make editor tab bar accessible
+const $tabBar = document.getElementById('editor-tabs');
+$tabBar?.setAttribute('role', 'tablist');
+$tabBar?.setAttribute('aria-label', 'Open files');
+
+// Add keyboard navigation to modals (focus trap)
+function trapFocus(modal) {
+  modal?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const focusable = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+}
+
+trapFocus($examplesModal);
+trapFocus($shortcutsModal);
+trapFocus($cmdPalette);
+
+// Skip to editor link (screen readers)
+const skipLink = document.createElement('a');
+skipLink.href = '#editor-container';
+skipLink.className = 'skip-link';
+skipLink.textContent = 'Skip to editor';
+skipLink.setAttribute('aria-label', 'Skip to code editor');
+document.body.insertBefore(skipLink, document.body.firstChild);
+

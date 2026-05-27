@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: theta172-relay
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
+    autoDeploy: true

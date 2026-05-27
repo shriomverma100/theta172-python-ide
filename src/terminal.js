@@ -5,6 +5,7 @@
 
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
 export class TerminalManager {
@@ -12,6 +13,7 @@ export class TerminalManager {
     this.container = container;
     this.term = null;
     this.fitAddon = null;
+    this.webglAddon = null;
     this.isInputMode = false;
     this.inputBuffer = '';
     this.onInputSubmit = null;
@@ -34,7 +36,7 @@ export class TerminalManager {
       allowTransparency: false,
       scrollback: 10000,
       convertEol: true,
-      smoothScrollDuration: 80,   // smooth scroll
+      smoothScrollDuration: 150,   // silky smooth scroll
       theme: {
         background:          '#111111',
         foreground:          '#EAEAE8',
@@ -63,6 +65,20 @@ export class TerminalManager {
     this.fitAddon = new FitAddon();
     this.term.loadAddon(this.fitAddon);
     this.term.open(this.container);
+
+    // GPU-accelerated WebGL rendering (900% faster)
+    try {
+      this.webglAddon = new WebglAddon();
+      this.webglAddon.onContextLoss(() => {
+        console.warn('[THETA] WebGL context lost — falling back to canvas');
+        this.webglAddon?.dispose();
+        this.webglAddon = null;
+      });
+      this.term.loadAddon(this.webglAddon);
+      console.log('[THETA] ✦ WebGL terminal renderer active');
+    } catch (e) {
+      console.warn('[THETA] WebGL not available, using canvas renderer:', e.message);
+    }
 
     requestAnimationFrame(() => {
       this.fitAddon.fit();

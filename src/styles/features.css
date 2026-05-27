@@ -1,0 +1,338 @@
+/* ── Right-Click Context Menu ─────────────────────────────── */
+.theta-context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+  background: #1a1a18;
+  border: 1px solid #2e2e2c;
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95) translateY(-4px);
+  transition: opacity var(--dur-fast) var(--ease-smooth),
+              transform var(--dur-fast) var(--ease-out-expo);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+.theta-context-menu.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  color: #e8e8e6;
+  cursor: pointer;
+  transition: background var(--dur-instant) var(--ease-smooth),
+              padding-left var(--dur-fast) var(--ease-smooth);
+  gap: 24px;
+}
+
+.ctx-item:hover {
+  background: rgba(255, 45, 0, 0.12);
+  padding-left: 18px;
+}
+
+.ctx-shortcut {
+  color: #6e6e6c;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ctx-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: #2e2e2c;
+}
+
+/* ── Skip Link (Accessibility) ─────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #ff2d00;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 100000;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 6px 0;
+  transition: top 0.2s;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ── Search Panel Theming ──────────────────────────────────── */
+.cm-panels {
+  font-family: 'Inter', 'Segoe UI', sans-serif !important;
+}
+
+.cm-search {
+  padding: 8px 12px !important;
+  gap: 6px;
+}
+
+.cm-search label {
+  color: #b0b0ae;
+  font-size: 12px;
+}
+
+.cm-search .cm-textfield {
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 13px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.cm-search .cm-button {
+  border-radius: 4px !important;
+  padding: 3px 10px !important;
+  font-size: 12px !important;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cm-search .cm-button:hover {
+  background: rgba(255, 45, 0, 0.15) !important;
+}
+
+/* ── Lint Diagnostic Styling ──────────────────────────────── */
+.cm-lintRange-error {
+  background-image: none !important;
+  text-decoration: wavy underline #ff4444 !important;
+  text-decoration-skip-ink: none;
+}
+
+.cm-lintRange-warning {
+  background-image: none !important;
+  text-decoration: wavy underline #ffb74d !important;
+  text-decoration-skip-ink: none;
+}
+
+.cm-diagnostic {
+  padding: 4px 8px !important;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  border-radius: 4px;
+}
+
+.cm-diagnostic-error {
+  border-left: 3px solid #ff4444 !important;
+  color: #ff6666;
+}
+
+.cm-diagnostic-warning {
+  border-left: 3px solid #ffb74d !important;
+  color: #ffb74d;
+}
+
+.cm-tooltip-lint {
+  background: #1a1a18 !important;
+  border: 1px solid #2e2e2c !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+
+/* ── IntelliSense / Autocomplete Styling ─────────────────── */
+.cm-tooltip-autocomplete {
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+  overflow: hidden;
+  animation: cmTooltipIn 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cm-tooltip-autocomplete > ul {
+  max-height: 240px !important;
+  font-size: 13px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.cm-tooltip-autocomplete > ul > li {
+  padding: 4px 10px !important;
+  line-height: 1.4 !important;
+}
+
+.cm-completionIcon {
+  opacity: 0.7;
+  padding-right: 4px;
+}
+
+.cm-completionLabel {
+  font-weight: 500;
+}
+
+.cm-completionMatchedText {
+  color: #ff6b4a !important;
+  text-decoration: none !important;
+  font-weight: 700;
+}
+
+.cm-completionDetail {
+  color: #8e8e8c;
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+/* ── Unsaved Changes Dialog ──────────────────────────────── */
+.unsaved-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.unsaved-dialog-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.unsaved-dialog {
+  background: linear-gradient(145deg, #1c1c1a, #161614);
+  border: 1px solid #2a2a28;
+  border-radius: 14px;
+  padding: 0;
+  min-width: 380px;
+  max-width: 440px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  transform: scale(0.92) translateY(8px);
+  transition: transform 0.3s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+.unsaved-dialog-overlay.visible .unsaved-dialog {
+  transform: scale(1) translateY(0);
+}
+
+.unsaved-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 32px 24px;
+}
+
+.unsaved-dialog__graphic {
+  flex-shrink: 0;
+}
+
+.unsaved-pulse {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; r: 2.5; }
+  50% { opacity: 0.5; r: 3.5; }
+}
+
+.unsaved-dialog__title-group {
+  min-width: 0;
+}
+
+.unsaved-dialog__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f0f0ee;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.unsaved-dialog__subtitle {
+  font-size: 12.5px;
+  color: #7a7a78;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.unsaved-dialog__divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #2e2e2c, transparent);
+  margin: 0;
+}
+
+.unsaved-dialog__actions {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  justify-content: flex-end;
+}
+
+.unsaved-btn {
+  padding: 10px 24px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-ui, 'Inter', 'Segoe UI', sans-serif);
+  cursor: pointer;
+  border: none;
+  border-left: 1px solid #2a2a28;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background var(--dur-fast) var(--ease-smooth, ease),
+              color var(--dur-fast) var(--ease-smooth, ease),
+              transform var(--dur-fast) var(--ease-smooth, ease);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  flex: 1;
+}
+
+.unsaved-btn svg {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.unsaved-btn--save {
+  background: #ff3300;
+  color: #eaeae8;
+  font-weight: 900;
+}
+
+.unsaved-btn--save:hover {
+  background: #111111;
+  color: #eaeae8;
+}
+
+.unsaved-btn--discard {
+  background: #1a1a18;
+  color: #c8c8c6;
+}
+
+.unsaved-btn--discard:hover {
+  background: #222220;
+  color: #eaeae8;
+}
+
+.unsaved-btn--cancel {
+  background: #141412;
+  color: #5e5e5c;
+}
+
+.unsaved-btn--cancel:hover {
+  background: #1e1e1c;
+  color: #9e9e9c;
+}

@@ -1,0 +1,246 @@
+/* ════════════════════════════════════════════════════════════════
+   THETA172 — Collab Editor Styles
+   Remote cursors, student editor, collab mode indicator
+   ════════════════════════════════════════════════════════════════ */
+
+
+/* ── COLLAB MODE INDICATOR (teacher status bar badge) ────────── */
+
+.collab-mode-indicator {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  background: #111111;
+  border: 1.5px solid #00D4FF;
+  color: #00D4FF;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s ease;
+}
+
+.collab-mode-indicator.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.collab-mode-indicator svg {
+  color: #00D4FF;
+}
+
+
+/* ── STUDENT EDITOR CONTAINER ────────────────────────────────── */
+
+.collab-editor-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #0A0A0A;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collab-editor-container.visible {
+  opacity: 1;
+}
+
+
+/* ── STUDENT STATUS BAR ──────────────────────────────────────── */
+
+.collab-editor__status-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
+  height: 38px;
+  min-height: 38px;
+  background: #111111;
+  border-bottom: 1px solid #222220;
+  -webkit-app-region: drag;
+}
+
+.collab-editor__mode-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #00D4FF;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  -webkit-app-region: no-drag;
+}
+
+.collab-editor__mode-label svg {
+  color: #00D4FF;
+}
+
+.collab-editor__users-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8E8E8C;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+.collab-editor__users-label svg {
+  color: #6E6E6C;
+}
+
+.collab-editor__disconnect-btn {
+  background: none;
+  border: 1px solid #FF2D00;
+  color: #FF2D00;
+  padding: 4px 14px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.collab-editor__disconnect-btn:hover {
+  background: #FF2D00;
+  color: #111111;
+}
+
+
+/* ── STUDENT EDITOR WRAPPER ──────────────────────────────────── */
+
+.collab-editor__editor-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.collab-editor__editor-wrapper .cm-editor {
+  height: 100%;
+}
+
+.collab-editor__editor-wrapper .cm-scroller {
+  overflow: auto;
+}
+
+
+/* ── REMOTE CURSORS (Yjs awareness via y-codemirror.next) ───── */
+
+/* Remote cursor line (vertical bar) */
+.cm-ySelectionCaret {
+  position: relative;
+  border-left: 2px solid;
+  border-color: inherit;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Remote cursor name label */
+.cm-ySelectionCaretDot {
+  display: none;
+}
+
+.cm-ySelectionInfo {
+  position: absolute;
+  top: -1.2em;
+  left: -1px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #111111;
+  padding: 1px 6px;
+  border-radius: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 101;
+  opacity: 0.95;
+  transition: opacity 0.2s ease;
+}
+
+/* Remote selection highlight */
+.cm-ySelection {
+  opacity: 0.25;
+}
+
+/* Remote line decoration */
+.cm-yLineSelection {
+  opacity: 0;
+}
+
+
+/* ── COLLAB TOGGLE BUTTON (in teacher share panel) ───────────── */
+
+.collab-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #0A0A0A;
+  border: 1.5px solid #333330;
+  color: #AAAAAA;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.3s ease,
+              color 0.3s ease,
+              background 0.3s ease;
+}
+
+.collab-toggle-btn:hover {
+  border-color: #00D4FF;
+  color: #E8E8E6;
+}
+
+.collab-toggle-btn.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: #00D4FF08;
+}
+
+.collab-toggle-btn svg {
+  flex-shrink: 0;
+}
+
+.collab-toggle-btn__label {
+  flex: 1;
+  text-align: left;
+}
+
+.collab-toggle-btn__status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #5E5E5C;
+}
+
+.collab-toggle-btn.active .collab-toggle-btn__status {
+  color: #00D4FF;
+}

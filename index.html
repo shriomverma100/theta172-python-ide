@@ -20,6 +20,11 @@
   <link rel="stylesheet" href="/src/styles/topbar.css" />
   <link rel="stylesheet" href="/src/styles/editor.css" />
   <link rel="stylesheet" href="/src/styles/terminal.css" />
+  <link rel="stylesheet" href="/src/styles/features.css" />
+  <link rel="stylesheet" href="/src/styles/collab.css" />
+  <link rel="stylesheet" href="/src/styles/collab-viewer.css" />
+  <link rel="stylesheet" href="/src/styles/teacher-dashboard.css" />
+  <link rel="stylesheet" href="/src/styles/interactions.css" />
 </head>
 <body>
 
@@ -29,26 +34,20 @@
   <!-- ═══════════════════════════════════════════════════════════
        LANDING PAGE
   ═══════════════════════════════════════════════════════════ -->
-  <div id="landing" class="landing">
+  <div id="landing" class="landing hidden">
     <!-- Floating particles -->
     <div class="landing-particles" id="landing-particles"></div>
+
+    <!-- Code stream canvas -->
+    <canvas id="code-stream-canvas"></canvas>
+
     <nav class="landing-nav">
       <div class="landing-nav__logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" fill="#111111"/>
-          <rect x="3" y="3" width="22" height="22" stroke="#FF3300" stroke-width="2" fill="none"/>
-          <text x="14" y="19" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="13" fill="#FF3300">Θ</text>
-        </svg>
+        <div class="nav-logo-θ">Θ</div>
         <span class="landing-nav__brand">THETA172</span>
       </div>
       <div class="landing-nav__links">
         <span class="landing-nav__tag">Python Runtime v3.11</span>
-        <button id="launch-ide-nav" class="btn-launch-small">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 7H11M11 7L7.5 3.5M11 7L7.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Launch IDE
-        </button>
         <div class="window-controls landing-wc">
           <button class="wc-btn wc-minimize" id="landing-wc-min" title="Minimize">
             <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6H10" stroke="currentColor" stroke-width="1.2"/></svg>
@@ -64,64 +63,123 @@
     </nav>
 
     <main class="landing-hero">
+      <!-- ── LEFT PANEL: KINETIC HERO ── -->
       <div class="landing-hero__left">
+
+        <!-- Identity badge -->
         <div class="landing-hero__label">
-          <span class="label-tag">THETA172 / PYTHON</span>
+          <span class="label-tag">
+            <span class="label-tag-bar"></span>
+            <span class="label-status-dot"></span>
+            THETA172 / PYTHON
+          </span>
         </div>
+
+        <!-- Kinetic title with morphing word -->
         <h1 class="landing-hero__title">
-          <span class="title-line title-line--thin">CODE</span>
-          <span class="title-line title-line--bold">WITHOUT<br/>LIMITS.</span>
+          <span class="title-line title-line--thin">[ PYTHON EXECUTION ENGINE ]</span>
+          <div class="title-morph-wrap">
+            <span class="title-word-static" id="title-word-left">CODE</span>
+            <span class="title-word-accent" id="title-word-morph" data-text="FAST.">FAST.</span>
+          </div>
+          <span class="title-accent-bar"></span>
         </h1>
+
+        <!-- Subheadline -->
         <p class="landing-hero__sub">
-          A precision Python environment.<br/>
-          Real terminal. Instant execution. No friction.
+          A precision Python environment for people who care about craft.
+          Real terminal. Instant execution. No friction. No limits.
         </p>
+
+        <!-- CTA -->
         <button id="launch-ide-main" class="btn-launch-main">
-          <span>Start Coding</span>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <span class="btn-launch__prefix">&gt;&gt;&gt;</span>
+          <span class="btn-launch__text">Initialize <strong>THETA.Python</strong></span>
+          <span class="btn-launch__cursor"></span>
+          <svg class="btn-launch__arrow" width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M3 9H15M15 9L10 4M15 9L10 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+
+        <!-- Stat metrics -->
         <div class="landing-hero__meta">
           <div class="meta-item">
-            <div class="meta-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="6" stroke="#0D0D0D" stroke-width="1.4"/>
-                <path d="M8 5V8.5L10.5 11" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span>~50ms cold start</span>
+            <span class="meta-item__value" data-count="50" data-suffix="ms">—</span>
+            <span class="meta-item__label">Cold Start</span>
           </div>
           <div class="meta-item">
-            <div class="meta-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="3" width="12" height="10" rx="1" stroke="#0D0D0D" stroke-width="1.4"/>
-                <path d="M5 7L7.5 9.5L11 6" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-            <span>Real terminal I/O</span>
+            <span class="meta-item__value" data-count="100">—</span>
+            <span class="meta-item__label">% Offline</span>
           </div>
           <div class="meta-item">
-            <div class="meta-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 4H13M3 8H9M3 12H11" stroke="#0D0D0D" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span>In-browser runtime</span>
+            <span class="meta-item__value" data-count="3" data-suffix=".11">—</span>
+            <span class="meta-item__label">Python Ver</span>
           </div>
         </div>
+
+        <!-- Marquee strip (left panel bottom) -->
+        <div class="landing-marquee-wrap">
+          <div class="landing-marquee" id="landing-marquee">
+            <span class="marquee-item"><span class="marquee-item__dot"></span>CodeMirror 6</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Pyodide WASM</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Real Terminal I/O</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Live Pip Install</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Interactive REPL</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>AI Code Fix</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Multi-Tab Editor</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Dark + Light Theme</span>
+            <!-- duplicate for seamless loop -->
+            <span class="marquee-item"><span class="marquee-item__dot"></span>CodeMirror 6</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Pyodide WASM</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Real Terminal I/O</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Live Pip Install</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Interactive REPL</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>AI Code Fix</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Multi-Tab Editor</span>
+            <span class="marquee-item"><span class="marquee-item__dot"></span>Dark + Light Theme</span>
+          </div>
+        </div>
+
       </div>
 
+      <!-- ── RIGHT PANEL: DARK SHOWCASE ── -->
       <div class="landing-hero__right">
-        <div class="landing-accent-block">
-          <div class="accent-block__number">001</div>
-          <div class="accent-block__label">
-            <span>PYTHON</span>
-            <span>EXECUTION</span>
-            <span>ENGINE</span>
+
+        <!-- Accent stat block -->
+        <div class="landing-accent-block" id="landing-accent-block">
+          <div class="accent-block__left">
+            <div class="accent-block__number">001</div>
+            <div class="accent-block__label">
+              <span>PYTHON</span>
+              <span>EXECUTION</span>
+              <span>ENGINE</span>
+            </div>
+          </div>
+          <div class="accent-block__right">{ λ }</div>
+        </div>
+
+        <!-- Stat cards row -->
+        <div class="landing-cards-row">
+          <div class="landing-stat-card" id="stat-card-1">
+            <div class="stat-card__label">Startup Time</div>
+            <div class="stat-card__value">
+              <span class="stat-val" data-target="50">0</span>
+              <span class="stat-card__unit">ms</span>
+            </div>
+            <div class="stat-card__bar"><div class="stat-card__bar-fill" data-width="70"></div></div>
+          </div>
+          <div class="landing-stat-card" id="stat-card-2">
+            <div class="stat-card__label">Python Version</div>
+            <div class="stat-card__value">
+              <span class="stat-val" data-target="3">0</span>
+              <span class="stat-card__unit">.11</span>
+            </div>
+            <div class="stat-card__bar"><div class="stat-card__bar-fill" data-width="90"></div></div>
           </div>
         </div>
-        <div class="landing-code-preview">
+
+        <!-- Live code preview -->
+        <div class="landing-code-preview" id="landing-code-preview">
           <div class="code-preview__bar">
             <div class="code-preview__dots">
               <span></span><span></span><span></span>
@@ -131,10 +189,17 @@
           <pre class="code-preview__content"><code id="typing-code"></code></pre>
           <div class="code-preview__terminal" id="typing-terminal"></div>
         </div>
+
+        <!-- Scroll hint -->
+        <div class="landing-scroll-hint" id="scroll-hint">
+          <div class="scroll-hint__line"></div>
+          <span class="scroll-hint__text">Run Python</span>
+        </div>
+
       </div>
     </main>
 
-    <div class="landing-footer">
+    <footer class="landing-footer">
       <span>THETA172 &copy; 2025 · designed by nothing frontend team</span>
       <span>Python 3.11 &middot; WebAssembly &middot; In-Browser</span>
     </div>
@@ -143,7 +208,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        IDE PAGE
   ═══════════════════════════════════════════════════════════ -->
-  <div id="ide" class="ide hidden">
+  <div id="ide" class="ide">
 
     <!-- Top Bar -->
     <header class="ide-topbar">
@@ -174,6 +239,15 @@
           <div class="run-status__dot"></div>
           <span id="run-status-text">Ready</span>
         </div>
+        <button id="btn-run" class="btn-run" title="Run Code">
+          <svg class="run-icon-play" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4.5 2L13 8L4.5 14V2Z" fill="currentColor"/>
+          </svg>
+          <svg class="run-icon-stop hidden" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/>
+          </svg>
+          <span id="run-btn-text">Run</span>
+        </button>
       </div>
 
       <div class="ide-topbar__right">
@@ -225,15 +299,7 @@
             <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
           </button>
         </div>
-        <button id="btn-run" class="btn-run" title="Run Code">
-          <svg class="run-icon-play" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M4.5 2L13 8L4.5 14V2Z" fill="currentColor"/>
-          </svg>
-          <svg class="run-icon-stop hidden" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/>
-          </svg>
-          <span id="run-btn-text">Run</span>
-        </button>
+
       </div>
     </header>
 
@@ -256,6 +322,14 @@
                 <path d="M3.5 3.5V2A1 1 0 012 1H1M1 1V8A1 1 0 002 9H3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
               </svg>
               Copy
+            </button>
+            <button id="btn-fix-indent" class="pane-action-btn" title="Fix code (AI)">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2L5 6L2 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 6H11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <circle cx="10" cy="2" r="1.2" stroke="currentColor" stroke-width="0.8" fill="none"/>
+              </svg>
+              Fix Code
             </button>
             <button id="btn-font-dec" class="pane-action-btn" title="Decrease font">A−</button>
             <button id="btn-font-inc" class="pane-action-btn" title="Increase font">A+</button>
@@ -282,13 +356,22 @@
 
       <div id="terminal-pane" class="ide-pane ide-pane--terminal">
         <div class="pane-header">
-          <div class="pane-header__title">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
-              <path d="M3.5 4.5L6 7L3.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M7.5 9.5H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            </svg>
-            Terminal
+          <div class="pane-header__tabs">
+            <button id="tab-terminal" class="pane-tab active" data-pane="terminal" title="Script Output">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M3.5 4.5L6 7L3.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7.5 9.5H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              Terminal
+            </button>
+            <button id="tab-repl" class="pane-tab" data-pane="repl" title="Interactive Python REPL">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M1 3L4 6.5L1 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5.5 10H11.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+              REPL
+            </button>
           </div>
           <div class="pane-header__actions">
             <span id="exec-time" class="exec-time"></span>
@@ -321,6 +404,7 @@
           </div>
         </div>
         <div id="terminal-container" class="terminal-container"></div>
+        <div id="repl-container" class="terminal-container hidden"></div>
       </div>
     </div>
 
@@ -448,6 +532,9 @@
     </div>
 
   </div>
+
+  <!-- Collab Panel (full-screen overlay, hidden by default) -->
+  <div id="collab-panel" class="collab-panel hidden"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

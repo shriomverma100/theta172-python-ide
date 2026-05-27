@@ -10,7 +10,14 @@
  *   [2..n] = Uint8: UTF-8 encoded input bytes (max 4096 chars)
  */
 
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js');
+try {
+  importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js');
+} catch (e) {
+  self.postMessage({
+    type: 'load-error',
+    message: 'Failed to load Pyodide. Check your internet connection.',
+  });
+}
 
 let pyodide = null;
 let sharedBuffer = null;
@@ -19,14 +26,42 @@ let uint8View = null;
 let isRunning = false;
 let killFlag = false;
 
+// Timeout helper — prevents hanging if CDN is slow or offline
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 // ---- Init ----
 async function initPyodide() {
   self.postMessage({ type: 'status', text: 'Loading Pyodide...' });
 
-  pyodide = await loadPyodide({
-    stdout: (text) => self.postMessage({ type: 'stdout', text: text + '\n' }),
-    stderr: (text) => self.postMessage({ type: 'stderr', text: text + '\n' }),
-  });
+  if (typeof loadPyodide === 'undefined') {
+    self.postMessage({
+      type: 'load-error',
+      message: 'Pyodide not available — check your internet connection.',
+    });
+    return;
+  }
+
+  try {
+    pyodide = await withTimeout(
+      loadPyodide({
+        stdout: (text) => self.postMessage({ type: 'stdout', text: text + '\n' }),
+        stderr: (text) => self.postMessage({ type: 'stderr', text: text + '\n' }),
+      }),
+      30000,
+      'Pyodide load timed out after 30s. Check your connection or try again.'
+    );
+  } catch (err) {
+    self.postMessage({
+      type: 'load-error',
+      message: err.message || 'Failed to initialize Pyodide.',
+    });
+    return;
+  }
 
   self.postMessage({ type: 'status', text: 'Setting up environment...' });
 
@@ -202,6 +237,47 @@ self.onmessage = async (event) => {
 
     case 'install':
       await installPackage(event.data.package);
+      break;
+
+    case 'repl-eval':
+      // Execute code in 'single' mode — auto-prints expression results like REPL
+      try {
+        pyodide.globals.set('__repl_code__', event.data.code);
+        pyodide.runPython(`
+import traceback as _tb
+try:
+    _code = compile(__repl_code__, '<stdin>', 'single')
+    exec(_code)
+except SystemExit:
+    pass
+except:
+    _tb.print_exc()
+del __repl_code__
+`);
+        self.postMessage({ type: 'repl-done' });
+      } catch (err) {
+        self.postMessage({ type: 'repl-error', message: err.message });
+      }
+      break;
+
+    case 'repl-check':
+      // Check if code is a complete statement using Python's codeop
+      try {
+        pyodide.globals.set('__check_code__', event.data.code);
+        const result = pyodide.runPython(`
+import codeop as _co
+try:
+    _r = _co.compile_command(__check_code__)
+    "complete" if _r is not None else "incomplete"
+except SyntaxError as _e:
+    f"error:{_e.msg}:{_e.lineno or 0}:{_e.offset or 0}"
+finally:
+    del __check_code__
+`);
+        self.postMessage({ type: 'repl-check-result', result });
+      } catch (err) {
+        self.postMessage({ type: 'repl-check-result', result: 'complete' });
+      }
       break;
 
     case 'kill':

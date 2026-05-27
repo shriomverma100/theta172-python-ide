@@ -1,0 +1,503 @@
+/* ══════════════════════════════════════════════════════════════════
+   THETA172 — Teacher Dashboard Styles
+   Full-screen grid view of all connected students.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ─────────────────────────────────────────────────────── */
+.teacher-dashboard {
+  position: fixed;
+  inset: 0;
+  z-index: 10500;
+  background: #080808;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+}
+
+.teacher-dashboard.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.teacher-dashboard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #0c0c0c;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.teacher-dashboard__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.teacher-dashboard__title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #FF3300;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.teacher-dashboard__room-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #888;
+  background: #1a1a1a;
+  padding: 3px 10px;
+  border-radius: 3px;
+  border: 1px solid #2a2a2a;
+}
+
+.teacher-dashboard__count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+}
+
+.teacher-dashboard__header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+
+/* ── Search ──────────────────────────────────────────────────────── */
+.teacher-dashboard__search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.teacher-dashboard__search-icon {
+  position: absolute;
+  left: 10px;
+  color: #555;
+  pointer-events: none;
+}
+
+.teacher-dashboard__search {
+  width: 200px;
+  height: 30px;
+  padding: 0 10px 0 30px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.teacher-dashboard__search:focus {
+  border-color: #FF3300;
+}
+
+.teacher-dashboard__search::placeholder {
+  color: #444;
+}
+
+
+/* ── Close Button ────────────────────────────────────────────────── */
+.teacher-dashboard__close-btn {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #aaa;
+  background: transparent;
+  border: 1px solid #333;
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.teacher-dashboard__close-btn:hover {
+  color: #FF3300;
+  border-color: #FF3300;
+  background: rgba(255, 51, 0, 0.06);
+}
+
+
+/* ── Grid ────────────────────────────────────────────────────────── */
+.teacher-dashboard__grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.teacher-dashboard__grid.hidden {
+  display: none;
+}
+
+
+/* ── Tile ─────────────────────────────────────────────────────────── */
+.teacher-dashboard__tile {
+  background: #0e0e0e;
+  border: 1px solid #1e1e1e;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  will-change: transform;
+}
+
+.teacher-dashboard__tile:hover {
+  border-color: #333;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.teacher-dashboard__tile.removing {
+  opacity: 0;
+  transform: scale(0.9) translateY(8px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+
+/* ── Tile Header ─────────────────────────────────────────────────── */
+.teacher-dashboard__tile-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #111;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.teacher-dashboard__tile-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teacher-dashboard__tile-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.teacher-dashboard__tile-status.idle {
+  background: #444;
+}
+
+.teacher-dashboard__tile-status.running {
+  background: #28C840;
+  box-shadow: 0 0 4px rgba(40, 200, 64, 0.4);
+  animation: td-pulse 1.5s ease-in-out infinite;
+}
+
+.teacher-dashboard__tile-status.has-errors {
+  background: #FF5A3C;
+  box-shadow: 0 0 4px rgba(255, 90, 60, 0.4);
+}
+
+@keyframes td-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.teacher-dashboard__tile-file {
+  font-size: 10px;
+  color: #555;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+
+/* ── Tile Code Preview ───────────────────────────────────────────── */
+.teacher-dashboard__tile-code {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 15px;
+  color: #888;
+  overflow: hidden;
+  max-height: 180px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Mini syntax colors */
+.td-kw        { color: #C586C0; }
+.td-str       { color: #CE9178; }
+.td-comment   { color: #6A9955; font-style: italic; }
+.td-num       { color: #B5CEA8; }
+.td-builtin   { color: #DCDCAA; }
+.td-decorator { color: #D7BA7D; }
+.td-more      { color: #444; font-style: italic; }
+
+
+/* ── Tile Footer ─────────────────────────────────────────────────── */
+.teacher-dashboard__tile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #0c0c0c;
+  border-top: 1px solid #1a1a1a;
+}
+
+.teacher-dashboard__tile-errors {
+  font-size: 10px;
+  font-weight: 500;
+  color: #555;
+  transition: color 0.2s;
+}
+
+.teacher-dashboard__tile-errors.has-errors {
+  color: #FF5A3C;
+}
+
+.teacher-dashboard__tile-expand {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  padding: 2px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.teacher-dashboard__tile-expand:hover {
+  color: #FF3300;
+  border-color: #FF3300;
+}
+
+
+/* ── Empty State ─────────────────────────────────────────────────── */
+.teacher-dashboard__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.teacher-dashboard__empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #555;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.teacher-dashboard__empty p {
+  font-size: 13px;
+  color: #333;
+  margin: 0;
+}
+
+
+/* ── Expanded View ───────────────────────────────────────────────── */
+.teacher-dashboard__expanded {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.teacher-dashboard__expanded.visible {
+  display: flex;
+}
+
+
+/* ── Expanded Header ─────────────────────────────────────────────── */
+.teacher-dashboard__expanded-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #0c0c0c;
+  border-bottom: 1px solid #1e1e1e;
+  flex-shrink: 0;
+}
+
+.teacher-dashboard__expanded-back {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  background: transparent;
+  border: 1px solid #333;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.teacher-dashboard__expanded-back:hover {
+  color: #FF3300;
+  border-color: #FF3300;
+}
+
+.teacher-dashboard__expanded-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ddd;
+  margin: 0;
+  flex: 1;
+}
+
+.teacher-dashboard__expanded-file {
+  font-size: 11px;
+  color: #555;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.teacher-dashboard__expanded-status {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #555;
+  padding: 2px 8px;
+  border: 1px solid #333;
+  border-radius: 3px;
+}
+
+.teacher-dashboard__expanded-status.running {
+  color: #28C840;
+  border-color: #28C840;
+  background: rgba(40, 200, 64, 0.08);
+}
+
+
+/* ── Expanded Code ───────────────────────────────────────────────── */
+.teacher-dashboard__expanded-code-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  min-height: 0;
+  background: #0a0a0a;
+}
+
+.teacher-dashboard__expanded-line-numbers {
+  width: 48px;
+  flex-shrink: 0;
+  padding: 10px 8px 10px 0;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: #333;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #1a1a1a;
+}
+
+.teacher-dashboard__expanded-line-numbers span {
+  display: block;
+  height: 20px;
+}
+
+.teacher-dashboard__expanded-code {
+  flex: 1;
+  margin: 0;
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 20px;
+  color: #d4d4d4;
+  white-space: pre;
+  tab-size: 4;
+}
+
+
+/* ── Expanded Errors ─────────────────────────────────────────────── */
+.teacher-dashboard__expanded-errors {
+  max-height: 120px;
+  overflow-y: auto;
+  border-top: 1px solid #1e1e1e;
+  background: #0c0c0c;
+  flex-shrink: 0;
+}
+
+.teacher-dashboard__error-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  border-bottom: 1px solid #151515;
+}
+
+.teacher-dashboard__error-line {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FF5A3C;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.teacher-dashboard__error-msg {
+  font-size: 11px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teacher-dashboard__no-errors {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #333;
+}
+
+
+/* ── Scrollbars ──────────────────────────────────────────────────── */
+.teacher-dashboard__grid::-webkit-scrollbar,
+.teacher-dashboard__expanded-code-wrapper::-webkit-scrollbar,
+.teacher-dashboard__expanded-errors::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.teacher-dashboard__grid::-webkit-scrollbar-track,
+.teacher-dashboard__expanded-code-wrapper::-webkit-scrollbar-track,
+.teacher-dashboard__expanded-errors::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.teacher-dashboard__grid::-webkit-scrollbar-thumb,
+.teacher-dashboard__expanded-code-wrapper::-webkit-scrollbar-thumb,
+.teacher-dashboard__expanded-errors::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.teacher-dashboard__grid::-webkit-scrollbar-thumb:hover,
+.teacher-dashboard__expanded-code-wrapper::-webkit-scrollbar-thumb:hover,
+.teacher-dashboard__expanded-errors::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

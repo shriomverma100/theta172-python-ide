@@ -2,122 +2,53 @@ name: Build & Release
 
 on:
   push:
-    tags: ['v*']
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  # ── Build Windows (.exe) ───────────────────────────────────────
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate icons
-        run: node scripts/make-icon.cjs
-
-      - name: Build Electron app
-        run: npx electron-builder --win --publish never
-
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: |
-            release/*.exe
-
-  # ── Build macOS (.dmg) ─────────────────────────────────────────
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate icons
-        run: node scripts/make-icon.cjs
-
-      - name: Generate .icns from iconset
-        run: iconutil -c icns build-assets/icon.iconset -o build-assets/icon.icns
-
-      - name: Build Vite
+      - name: Build Vite (production)
         run: npm run build
 
-      - name: Build Electron app
-        run: npx electron-builder --mac --publish never
+      - name: Build Electron (Windows x64 NSIS + ZIP)
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload macOS artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build
-          path: release/*.dmg
+          name: windows-x64
+          path: |
+            release/*.exe
+            release/*.zip
+          retention-days: 30
 
-  # ── Build Linux (.AppImage) ────────────────────────────────────
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate icons
-        run: node scripts/make-icon.cjs
-
-      - name: Build Electron app
-        run: npx electron-builder --linux --publish never
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: release/*.AppImage
-
-  # ── Create GitHub Release ──────────────────────────────────────
-  release:
-    needs: [build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create Release
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: "Python by THETA172 ${{ github.ref_name }}"
-          body: |
-            ## Python by THETA172 ${{ github.ref_name }}
-
-            ### Downloads
-            - **Windows**: `.exe` installer
-            - **macOS (Intel)**: `.dmg` (x64)
-            - **macOS (Apple Silicon)**: `.dmg` (arm64)
-            - **Linux**: `.AppImage`
           files: |
-            artifacts/windows-build/*
-            artifacts/macos-build/*
-            artifacts/linux-build/*
+            release/Python-by-THETA172-Setup-*.exe
+            release/Python-by-THETA172-Setup-*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

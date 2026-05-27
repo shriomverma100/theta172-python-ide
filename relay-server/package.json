@@ -1,0 +1,15 @@
+{
+  "name": "theta172-relay",
+  "version": "1.0.0",
+  "description": "THETA172 Cloud Relay Server — Routes collab messages over the internet",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

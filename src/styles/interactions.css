@@ -1,0 +1,495 @@
+/* ══════════════════════════════════════════════════════════════════
+   THETA172 — Collab Interactions Styles
+   Highlight overlays, raise hand, annotations, attention, reactions.
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── HIGHLIGHT OVERLAY ───────────────────────────────────────────── */
+.collab-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: color-mix(in srgb, var(--hl-color, #FF3300) 15%, transparent);
+  border-left: 3px solid var(--hl-color, #FF3300);
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: opacity 0.25s ease-out, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.collab-highlight.visible {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.collab-highlight.dismissing {
+  opacity: 0;
+  transform: scaleX(0.8);
+  transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+}
+
+.collab-highlight__label {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--hl-color, #FF3300);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.collab-highlight__label svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+
+/* ── RAISED HAND — Student Button ────────────────────────────────── */
+.collab-hand-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10600;
+}
+
+.collab-hand-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #111;
+  border: 1.5px solid #333;
+  border-radius: 6px;
+  color: #ccc;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s,
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s;
+  transform: scale(1);
+}
+
+.collab-hand-btn:hover {
+  background: #1a1a1a;
+  border-color: #555;
+  transform: scale(1.03);
+}
+
+.collab-hand-btn:active {
+  transform: scale(0.96);
+}
+
+.collab-hand-btn.raised {
+  background: #FF3300;
+  border-color: #FF3300;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255, 51, 0, 0.3);
+  animation: hand-pulse 1.5s ease-in-out infinite;
+}
+
+.collab-hand-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.collab-hand-btn__label {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@keyframes hand-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(255, 51, 0, 0.3); }
+  50%      { box-shadow: 0 0 24px rgba(255, 51, 0, 0.5); }
+}
+
+
+/* ── RAISED HAND — Teacher Indicators ────────────────────────────── */
+.collab-hands-container {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 10600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.collab-hands-container__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #555;
+  padding: 4px 0;
+}
+
+.collab-hands-container__title svg {
+  width: 14px;
+  height: 14px;
+  color: #FF3300;
+}
+
+.collab-hand-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #111;
+  border: 1px solid #FF3300;
+  border-radius: 5px;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.25s ease-out, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.collab-hand-indicator.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.collab-hand-indicator.dismissing {
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+.collab-hand-indicator svg {
+  width: 16px;
+  height: 16px;
+  color: #FF3300;
+  flex-shrink: 0;
+  animation: hand-wave 1s ease-in-out infinite;
+}
+
+@keyframes hand-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-12deg); }
+  75%      { transform: rotate(12deg); }
+}
+
+.collab-hand-indicator__name {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+  white-space: nowrap;
+}
+
+.collab-hand-indicator__dismiss {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  padding: 0;
+  margin-left: 4px;
+}
+
+.collab-hand-indicator__dismiss:hover {
+  color: #FF3300;
+  background: rgba(255, 51, 0, 0.1);
+}
+
+
+/* ── ANNOTATION ──────────────────────────────────────────────────── */
+.collab-annotation {
+  position: absolute;
+  left: 100%;
+  margin-left: 12px;
+  min-width: 200px;
+  max-width: 300px;
+  background: #111;
+  border: 1px solid #333;
+  border-left: 3px solid #FFD700;
+  border-radius: 4px;
+  z-index: 60;
+  opacity: 0;
+  transform: translateX(-8px) scale(0.95);
+  transition: opacity 0.25s ease-out,
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.collab-annotation.visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.collab-annotation.dismissing {
+  opacity: 0;
+  transform: translateX(-8px) scale(0.9);
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+.collab-annotation__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #0c0c0c;
+  border-bottom: 1px solid #222;
+  border-radius: 4px 4px 0 0;
+}
+
+.collab-annotation__header svg {
+  width: 12px;
+  height: 12px;
+  color: #FFD700;
+  flex-shrink: 0;
+}
+
+.collab-annotation__sender {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #aaa;
+  flex: 1;
+}
+
+.collab-annotation__line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #555;
+}
+
+.collab-annotation__close {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.collab-annotation__close:hover {
+  color: #FF3300;
+  background: rgba(255, 51, 0, 0.1);
+}
+
+.collab-annotation__text {
+  padding: 8px 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #ccc;
+  word-wrap: break-word;
+}
+
+
+/* ── ATTENTION OVERLAY ───────────────────────────────────────────── */
+.collab-attention {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background 0.4s ease, backdrop-filter 0.4s ease;
+  pointer-events: none;
+}
+
+.collab-attention.visible {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.collab-attention__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.35s ease-out 0.1s,
+              transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+}
+
+.collab-attention.visible .collab-attention__content {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.collab-attention__content svg {
+  color: #FF3300;
+  animation: attention-shake 0.5s ease-in-out 0.3s;
+}
+
+@keyframes attention-shake {
+  0%, 100% { transform: rotate(0); }
+  20%      { transform: rotate(-8deg); }
+  40%      { transform: rotate(8deg); }
+  60%      { transform: rotate(-4deg); }
+  80%      { transform: rotate(4deg); }
+}
+
+.collab-attention__title {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #FF3300;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.collab-attention__desc {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+  margin: 0;
+}
+
+
+/* ── REACTIONS BAR ───────────────────────────────────────────────── */
+.collab-reactions-bar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10600;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+
+.collab-reaction-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s,
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+  padding: 0;
+}
+
+.collab-reaction-btn:hover {
+  background: #1e1e1e;
+  color: #FF3300;
+  transform: scale(1.15);
+}
+
+.collab-reaction-btn:active {
+  transform: scale(0.9);
+}
+
+.collab-reaction-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+
+/* ── FLOATING REACTION ───────────────────────────────────────────── */
+.collab-reaction {
+  position: fixed;
+  bottom: 60px;
+  z-index: 10700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(0) scale(0.5);
+  transition: opacity 0.3s ease-out,
+              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.collab-reaction.visible {
+  opacity: 1;
+  transform: translateY(-40px) scale(1);
+}
+
+.collab-reaction.fading {
+  opacity: 0;
+  transform: translateY(-80px) scale(0.7);
+  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+}
+
+.collab-reaction__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 50%;
+  color: #FF3300;
+}
+
+.collab-reaction__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.collab-reaction__sender {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+}
+
+
+/* ── SCROLLBAR FOR HANDS CONTAINER ───────────────────────────────── */
+.collab-hands-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.collab-hands-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collab-hands-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
