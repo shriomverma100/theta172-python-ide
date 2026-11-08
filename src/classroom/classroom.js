@@ -10,6 +10,7 @@
  */
 
 import { showToast } from '../toast.js';
+import { canApplyPushedCode, validateLiveEdit } from './edit-guard.js';
 import {
   buildBaseStructure, buildRoleSelector, buildTeacherPanel,
   buildStudentPanel, buildStudentCard, blurBackground, unblurBackground,
@@ -44,6 +45,8 @@ let _getCode = () => '';
 let _getCursor = () => ({ line: 1, col: 1 });
 let _getFileName = () => 'main.py';
 let _setValue = null;
+let _applyEdit = null;
+let _getDocLength = () => 0;
 let _onLiveChange = null;
 let _onContentChangeHook = null;
 
@@ -206,6 +209,8 @@ export function initClassroomPanel({ editorGetters, onLiveChange }) {
   _getCursor = editorGetters.getCursor;
   _getFileName = editorGetters.getFileName;
   _setValue = editorGetters.setValue;
+  _applyEdit = editorGetters.applyEdit || null;
+  _getDocLength = editorGetters.getDocLength || (() => _getCode().length);
   _onLiveChange = onLiveChange;
 
   $panel = document.getElementById('classroom-panel');
@@ -1132,26 +1137,20 @@ function setupIPCListeners() {
 
   if (api.onClassroomEditCode) {
     api.onClassroomEditCode((data) => {
-      // Teacher pushed full code — apply to our editor
-      if (_setValue && data.code) {
-        _setValue(data.code);
-        showToast('Teacher updated your code', 'info', 2000);
-      }
+      // Teacher pushed full code. Only allowed after the student granted
+      // edit access: the network message alone is not proof of consent.
+      if (!_setValue || !canApplyPushedCode(editPermissionGranted, data)) return;
+      _setValue(data.code);
+      showToast('Teacher updated your code', 'info', 2000);
     });
   }
 
   // Live incremental edits from teacher
   if (api.onClassroomEditLive) {
     api.onClassroomEditLive((data) => {
-      if (_setValue && data.from !== undefined && data.to !== undefined && data.insert !== undefined) {
-        // Apply incremental edit to our editor via the setter
-        // We need the full editor for incremental, so use setValue with the patch approach
-        // For now, we'll set the full content approach through main.js hooks
-        // The main.js will handle incremental dispatch
-        if (window._thetaApplyIncrementalEdit) {
-          window._thetaApplyIncrementalEdit(data.from, data.to, data.insert);
-        }
-      }
+      if (!_applyEdit) return;
+      const change = validateLiveEdit(editPermissionGranted, data, _getDocLength());
+      if (change) _applyEdit(change.from, change.to, change.insert);
     });
   }
 

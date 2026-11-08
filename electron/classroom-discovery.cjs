@@ -6,6 +6,8 @@
 
 const dgram = require('dgram');
 const WebSocket = require('ws');
+const net = require('net');
+const { sanitizeLabel } = require('./validate.cjs');
 
 const UDP_PORT = 41234;
 
@@ -54,7 +56,15 @@ class ClassroomDiscovery {
         try {
           const msg = JSON.parse(buf.toString());
           if (msg.type === 'THETA_CLASSROOM' && !this.connected) {
-            this.teacherInfo = { teacher: msg.teacher, ip: msg.ip, wsPort: msg.wsPort };
+            // Broadcasts are unauthenticated: accept only a plain IPv4
+            // address and a valid port, and clean the display name.
+            if (typeof msg.ip !== 'string' || !net.isIPv4(msg.ip)) return;
+            if (!Number.isInteger(msg.wsPort) || msg.wsPort < 1 || msg.wsPort > 65535) return;
+            this.teacherInfo = {
+              teacher: sanitizeLabel(msg.teacher, 64, 'Teacher'),
+              ip: msg.ip,
+              wsPort: msg.wsPort,
+            };
             if (this.onTeacherFound) {
               this.onTeacherFound(this.teacherInfo);
             }
@@ -148,7 +158,7 @@ class ClassroomDiscovery {
     if (this.connected || this.ws) return;
 
     try {
-      this.ws = new WebSocket(`ws://${ip}:${port}`);
+      this.ws = new WebSocket(`ws://${ip}:${port}`, { maxPayload: 1024 * 1024, handshakeTimeout: 8000 });
 
       this.ws.on('open', () => {
         this.connected = true;

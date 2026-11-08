@@ -4,9 +4,7 @@
  */
 
 import { showToast } from './toast.js';
-
-// Valid PyPI package name regex — blocks shell injection, flags, metacharacters
-const VALID_PKG = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?(([><=!~]=?|===?)[a-zA-Z0-9.*]+)?$/;
+import { isValidPackageSpec } from './core/package-spec.js';
 
 export class PipManager {
   constructor() {
@@ -60,7 +58,7 @@ export class PipManager {
     if (!pkg) return;
 
     // Validate package name
-    if (!VALID_PKG.test(pkg) || pkg.startsWith('-')) {
+    if (!isValidPackageSpec(pkg)) {
       showToast('Invalid package name', 'error', 2500);
       return;
     }

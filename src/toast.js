@@ -20,17 +20,42 @@ function ensureContainer() {
   document.body.appendChild(container);
 }
 
+/**
+ * Build the toast DOM. The icon markup is a fixed constant from TYPES;
+ * the message is ALWAYS inserted as text, because toasts show names and
+ * text that arrive over the classroom network (untrusted input).
+ */
+export function buildToastElement(message, cfg = TYPES.info) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.setAttribute('role', 'status');
+
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('class', 'toast-icon');
+  icon.setAttribute('width', '14');
+  icon.setAttribute('height', '14');
+  icon.setAttribute('viewBox', '0 0 14 14');
+  icon.setAttribute('fill', 'none');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.style.color = cfg.color;
+  icon.innerHTML = cfg.icon; // trusted constant
+
+  const text = document.createElement('span');
+  text.textContent = String(message ?? '');
+
+  const progress = document.createElement('div');
+  progress.className = 'toast-progress';
+  progress.style.background = cfg.color;
+
+  el.append(icon, text, progress);
+  return el;
+}
+
 export function showToast(message, type = 'info', duration = 3000) {
   ensureContainer();
   const cfg = TYPES[type] || TYPES.info;
 
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML = `
-    <svg class="toast-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" style="color:${cfg.color}">${cfg.icon}</svg>
-    <span>${message}</span>
-    <div class="toast-progress" style="background:${cfg.color}"></div>
-  `;
+  const el = buildToastElement(message, cfg);
   container.appendChild(el);
 
   // GSAP entrance

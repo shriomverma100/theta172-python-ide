@@ -7,10 +7,13 @@
 const dgram = require('dgram');
 const { WebSocketServer, WebSocket } = require('ws');
 const os = require('os');
+const { sanitizeLabel, sanitizeText } = require('./validate.cjs');
 
 const UDP_PORT = 41234;
 const WS_PORT  = 41235;
 const BROADCAST_INTERVAL = 500; // ms
+const MAX_PAYLOAD = 1024 * 1024; // 1 MB per message
+const MAX_CODE = 500_000;          // characters
 
 class ClassroomServer {
   constructor() {
@@ -58,7 +61,7 @@ class ClassroomServer {
 
     try {
       // Start WebSocket server
-      this.wss = new WebSocketServer({ port: WS_PORT, host: '0.0.0.0' });
+      this.wss = new WebSocketServer({ port: WS_PORT, host: '0.0.0.0', maxPayload: MAX_PAYLOAD });
 
       this.wss.on('connection', (ws) => {
         const id = `student-${this.nextId++}`;
@@ -284,8 +287,8 @@ class ClassroomServer {
 
     switch (msg.type) {
       case 'join':
-        student.name = msg.name || 'Unknown';
-        student.roll = msg.roll || '';
+        student.name = sanitizeLabel(msg.name, 64, 'Unknown');
+        student.roll = sanitizeLabel(msg.roll, 32, '');
         if (this.onStudentJoin) {
           this.onStudentJoin({ id, name: student.name, roll: student.roll });
         }
@@ -294,21 +297,21 @@ class ClassroomServer {
       case 'help-request':
         student.helpRequested = true;
         if (this.onHelpRequest) {
-          this.onHelpRequest({ id, name: student.name, roll: student.roll, message: msg.message || '' });
+          this.onHelpRequest({ id, name: student.name, roll: student.roll, message: sanitizeText(msg.message, 500) });
         }
         break;
 
       case 'student-code':
-        student.code = msg.code || '';
-        student.fileName = msg.fileName || 'main.py';
+        student.code = typeof msg.code === 'string' ? msg.code.slice(0, MAX_CODE) : '';
+        student.fileName = sanitizeLabel(msg.fileName, 128, 'main.py');
         if (this.onStudentCode) {
           this.onStudentCode({ id, name: student.name, roll: student.roll, code: student.code, fileName: student.fileName });
         }
         break;
 
       case 'student-code-live':
-        student.code = msg.code || '';
-        student.fileName = msg.fileName || 'main.py';
+        student.code = typeof msg.code === 'string' ? msg.code.slice(0, MAX_CODE) : '';
+        student.fileName = sanitizeLabel(msg.fileName, 128, 'main.py');
         if (this.onStudentCodeLive) {
           this.onStudentCodeLive({ id, name: student.name, roll: student.roll, code: student.code, fileName: student.fileName });
         }
@@ -316,7 +319,7 @@ class ClassroomServer {
 
       case 'student-output':
         if (this.onStudentOutputLive) {
-          this.onStudentOutputLive({ id, name: student.name, text: msg.text || '', stream: msg.stream || 'stdout' });
+          this.onStudentOutputLive({ id, name: student.name, text: sanitizeText(msg.text, 20_000), stream: msg.stream === 'stderr' ? 'stderr' : 'stdout' });
         }
         break;
 
@@ -336,7 +339,7 @@ class ClassroomServer {
 
       case 'chat-message':
         if (this.onChatMessage) {
-          this.onChatMessage({ id, name: student.name, text: msg.text || '', target: msg.target || 'broadcast' });
+          this.onChatMessage({ id, name: student.name, text: sanitizeText(msg.text, 2000), target: 'teacher' });
         }
         break;
     }

@@ -607,18 +607,12 @@ async function initIDE() {
         return activeTab?.name || 'main.py';
       },
       setValue: (code) => setValue(code),
+      // Incremental edits from the teacher; ranges are validated in
+      // classroom/edit-guard.js before this is called.
+      applyEdit: (from, to, insert) => getView()?.dispatch({ changes: { from, to, insert } }),
+      getDocLength: () => getView()?.state.doc.length ?? 0,
     },
   });
-
-  // Hook for incremental edits from teacher (classroom live editing)
-  window._thetaApplyIncrementalEdit = (from, to, insert) => {
-    const view = getView();
-    if (view) {
-      view.dispatch({
-        changes: { from, to, insert },
-      });
-    }
-  };
 
   // ── Drag-and-drop .py files onto editor ──
   const $dropTarget = $monacoContainer || document.querySelector('.ide-body');
@@ -1223,7 +1217,9 @@ async function saveToFile() {
     // If we already have a file path, save directly
     if (currentFilePath) {
       const result = await window.electronAPI.saveFile(currentFilePath, code);
-      if (result?.error) {
+      if (result?.needsSaveAs) {
+        await saveAsFile();
+      } else if (result?.error) {
         showToast(`Save failed: ${result.error}`, 'error', 3000);
       } else {
         $saveDot?.classList.remove('visible');

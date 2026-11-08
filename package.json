@@ -14,7 +14,13 @@
     "electron:dev": "concurrently -k -s first -n VITE,ELECTRON -c cyan,magenta \"vite\" \"npx wait-on tcp:5173 -t 15000 && npm run electron:start\"",
     "electron:build": "vite build && electron-builder --win --x64",
     "electron:build:dir": "vite build && electron-builder --win --x64 --dir",
-    "electron:preview": "vite build && cross-env NODE_ENV=production electron ."
+    "electron:preview": "vite build && cross-env NODE_ENV=production electron .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "vite build && node scripts/smoke.cjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "build": {
     "compression": "normal",

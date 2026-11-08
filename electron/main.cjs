@@ -13,9 +13,15 @@ const isDev = process.env.NODE_ENV === 'development';
 
 const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
+const { PythonRunner } = require('./python-runner.cjs');
+const { FileAccess } = require('./file-access.cjs');
+const { isValidPackageSpec } = require('./validate.cjs');
+const { initAutoUpdates } = require('./updater.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
+const pythonRunner = new PythonRunner({ spawn, fs, tmpDir: os.tmpdir() });
+const fileAccess = new FileAccess();
 
 // Enable SharedArrayBuffer (required for Pyodide Atomics)
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
@@ -37,8 +43,6 @@ if (!isDev) {
 
 let mainWindow = null;
 let pythonPath = null;
-let pythonProcess = null;
-let tmpFile = null;
 
 function createWindow() {
   // Set COEP/COOP + CSP headers before any request
@@ -95,6 +99,8 @@ function createWindow() {
     mainWindow.show();
     mainWindow.focus();
   });
+
+  if (process.env.THETA_SMOKE === '1') attachSmokeTest(mainWindow);
 
   mainWindow.on('maximize',   () => mainWindow.webContents.send('window-maximized', true));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized', false));
@@ -174,6 +180,37 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+// ── Smoke test (npm run test:smoke) ─────────────────────────────
+// Loads the real app, collects renderer errors for a few seconds,
+// prints a JSON report and exits non-zero if anything failed.
+function attachSmokeTest(win) {
+  const errors = [];
+  win.webContents.on('console-message', (...args) => {
+    // Electron >= 35 passes one details object; older versions pass (event, level, message).
+    const details = args[0] && typeof args[0] === 'object' && 'message' in args[0] ? args[0] : null;
+    const level = details ? details.level : args[1];
+    const message = details ? details.message : args[2];
+    if (level === 'error' || level === 3) errors.push(String(message));
+  });
+  win.webContents.on('render-process-gone', (_e, d) => errors.push(`renderer gone: ${d.reason}`));
+  win.webContents.on('did-fail-load', (_e, code, desc) => errors.push(`load failed: ${code} ${desc}`));
+  win.webContents.once('did-finish-load', () => {
+    setTimeout(async () => {
+      let probe = {};
+      try {
+        probe = await win.webContents.executeJavaScript(`({
+          editor: !!document.querySelector('.cm-editor'),
+          terminal: !!document.querySelector('.xterm'),
+          tabs: document.querySelectorAll('.editor-tab').length,
+        })`);
+      } catch (err) { errors.push(`probe failed: ${err.message}`); }
+      const ok = errors.length === 0 && probe.editor && probe.terminal && probe.tabs > 0;
+      console.log('THETA_SMOKE_RESULT ' + JSON.stringify({ ok, probe, errors }));
+      app.exit(ok ? 0 : 1);
+    }, Number(process.env.THETA_SMOKE_WAIT_MS) || 6000);
+  });
+}
+
 // ── IPC: Window Controls ────────────────────────────────────────
 ipcMain.on('window-minimize',  () => mainWindow?.minimize());
 ipcMain.on('window-maximize',  () => {
@@ -200,6 +237,7 @@ ipcMain.handle('python-detect', async () => {
         });
       });
       pythonPath = cmd;
+      pythonRunner.setPython(cmd);
       return { found: true, path: cmd, version: result };
     } catch (_) {
       continue;
@@ -208,68 +246,10 @@ ipcMain.handle('python-detect', async () => {
   return { found: false };
 });
 
-// Run Python code via local interpreter
-ipcMain.on('python-run', (event, code) => {
-  if (!pythonPath) {
-    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', 'Python not found on system.\n');
-    if (!event.sender.isDestroyed()) event.sender.send('python-done', 1);
-    return;
-  }
-
-  // Kill any existing process
-  if (pythonProcess) {
-    pythonProcess.kill('SIGTERM');
-    pythonProcess = null;
-  }
-
-  // Write code to temp file (avoids shell escaping issues)
-  tmpFile = path.join(os.tmpdir(), `theta_run_${Date.now()}.py`);
-  fs.writeFileSync(tmpFile, code, 'utf8');
-
-  pythonProcess = spawn(pythonPath, ['-u', tmpFile], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
-  });
-
-  pythonProcess.stdout.on('data', (data) => {
-    if (!event.sender.isDestroyed()) event.sender.send('python-stdout', data.toString());
-  });
-
-  pythonProcess.stderr.on('data', (data) => {
-    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', data.toString());
-  });
-
-  pythonProcess.on('close', (code) => {
-    pythonProcess = null;
-    try { if (tmpFile) fs.unlinkSync(tmpFile); } catch (_) {}
-    tmpFile = null;
-    if (!event.sender.isDestroyed()) event.sender.send('python-done', code ?? 0);
-  });
-
-  pythonProcess.on('error', (err) => {
-    if (!event.sender.isDestroyed()) event.sender.send('python-stderr', `Failed to start Python: ${err.message}\n`);
-    if (!event.sender.isDestroyed()) event.sender.send('python-done', 1);
-  });
-});
-
-// Send stdin to running Python process
-ipcMain.on('python-input', (_, text) => {
-  if (pythonProcess?.stdin?.writable) {
-    pythonProcess.stdin.write(text + '\n');
-  }
-});
-
-// Kill running Python process
-ipcMain.on('python-kill', () => {
-  if (pythonProcess) {
-    pythonProcess.kill('SIGTERM');
-    setTimeout(() => {
-      if (pythonProcess) {
-        try { pythonProcess.kill('SIGKILL'); } catch (_) {}
-      }
-    }, 1000);
-  }
-});
+// Run Python code via local interpreter (see python-runner.cjs)
+ipcMain.on('python-run', (event, code) => pythonRunner.run(code, event.sender));
+ipcMain.on('python-input', (_, text) => pythonRunner.input(text));
+ipcMain.on('python-kill', () => pythonRunner.kill());
 
 // Install package via real pip
 ipcMain.on('pip-install', (event, pkg) => {
@@ -279,9 +259,8 @@ ipcMain.on('pip-install', (event, pkg) => {
     return;
   }
 
-  // Validate package name server-side as well
-  const VALID_PKG = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?(([><=!~]=?|===?)[a-zA-Z0-9.*]+)?$/;
-  if (!VALID_PKG.test(pkg) || pkg.startsWith('-')) {
+  // Validate in the main process too: the renderer is not trusted.
+  if (!isValidPackageSpec(pkg)) {
     if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', 'Invalid package name.\n');
     if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
     return;
@@ -386,6 +365,7 @@ ipcMain.handle('file-open', async () => {
   const filePath = result.filePaths[0];
   try {
     const content = fs.readFileSync(filePath, 'utf8');
+    fileAccess.allow(filePath);
     const fileName = path.basename(filePath);
     // Update window title
     mainWindow?.setTitle(`${fileName} — Python by THETA172`);
@@ -395,8 +375,12 @@ ipcMain.handle('file-open', async () => {
   }
 });
 
-// Save file to known path
+// Save file to a path the user already chose in an Open/Save dialog
 ipcMain.handle('file-save', async (_, filePath, content) => {
+  if (!fileAccess.isAllowed(filePath)) {
+    return { error: 'This file was not opened or saved in this session. Use Save As.', needsSaveAs: true };
+  }
+  if (typeof content !== 'string') return { error: 'Invalid content.' };
   try {
     fs.writeFileSync(filePath, content, 'utf8');
     return { success: true };
@@ -417,9 +401,11 @@ ipcMain.handle('file-save-as', async (_, content, defaultName) => {
   });
 
   if (result.canceled || !result.filePath) return null;
+  if (typeof content !== 'string') return { error: 'Invalid content.' };
 
   try {
     fs.writeFileSync(result.filePath, content, 'utf8');
+    fileAccess.allow(result.filePath);
     const fileName = path.basename(result.filePath);
     mainWindow?.setTitle(`${fileName} — Python by THETA172`);
     return { filePath: result.filePath, fileName };
@@ -655,6 +641,7 @@ ipcMain.on('classroom-revoke-edit', () => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createWindow();
+  if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);
 });
 
 app.on('window-all-closed', () => {
@@ -666,9 +653,8 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
-  if (pythonProcess) { try { pythonProcess.kill('SIGTERM'); } catch (_) {} }
+  pythonRunner.dispose();
   if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
-  try { if (tmpFile) fs.unlinkSync(tmpFile); } catch (_) {}
   classroomServer.stop();
   classroomDiscovery.stopDiscovery();
   if (!isDev) app.releaseSingleInstanceLock();
