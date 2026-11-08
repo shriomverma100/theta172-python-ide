@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+relay-server/node_modules
 dist
 dist-ssr
 *.local
@@ -28,3 +29,6 @@ build-assets/icon.iconset
 *.njsproj
 *.sln
 *.sw?
+
+# Node compile cache and local scratch
+tmp/

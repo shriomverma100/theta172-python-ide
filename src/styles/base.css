@@ -14,8 +14,6 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  /* GPU layer everything — smooth compositing */
-  -webkit-backface-visibility: hidden;
 }
 
 body {
@@ -24,8 +22,6 @@ body {
   color: var(--text-on-dark);
   overflow: hidden;
   cursor: default;
-  /* Force hardware acceleration globally */
-  transform: translateZ(0);
 }
 
 button, input, textarea, select {
@@ -45,12 +41,15 @@ img { display: block; max-width: 100%; }
 /* ── GLOBAL SMOOTH TRANSITIONS ── */
 button, a, [role="button"] {
   transition:
-    opacity 120ms ease,
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+    opacity var(--dur-fast) var(--ease-smooth),
+    background-color var(--dur-fast) var(--ease-smooth),
+    color var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+/* GPU promote only during animation — prevents memory bloat */
+.animating {
   will-change: transform, opacity;
-  transform: translateZ(0);
 }
 
 /* GSAP handles press feedback — no CSS override */
@@ -60,9 +59,15 @@ button, a, [role="button"] {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.08);
-  transition: background 200ms ease;
+  border-radius: 2px;
+  transition: background 300ms var(--ease-smooth);
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.18);
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(255,255,255,0.25);
+}
 
 /* ── PAGE TRANSITIONS (GSAP-driven, classes are triggers) ── */
 .page-exit {
@@ -164,6 +169,12 @@ button, a, [role="button"] {
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  animation: backdropIn 250ms var(--ease-smooth) both;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to   { opacity: 1; backdrop-filter: blur(4px); }
 }
 
 .modal-content {
@@ -175,7 +186,8 @@ button, a, [role="button"] {
   max-width: 540px;
   max-height: 70vh;
   overflow: auto;
-  animation: modalIn 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  overscroll-behavior: contain;
+  animation: modalIn 350ms var(--ease-out-expo) both;
 }
 
 .modal-content--sm { max-width: 400px; }
@@ -209,7 +221,8 @@ button, a, [role="button"] {
 .modal-close {
   color: #777775;
   padding: 4px;
-  transition: color 150ms ease, transform 150ms ease;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              transform var(--dur-base) var(--ease-spring);
 }
 
 .modal-close:hover { color: #FF3300; transform: rotate(90deg); }
@@ -455,6 +468,7 @@ kbd {
   width: 460px;
   max-height: 360px;
   overflow: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 12px 48px rgba(0,0,0,0.5);
   animation: paletteIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -502,7 +516,9 @@ kbd {
   gap: 10px;
   padding: 9px 16px;
   cursor: pointer;
-  transition: background 120ms ease, padding-left 160ms ease;
+  transition: background var(--dur-instant) ease,
+              padding-left var(--dur-fast) var(--ease-smooth),
+              transform var(--dur-fast) var(--ease-smooth);
 }
 
 .cmd-result-item:hover,

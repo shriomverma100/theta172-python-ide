@@ -28,6 +28,7 @@ export class WorkerManager {
     this.onInstallStart = null;
     this.onInstallDone = null;
     this.onInstallError = null;
+    this.onLoadError = null;
   }
 
   init() {
@@ -106,6 +107,11 @@ export class WorkerManager {
 
       case 'install-error':
         this.onInstallError?.(msg.package, msg.message);
+        break;
+
+      case 'load-error':
+        this.isReady = false;
+        this.onLoadError?.(msg.message);
         break;
     }
   }
