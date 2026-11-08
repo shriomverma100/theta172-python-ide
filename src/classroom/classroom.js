@@ -21,7 +21,7 @@ import {
 // CodeMirror 6 imports for live viewers
 import { EditorView, lineNumbers, highlightActiveLineGutter,
          highlightSpecialChars, drawSelection, highlightActiveLine } from '@codemirror/view';
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
 import { syntaxHighlighting, bracketMatching, HighlightStyle } from '@codemirror/language';
 import { python } from '@codemirror/lang-python';
 import { tags } from '@lezer/highlight';
@@ -1061,7 +1061,7 @@ function setupIPCListeners() {
   }
 
   if (api.onClassroomCodeChange) {
-    api.onClassroomCodeChange((data) => {
+    api.onClassroomCodeChange((_data) => {
       // Incremental changes could be handled here for even smoother sync
     });
   }

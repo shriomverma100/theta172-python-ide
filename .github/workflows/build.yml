@@ -19,19 +19,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
       - name: Build Vite (production)
         run: npm run build
 
+      # Launches the real app, runs code with the runner's Python and checks
+      # the UI. Marked non-blocking until it has proven stable on hosted
+      # runners (no GPU; WebGL falls back to software rendering).
+      - name: Smoke test (Electron)
+        run: node scripts/smoke.cjs
+        continue-on-error: true
+
+      # Never let electron-builder publish by itself (that caused 403s);
+      # the release step below uploads the files.
       - name: Build Electron (Windows x64 NSIS + ZIP)
-        run: npx electron-builder --win --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --x64 --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -40,8 +53,11 @@ jobs:
           path: |
             release/*.exe
             release/*.zip
+            release/*.blockmap
+            release/latest.yml
           retention-days: 30
 
+      # latest.yml + .blockmap are required for auto-updates (electron-updater)
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -49,6 +65,8 @@ jobs:
           files: |
             release/Python-by-THETA172-Setup-*.exe
             release/Python-by-THETA172-Setup-*.zip
+            release/*.blockmap
+            release/latest.yml
           draft: false
           prerelease: false
           generate_release_notes: true

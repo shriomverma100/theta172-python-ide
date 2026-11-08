@@ -19,8 +19,7 @@
     "test:watch": "vitest",
     "test:smoke": "vite build && node scripts/smoke.cjs",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write ."
   },
   "build": {
     "compression": "normal",
@@ -32,7 +31,7 @@
       "node_modules/ws/**/*"
     ],
     "directories": {
-      "output": "E:\\mysexe",
+      "output": "release",
       "buildResources": "build-assets"
     },
     "files": [
@@ -99,7 +98,7 @@
           ]
         }
       ],
-      "icon": "build-assets/icon.icns",
+      "icon": "build-assets/icon_1024.png",
       "category": "public.app-category.developer-tools",
       "darkModeSupport": true,
       "hardenedRuntime": false,
@@ -107,7 +106,6 @@
     },
     "dmg": {
       "title": "Python by THETA172",
-      "icon": "build-assets/icon.icns",
       "iconSize": 80,
       "window": {
         "width": 540,
@@ -130,7 +128,14 @@
     "linux": {
       "target": "AppImage",
       "icon": "build-assets/icon.png"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "shriomverma100",
+        "repo": "theta172-python-ide"
+      }
+    ]
   },
   "devDependencies": {
     "@codemirror/lang-python": "^6.2.1",

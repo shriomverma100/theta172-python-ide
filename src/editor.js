@@ -11,8 +11,8 @@ import { EditorView, keymap, lineNumbers, highlightActiveLineGutter,
 import { EditorState, Compartment, StateEffect } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, indentOnInput, bracketMatching,
-         foldGutter, foldKeymap, defaultHighlightStyle,
-         HighlightStyle, syntaxTree } from '@codemirror/language';
+         foldGutter, foldKeymap,
+         HighlightStyle } from '@codemirror/language';
 import { python } from '@codemirror/lang-python';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
@@ -745,8 +745,8 @@ export function getEditorTheme() {
 }
 
 // ── Error Line Highlighting ───────────────────────────────────
-import { Decoration, ViewPlugin } from '@codemirror/view';
-import { StateField, RangeSet } from '@codemirror/state';
+import { Decoration } from '@codemirror/view';
+import { StateField } from '@codemirror/state';
 
 const addErrorLine = StateEffect.define();
 const clearErrors = StateEffect.define();
