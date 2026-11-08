@@ -18,6 +18,9 @@ function safeOn(channel, handler) {
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // True only under `npm run test:smoke`; enables read-only test hooks.
+  isSmokeTest: process.env.THETA_SMOKE === '1',
+
   // Window controls
   minimize:      () => ipcRenderer.send('window-minimize'),
   maximize:      () => ipcRenderer.send('window-maximize'),

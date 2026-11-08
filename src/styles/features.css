@@ -336,3 +336,22 @@
   background: #1e1e1c;
   color: #9e9e9c;
 }
+
+/* ── Groq API key dialog (AI Fix) ─────────────────────────────── */
+.api-key-modal .modal-content { max-width: 440px; }
+.api-key-body { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 20px; }
+.api-key-text { margin: 0; font-size: 13px; line-height: 1.5; color: #333331; }
+.api-key-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #111111; }
+.api-key-input {
+  height: 40px; padding: 0 12px; border: 2px solid #111111; background: #F8F8F6;
+  font-family: var(--font-mono, monospace); font-size: 14px; color: #111111; outline: none;
+}
+.api-key-input:focus { border-color: #FF3300; }
+.api-key-error { margin: 0; min-height: 16px; font-size: 12px; color: #B42318; }
+.api-key-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.api-key-btn {
+  height: 40px; padding: 0 18px; border: 2px solid #111111; background: #111111; color: #F8F8F6;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+}
+.api-key-btn--ghost { background: transparent; color: #111111; }
+.api-key-btn:focus-visible { outline: 2px solid #FF3300; outline-offset: 2px; }

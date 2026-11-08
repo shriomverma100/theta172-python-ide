@@ -23,6 +23,11 @@ const classroomDiscovery = new ClassroomDiscovery();
 const pythonRunner = new PythonRunner({ spawn, fs, tmpDir: os.tmpdir() });
 const fileAccess = new FileAccess();
 
+// Smoke tests use a throwaway profile so they never touch real saved code.
+if (process.env.THETA_SMOKE === '1') {
+  app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'theta-smoke-')));
+}
+
 // Enable SharedArrayBuffer (required for Pyodide Atomics)
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
 
@@ -198,18 +203,74 @@ function attachSmokeTest(win) {
     setTimeout(async () => {
       let probe = {};
       try {
-        probe = await win.webContents.executeJavaScript(`({
-          editor: !!document.querySelector('.cm-editor'),
-          terminal: !!document.querySelector('.xterm'),
-          tabs: document.querySelectorAll('.editor-tab').length,
-        })`);
+        probe = await win.webContents.executeJavaScript(SMOKE_PROBE);
       } catch (err) { errors.push(`probe failed: ${err.message}`); }
-      const ok = errors.length === 0 && probe.editor && probe.terminal && probe.tabs > 0;
+      const ok = errors.length === 0 && Object.values(probe.checks || {}).every(Boolean);
       console.log('THETA_SMOKE_RESULT ' + JSON.stringify({ ok, probe, errors }));
       app.exit(ok ? 0 : 1);
     }, Number(process.env.THETA_SMOKE_WAIT_MS) || 6000);
   });
 }
+
+// Drives the real UI: types code, runs it, opens a tab and the palette.
+const SMOKE_PROBE = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const checks = {};
+  const info = {};
+  checks.editor = !!document.querySelector('.cm-editor');
+  checks.terminal = !!document.querySelector('.xterm');
+  checks.oneTab = document.querySelectorAll('.editor-tab').length === 1;
+
+  // Replace the editor text through the real input path
+  const content = document.querySelector('.cm-content');
+  content.focus();
+  document.execCommand('selectAll');
+  document.execCommand('insertText', false, 'print(6 * 7)');
+  await sleep(300);
+
+  info.runtime = document.getElementById('runtime-type')?.textContent;
+  for (let i = 0; i < 40 && document.getElementById('run-status-text')?.textContent !== 'Ready'; i++) await sleep(250);
+  document.getElementById('btn-run').click();
+  for (let i = 0; i < 40 && !/Done|Error/.test(document.getElementById('run-status-text')?.textContent); i++) await sleep(250);
+  info.runStatus = document.getElementById('run-status-text')?.textContent;
+  const out = window.__thetaTest?.terminalText() || '';
+  checks.runPrinted42 = /^42$/m.test(out);
+  checks.runDone = info.runStatus === 'Done';
+
+  // Right-click menu on the editor (was never attached before Phase 0)
+  content.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }));
+  await sleep(100);
+  checks.contextMenu = !!document.querySelector('#context-menu.visible');
+  document.body.click();
+
+  // Stop a long-running program: status returns to Ready and the timer stops
+  content.focus();
+  document.execCommand('selectAll');
+  document.execCommand('insertText', false, 'import time\\ntime.sleep(30)');
+  await sleep(300);
+  document.getElementById('btn-run').click();
+  await sleep(1500);
+  checks.longRunIsRunning = document.getElementById('run-status-text')?.textContent === 'Running';
+  document.getElementById('btn-run').click(); // acts as Stop while running
+  await sleep(1500);
+  info.afterStop = document.getElementById('run-status-text')?.textContent;
+  checks.stopReturnsToReady = info.afterStop === 'Ready';
+  const t1 = document.getElementById('exec-time')?.textContent;
+  await sleep(400);
+  checks.timerStopped = document.getElementById('exec-time')?.textContent === t1;
+
+  document.getElementById('btn-new-tab').click();
+  await sleep(200);
+  checks.newTab = document.querySelectorAll('.editor-tab').length === 2;
+
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, shiftKey: true, bubbles: true }));
+  await sleep(200);
+  checks.paletteOpens = !document.getElementById('cmd-palette').classList.contains('hidden');
+  info.paletteItems = document.querySelectorAll('#cmd-results .cmd-result-item').length;
+  checks.paletteHasItems = info.paletteItems > 10;
+
+  return { checks, info };
+})()`;
 
 // ── IPC: Window Controls ────────────────────────────────────────
 ipcMain.on('window-minimize',  () => mainWindow?.minimize());

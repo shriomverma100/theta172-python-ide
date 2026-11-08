@@ -781,3 +781,18 @@
     max-width: 100px;
   }
 }
+
+/* Retry button shown when the Python runtime fails to load */
+.loading-retry-btn {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: #FF2D00;
+  color: #fff;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
