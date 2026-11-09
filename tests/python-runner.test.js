@@ -9,7 +9,7 @@ function fakeProcess() {
   const proc = new EventEmitter();
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
-  proc.stdin = { writable: true, written: [], write(t) { this.written.push(t); } };
+  proc.stdin = { writable: true, written: [], write(t) { this.written.push(t); }, on() {} };
   proc.exitCode = null;
   proc.signalCode = null;
   proc.killedWith = [];

@@ -246,8 +246,58 @@ const DEBUG_SCENES = [
   { name: 'd07-pro-watch-eval', js: DBG_WATCH, wait: 300 },
 ];
 
+// Phase 6 tour: THETA_SHOTS_SET=study
+const STUDY_CODE = 'scores = {"Aarav": 91, "Diya": 78, "Kabir": 85}\\n\\nfor name, score in scores.items():\\n    grade = "A" if score >= 85 else "B"\\n    print(f"{name:<6} {score:>3}  {grade}")\\n\\naverage = sum(scores.values()) / len(scores)\\nprint("Class average:", round(average, 1))\\n';
+const STUDY_RUN = `(async () => {
+  ${waitFor("/ready|idle/.test(document.documentElement.dataset.runState || '')")}
+  window.__thetaTest.setCode('${STUDY_CODE}');
+  await new Promise(r => setTimeout(r, 300));
+  ${RUN}
+})()`;
+const hover = (sel) => `(async () => {
+  document.querySelector('${sel}').dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+  await new Promise(r => setTimeout(r, 900));
+})()`;
+const unhover = `(async () => {
+  document.getElementById('editor-pane').dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+  await new Promise(r => setTimeout(r, 900));
+})()`;
+const study = (mode, side = 'right') => `(async () => {
+  await window.__thetaTest.study('${mode}', '${side}');
+  await new Promise(r => setTimeout(r, 1600));
+})()`;
+const STUDY_SCENES = [
+  { name: 's01-picker', wait: 4500 },
+  { name: 's02-play-normal', js: `document.querySelector('[data-pick="playground"]').click(); ${STUDY_RUN}`, wait: 500 },
+  { name: 's03-play-spot-output', js: hover('.ide-pane--terminal'), wait: 100 },
+  { name: 's04-play-spot-files', js: `(async () => { ${unhover.slice(14, -5)}; document.getElementById('sidebar').dispatchEvent(new PointerEvent('pointerenter', { bubbles: false })); await new Promise(r => setTimeout(r, 900)); })()`, wait: 100 },
+  { name: 's05-play-suggestion', js: `(async () => { ${unhover.slice(14, -5)}; window.__thetaTest.studySuggest('right'); await new Promise(r => setTimeout(r, 600)); })()`, wait: 100 },
+  { name: 's06-play-sheet', js: "document.getElementById('study-suggestion-more').click()", wait: 600 },
+  { name: 's07-play-duo', js: study('duo'), wait: 100 },
+  { name: 's08-play-duo-spot', js: hover('.ide-pane--terminal'), wait: 100 },
+  { name: 's09-play-half', js: `(async () => { ${unhover.slice(14, -5)}; })().then(() => window.__thetaTest.study('half', 'right')).then(() => new Promise(r => setTimeout(r, 1600)))`, wait: 100 },
+  { name: 's10-play-third', js: study('third'), wait: 100 },
+  { name: 's11-play-quarter', js: study('quarter'), wait: 100 },
+  { name: 's12-play-mini', js: study('mini'), wait: 100 },
+  { name: 's13-play-mini-drawer', js: "document.getElementById('study-drawer').click()", wait: 500 },
+  { name: 's14-pro-third', js: `(async () => {
+    document.getElementById('study-drawer').click();
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1800));
+    await window.__thetaTest.study('third', 'left');
+    await new Promise(r => setTimeout(r, 1600));
+  })()`, wait: 100 },
+  { name: 's15-pro-duo', js: `(async () => {
+    await window.__thetaTest.study(null);
+    await new Promise(r => setTimeout(r, 1500));
+    await window.__thetaTest.study('duo');
+    await new Promise(r => setTimeout(r, 1500));
+  })()`, wait: 100 },
+  { name: 's16-pro-sheet', js: "document.getElementById('study-bar-name').click()", wait: 600 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

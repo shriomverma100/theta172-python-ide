@@ -14,7 +14,7 @@ function fakeProc() {
   p.stdout = new EventEmitter();
   p.stderr = new EventEmitter();
   p.written = [];
-  p.stdin = { writable: true, write: (b) => p.written.push(b.toString()) };
+  p.stdin = { writable: true, write: (b) => p.written.push(b.toString()), on() {} };
   p.exitCode = null;
   p.kill = () => { p.killed = true; };
   p.pid = 4242;

@@ -101,7 +101,7 @@ describe('Language server host (main process)', () => {
     const proc = new EventEmitter();
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
-    proc.stdin = { write: (buf) => written.push(buf.toString()), end() {} };
+    proc.stdin = { write: (buf) => written.push(buf.toString()), end() {}, on() {} };
     proc.kill = () => {};
     const toEditor = [];
     const server = new LanguageServer({
