@@ -168,8 +168,86 @@ const LSP_SCENES = [
   { name: 'l11-pro-problems', js: `document.querySelector('.cm-content').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 5, clientY: 5 })); document.getElementById('tab-problems').click()`, wait: 500 },
 ];
 
+// Phase 5 tour: THETA_SHOTS_SET=debug
+const DBG_CODE = 'def average(scores):\\n    total = 0\\n    for s in scores:\\n        total += s\\n    return total / len(scores)\\n\\n\\nname = input("Your name? ")\\nmarks = [72, 88, 95]\\nresult = average(marks)\\nprint(name, "averaged", result)\\n';
+const DBG_SETUP = `(async () => {
+  const t = window.__thetaTest;
+  document.getElementById('btn-new-tab').click();
+  await new Promise(r => setTimeout(r, 300));
+  t.setCode('${DBG_CODE}');
+  t.toggleBreakpointLine(4);
+  t.toggleBreakpointLine(10);
+  document.getElementById(document.documentElement.dataset.theme === 'pro' ? 'rail-debug' : 'view-debug').click();
+  await new Promise(r => setTimeout(r, 300));
+})()`;
+const DBG_PAUSE = `(async () => {
+  const t = window.__thetaTest;
+  ${waitFor("/ready|idle/.test(document.documentElement.dataset.runState || '')")}
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  ${waitFor("/Your name/.test(window.__thetaTest.terminalText())")}
+  t.submitInput('Ada');
+  ${waitFor('window.__thetaTest.debugState().pausedLine === 10')}
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  ${waitFor('window.__thetaTest.debugState().pausedLine === 4')}
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  await new Promise(r => setTimeout(r, 300));
+  ${waitFor("document.querySelectorAll('#dbg-variables .dbg-var').length > 2")}
+  await new Promise(r => setTimeout(r, 400));
+})()`;
+const DBG_WATCH = `(async () => {
+  const w = document.getElementById('dbg-watch-input');
+  w.value = 'total / max(1, len(scores))';
+  w.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const e = document.getElementById('dbg-eval-input');
+  e.value = 'sorted(scores, reverse=True)';
+  e.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  ${waitFor("document.querySelector('#dbg-eval-log .dbg-eval-a')")}
+  await new Promise(r => setTimeout(r, 400));
+})()`;
+const DBG_EXCEPTION = `(async () => {
+  const t = window.__thetaTest;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', shiftKey: true, bubbles: true }));
+  ${waitFor('!window.__thetaTest.debugState().active')}
+  document.getElementById('btn-clear').click(); // the next prompt check must see the new program
+  t.toggleBreakpointLine(4); t.toggleBreakpointLine(10);
+  t.setCode('${DBG_CODE.replace('marks = [72, 88, 95]', 'marks = []')}');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  ${waitFor("/Your name/.test(window.__thetaTest.terminalText())")}
+  t.submitInput('Ada');
+  ${waitFor("/ZeroDivisionError/.test(document.getElementById('dbg-exception').textContent)")}
+  await new Promise(r => setTimeout(r, 500));
+})()`;
+const DBG_TO_PRO = `(async () => {
+  const t = window.__thetaTest;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', shiftKey: true, bubbles: true }));
+  ${waitFor('!window.__thetaTest.debugState().active')}
+  document.getElementById('btn-clear').click(); // the next prompt check must see the new program
+  document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+  await new Promise(r => setTimeout(r, 1500));
+  t.setCode('${DBG_CODE}');
+  t.toggleBreakpointLine(4);
+  document.getElementById('rail-debug').click();
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  ${waitFor("/Your name/.test(window.__thetaTest.terminalText())")}
+  t.submitInput('Ada');
+  ${waitFor('window.__thetaTest.debugState().pausedLine === 4')}
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  await new Promise(r => setTimeout(r, 300));
+  ${waitFor("document.querySelectorAll('#dbg-variables .dbg-var').length > 2")}
+  await new Promise(r => setTimeout(r, 500));
+})()`;
+const DEBUG_SCENES = [
+  { name: 'd01-picker', wait: 4500 },
+  { name: 'd02-play-breakpoints', js: `document.querySelector('[data-pick="playground"]').click(); ${DBG_SETUP}`, wait: 1200 },
+  { name: 'd03-play-paused', js: DBG_PAUSE, wait: 300 },
+  { name: 'd04-play-watch-eval', js: DBG_WATCH, wait: 300 },
+  { name: 'd05-play-exception', js: DBG_EXCEPTION, wait: 300 },
+  { name: 'd06-pro-paused', js: DBG_TO_PRO, wait: 300 },
+  { name: 'd07-pro-watch-eval', js: DBG_WATCH, wait: 300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {
@@ -181,7 +259,11 @@ function attachShots(win, dir) {
       for (const scene of scenes) {
         if (scene.js) {
           try { await win.webContents.executeJavaScript(scene.js); }
-          catch (err) { console.error(`shots failed in ${scene.name}: ${err.message}`); }
+          catch (err) {
+            console.error(`shots failed in ${scene.name}: ${err.message}`);
+            // Show the scene's lines so a syntax error can be located
+            scene.js.split('\n').forEach((l, i) => console.error(`  ${String(i + 1).padStart(3)} | ${l.slice(0, 160)}`));
+          }
         }
         await sleep(scene.wait || 0);
         const img = await win.webContents.capturePage();
