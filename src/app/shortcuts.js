@@ -45,6 +45,7 @@ export const DEFAULT_SHORTCUTS = {
   'step-into':         { ctrl: false, shift: false, alt: false, key: 'F11' },
   'step-out':          { ctrl: false, shift: true,  alt: false, key: 'F11' },
   'toggle-breakpoint': { ctrl: false, shift: false, alt: false, key: 'F9' },
+  'study-mode':        { ctrl: true,  shift: true,  alt: false, key: 'l' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -84,6 +85,7 @@ export const SHORTCUT_LABELS = {
   'step-into':         'Step Into',
   'step-out':          'Step Out',
   'toggle-breakpoint': 'Toggle Breakpoint',
+  'study-mode':        'Study Mode',
 };
 
 const KEY_NAMES = {

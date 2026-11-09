@@ -4,6 +4,7 @@
  * "Animation effects" is off (prefers-reduced-motion).
  */
 import { setTypeChecking } from './lsp.js';
+import { spotlightEnabled, setSpotlightEnabled } from './spotlight.js';
 import { getEditorTheme, setWordWrap, setTabSize } from '../editor.js';
 import { getPrefs, setPrefs } from './session.js';
 import { handleThemeToggle } from '../theme-manager.js';
@@ -39,6 +40,7 @@ function renderEditorPrefs() {
   $('set-tab-2')?.setAttribute('aria-pressed', String(p.tabSize === 2));
   $('set-tab-4')?.setAttribute('aria-pressed', String(p.tabSize !== 2));
   $('set-fmt')?.setAttribute('aria-checked', String(!!p.formatOnSave));
+  $('set-spot')?.setAttribute('aria-checked', String(spotlightEnabled()));
   for (const level of TYPE_CHECKING) $(`set-tc-${level}`)?.setAttribute('aria-pressed', String((p.typeChecking || 'standard') === level));
 }
 
@@ -100,6 +102,10 @@ export function initSettings() {
     const wrap = !getPrefs().wrap;
     setPrefs({ wrap });
     setWordWrap(wrap);
+    renderEditorPrefs();
+  });
+  $('set-spot')?.addEventListener('click', () => {
+    setSpotlightEnabled(!spotlightEnabled());
     renderEditorPrefs();
   });
   $('set-fmt')?.addEventListener('click', () => {

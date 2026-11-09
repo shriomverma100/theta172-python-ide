@@ -37,6 +37,8 @@ import { fx, startLoadingLoop, runSucceeded, runFailed, screenTransition } from 
 import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
+import { initSpotlight } from './app/spotlight.js';
+import { initStudy, toggleStudySheet, exitStudy, enterStudy, getStudyMode, toggleDrawer, showSuggestion } from './app/study.js';
 import {
   initDebugger, startDebugging, stopDebugging, restartDebugging, pauseDebugging, stepOver, stepInto, stepOut,
   toggleBreakpoint, isDebugging,
@@ -128,7 +130,7 @@ const actions = {
   'close-folder': closeFolder,
   'new-file': () => createItem('file'),
   'search-files': () => { showSidebar(true); focusSearch(); },
-  'toggle-sidebar': () => showSidebar(),
+  'toggle-sidebar': () => (getStudyMode() ? toggleDrawer() : showSidebar()),
   'toggle-split': toggleSplitView,
   'open-shell': () => switchPane('shell'),
   'select-interpreter': showInterpreterPicker,
@@ -148,6 +150,8 @@ const actions = {
   'step-into': stepInto,
   'step-out': stepOut,
   'toggle-breakpoint': toggleBreakpoint,
+  'study-mode': toggleStudySheet,
+  'study-exit': exitStudy,
   'manage-packages': () => { switchPane('terminal'); state.pipManager?.toggle(true); },
   'check-environment': checkEnvironment,
 };
@@ -344,6 +348,9 @@ async function initIDE() {
         return true;
       },
       complete: () => startCompletion(getView()),
+      // Study mode (Phase 6): study('half', 'right') or study(null) to leave
+      study: (mode, side) => (mode ? enterStudy(mode, side) : exitStudy()),
+      studySuggest: (side) => showSuggestion(side),
       // Debugger (Phase 5)
       toggleBreakpointLine(n) {
         const view = getView();
@@ -441,6 +448,8 @@ state.pipManager = new PipManager();
 state.pipManager.init(); // runtime.js binds it to the chosen runtime
 initFixBar();
 initDebugger();
+initSpotlight();
+initStudy();
 initAccessibility();
 
 initIDE().catch((err) => {

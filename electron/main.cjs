@@ -4,7 +4,7 @@
  * native window controls via IPC, local Python execution, crash recovery.
  */
 
-const { app, BrowserWindow, ipcMain, session, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Menu, dialog, screen } = require('electron');
 const { execFile, spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -20,6 +20,7 @@ const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
 const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
 const { registerLspIpc } = require('./lsp-ipc.cjs');
 const { registerDebugIpc } = require('./debug-ipc.cjs');
+const { registerStudyWindow } = require('./study-window.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
@@ -29,6 +30,7 @@ let workspaceIpc = null; // set in app.whenReady (needs userData)
 let pythonIpc = null;    // set in app.whenReady (needs userData)
 let lspIpc = null;       // set in app.whenReady
 let debugIpc = null;     // set in app.whenReady
+let studyWindow = null;  // set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -111,6 +113,12 @@ function createWindow() {
   }
 
   mainWindow.once('ready-to-show', () => {
+    // Test runs open without taking focus: typing elsewhere must not land in
+    // the test window (an Enter on the theme picker would "choose" a theme)
+    if (process.env.THETA_SMOKE === '1') {
+      mainWindow.showInactive();
+      return;
+    }
     mainWindow.show();
     mainWindow.focus();
   });
@@ -120,6 +128,7 @@ function createWindow() {
     else attachSmokeTest(mainWindow);
   }
 
+  studyWindow?.attach(mainWindow);
   mainWindow.on('maximize',   () => mainWindow.webContents.send('window-maximized', true));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized', false));
   mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('window-maximized', true));
@@ -231,6 +240,7 @@ const SMOKE_PROBE = `(async () => {
   const checks = {};
   const runState = () => document.getElementById('run-status').className.replace('run-status run-status--', '');
   const info = {};
+  info.pickerTrail = (info.pickerTrail || '') + 'start:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   checks.editor = !!document.querySelector('.cm-editor');
   checks.terminal = !!document.querySelector('.xterm');
   checks.oneTab = document.querySelectorAll('.editor-tab').length === 1;
@@ -253,6 +263,7 @@ const SMOKE_PROBE = `(async () => {
   checks.runInHistory = /ok/.test(document.querySelector('#run-history li')?.className || '');
   checks.mascotHappy = document.documentElement.dataset.runState === 'done';
 
+  info.pickerTrail = (info.pickerTrail || '') + 'ctx:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Right-click menu on the editor (was never attached before Phase 0)
   content.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }));
   await sleep(100);
@@ -286,6 +297,7 @@ const SMOKE_PROBE = `(async () => {
   checks.paletteHasItems = info.paletteItems > 10;
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
+  info.pickerTrail = (info.pickerTrail || '') + 'p3:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Python engine (Phase 3): the default environment made from the built-in Python
   info.interpreter = document.getElementById('python-version')?.textContent + ' / ' + document.getElementById('runtime-type')?.textContent;
   checks.defaultEnvFromBundled = /^3\\.12\\.\\d+ \\/ THETA172 env$/.test(info.interpreter);
@@ -316,6 +328,7 @@ const SMOKE_PROBE = `(async () => {
   checks.missingModuleFix = !document.getElementById('fix-bar').classList.contains('hidden') && /^Install opencv-python/.test(info.fixBar || '');
   document.getElementById('fix-bar-close').click();
 
+  info.pickerTrail = (info.pickerTrail || '') + 'p2:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Workspace (Phase 2): the sample project from scripts/smoke.cjs is open
   for (let i = 0; i < 30 && !document.querySelector('#ws-tree .ws-row'); i++) await sleep(100);
   info.treeRows = [...document.querySelectorAll('#ws-tree .ws-row__name')].map((e) => e.textContent);
@@ -358,6 +371,7 @@ const SMOKE_PROBE = `(async () => {
   checks.shellStarts = /PS |\\$ |> /.test(window.__thetaTest?.shellText() || '');
   document.getElementById('tab-terminal').click();
 
+  info.pickerTrail = (info.pickerTrail || '') + 'p4:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Language intelligence (Phase 4), on main.py of the sample project
   const t4 = window.__thetaTest;
   // The project's file (its tab title is the path), not the untitled starter tab of the same name
@@ -423,6 +437,7 @@ const SMOKE_PROBE = `(async () => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true, altKey: true, bubbles: true }));
   for (let i = 0; i < 50 && t4.code() !== 'x = 1\\nprint(x)\\n'; i++) await sleep(100);
   checks.formatWithRuff = t4.code() === 'x = 1\\nprint(x)\\n';
+  info.pickerTrail = (info.pickerTrail || '') + 'p5:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Debugger (Phase 5): an unsaved tab with input(), a breakpoint, stepping, evaluate
   const ds = () => t4.debugState();
   document.getElementById('btn-new-tab').click();
@@ -467,6 +482,7 @@ const SMOKE_PROBE = `(async () => {
 
   window.confirm = () => true; // closing the sample project discards these edits
 
+  info.pickerTrail = (info.pickerTrail || '') + 'close:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Close folder: the tree empties and the project's tabs close
   document.getElementById('ws-close').click();
   await sleep(400);
@@ -474,6 +490,7 @@ const SMOKE_PROBE = `(async () => {
     && !document.getElementById('ws-empty').classList.contains('hidden')
     && ![...document.querySelectorAll('.editor-tab')].some((t) => (t.textContent || '').includes('main.py') && t.title.includes('theta-smoke-project'));
 
+  info.pickerTrail = (info.pickerTrail || '') + 'themes:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Themes: a fresh profile shows the picker; both layouts work
   const picker = document.getElementById('theme-picker');
   for (let i = 0; i < 50 && picker.classList.contains('hidden'); i++) await sleep(100);
@@ -483,6 +500,32 @@ const SMOKE_PROBE = `(async () => {
   const shown = (sel) => getComputedStyle(document.querySelector(sel)).display !== 'none';
   checks.playgroundLayout = document.documentElement.dataset.theme === 'playground'
     && picker.classList.contains('hidden') && shown('.ide-runbar') && !shown('.ide-rail');
+
+  // Spotlight (Playground): heading for Output makes it grow; back to the code shrinks it
+  const ideBody = document.querySelector('.ide-body');
+  const outTile = document.querySelector('.ide-pane--terminal');
+  const before = outTile.getBoundingClientRect().width;
+  outTile.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+  await sleep(800);
+  info.spotWidths = [Math.round(before), Math.round(outTile.getBoundingClientRect().width)];
+  checks.spotlightGrows = ideBody.dataset.spot === 'output' && info.spotWidths[1] > before + 80;
+  document.getElementById('editor-pane').dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+  await sleep(900);
+  checks.spotlightReturns = !ideBody.dataset.spot && Math.abs(outTile.getBoundingClientRect().width - before) < 4;
+
+  // Study mode: Half puts the window on half the screen with code over output
+  const w0 = window.outerWidth;
+  await window.__thetaTest.study('half', 'right');
+  for (let i = 0; i < 30 && Math.abs(window.outerWidth - screen.availWidth / 2) > 24; i++) await sleep(100);
+  await sleep(300);
+  info.study = { w0, half: window.outerWidth, screen: screen.availWidth };
+  const edBox = document.getElementById('editor-pane').getBoundingClientRect();
+  const outBox = outTile.getBoundingClientRect();
+  checks.studyHalf = document.documentElement.dataset.study === 'half' && Math.abs(window.outerWidth - screen.availWidth / 2) <= 24
+    && !shown('.sidebar') && !shown('.class-tile') && outBox.top >= edBox.bottom - 2 && !document.getElementById('study-bar').classList.contains('hidden');
+  await window.__thetaTest.study(null);
+  for (let i = 0; i < 30 && Math.abs(window.outerWidth - w0) > 8; i++) await sleep(100);
+  checks.studyExitRestores = !document.documentElement.dataset.study && Math.abs(window.outerWidth - w0) <= 8;
   document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
   for (let i = 0; i < 20 && document.documentElement.dataset.theme !== 'pro'; i++) await sleep(100);
   await sleep(300);
@@ -559,6 +602,7 @@ ipcMain.on('repl-start', (event) => {
       PYTHONSTARTUP: '',
     },
   });
+  replProcess.stdin.on('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
 
   replProcess.stdout.on('data', (data) => {
     if (!event.sender.isDestroyed()) event.sender.send('repl-stdout', data.toString());
@@ -921,6 +965,7 @@ app.whenReady().then(() => {
     debugpyDir: tools.debugpy,
     onLog: isDev ? (t) => process.stderr.write(`[debug] ${t}`) : null,
   });
+  studyWindow = registerStudyWindow({ ipcMain, screen, getWindow: () => mainWindow });
   Menu.setApplicationMenu(null);
   createWindow();
   if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);

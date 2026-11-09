@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/src/styles/classroom.css" />
   <link rel="stylesheet" href="/src/styles/workspace.css" />
   <link rel="stylesheet" href="/src/styles/debug.css" />
+  <link rel="stylesheet" href="/src/styles/study.css" />
   <link rel="stylesheet" href="/src/styles/theme-picker.css" />
   <link rel="stylesheet" href="/src/styles/fx.css" />
 </head>
@@ -74,6 +75,9 @@
           <button id="btn-save-file" class="topbar-btn" type="button" title="Save (Ctrl+S)">Save</button>
           <button id="btn-examples" class="topbar-btn" type="button" title="Code examples">Examples</button>
           <button id="btn-shortcuts" class="topbar-btn" type="button" title="Keyboard shortcuts">Keys</button>
+          <button id="btn-study" class="topbar-btn topbar-btn--study" type="button" title="Study mode: lecture on one side, code on the other (Ctrl+Shift+L)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M8.5 2.5v10" stroke="currentColor" stroke-width="1.4"/><path d="M4 6.2v2.6L6.2 7.5Z" fill="currentColor"/><path d="M10.5 6h2.2M10.5 8h1.4M10.5 10h2.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span class="topbar-btn__label">Study</span>
+          </button>
           <button id="btn-settings" class="topbar-btn topbar-btn--icon" type="button" title="Settings" aria-label="Settings">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M2 4H9M12 4H14M2 12H4M7 12H14" stroke="currentColor" stroke-width="1.5"/>
@@ -82,6 +86,18 @@
             </svg>
           </button>
         </nav>
+        <div id="study-bar" class="study-bar hidden" role="group" aria-label="Study mode">
+          <button id="study-bar-name" class="study-bar__name" type="button" title="Change the study layout (Ctrl+Shift+L)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M8.5 2.5v10" stroke="currentColor" stroke-width="1.4"/><path d="M4 6.2v2.6L6.2 7.5Z" fill="currentColor"/><path d="M10.5 6h2.2M10.5 8h1.4M10.5 10h2.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="study-bar-label">Study</span></button>
+          <button id="study-drawer" class="study-bar__btn" type="button" title="Files, search and debugger" aria-label="Show files, search and debugger" aria-pressed="false">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.4"/><path d="M3 5.5h1.5M3 7.5h1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          </button>
+          <button id="study-flip" class="study-bar__btn" type="button" title="Move to the other side" aria-label="Move to the other side of the screen">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8M13.5 10.5h-10M6 8l-2.5 2.5L6 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="study-exit" class="study-bar__btn" type="button" title="Leave study mode" aria-label="Leave study mode">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2 2 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
         <div class="theme-switch" role="group" aria-label="Theme">
           <button type="button" data-theme-choice="playground" aria-pressed="true">Playground</button>
           <button type="button" data-theme-choice="pro" aria-pressed="false">Pro</button>
@@ -456,6 +472,13 @@
           </div>
           <div class="setting-row">
             <div class="setting-row__text">
+              <span class="setting-row__name" id="set-spot-label">Spotlight</span>
+              <span class="setting-row__hint" id="set-spot-hint">The tile you head for grows; move back to the code and it shrinks. Set for each theme.</span>
+            </div>
+            <button id="set-spot" class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="set-spot-label" aria-describedby="set-spot-hint"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
               <span class="setting-row__name">Editor colours</span>
               <span class="setting-row__hint">Light helps on classroom projectors.</span>
             </div>
@@ -533,6 +556,47 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ═══ STUDY MODE ═══ -->
+  <div id="study-sheet" class="study-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="study-title">
+    <div class="study-sheet__backdrop"></div>
+    <div class="study-sheet__panel">
+      <div class="study-sheet__head">
+        <div>
+          <h2 id="study-title" class="study-sheet__title">Study mode</h2>
+          <p class="study-sheet__sub">Lecture on one side, code on the other. Pick a layout (or press 1 to 5).</p>
+        </div>
+        <button id="study-sheet-close" class="study-sheet__close" type="button" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2 2 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="study-sheet__side">
+        <span>Your lecture is on the</span>
+        <div class="segmented" role="group" aria-label="Lecture side">
+          <button id="study-lecture-left" type="button" aria-pressed="true">Left</button>
+          <button id="study-lecture-right" type="button" aria-pressed="false">Right</button>
+        </div>
+      </div>
+      <div id="study-cards" class="study-cards"></div>
+      <div class="study-sheet__foot">
+        <label class="study-check"><input type="checkbox" id="study-suggest" checked /> Suggest study mode when I put the window beside something</label>
+        <button id="study-off" class="study-off hidden" type="button">Leave study mode</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="study-suggestion" class="study-suggestion hidden" role="dialog" aria-labelledby="study-suggestion-title">
+    <button id="study-suggestion-close" class="study-suggestion__close" type="button" aria-label="Not now">
+      <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2 2 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+    <p id="study-suggestion-title" class="study-suggestion__title">Watching a lecture?</p>
+    <p class="study-suggestion__text">Study mode gives code and output room to breathe.</p>
+    <div id="study-suggestion-modes" class="study-suggestion__modes"></div>
+    <div class="study-suggestion__foot">
+      <button id="study-suggestion-more" class="study-link" type="button">All layouts</button>
+      <button id="study-suggestion-never" class="study-link study-link--quiet" type="button">Don't suggest again</button>
+    </div>
   </div>
 
   <!-- ═══ FIRST LAUNCH: CHOOSE YOUR ENVIRONMENT ═══ -->
