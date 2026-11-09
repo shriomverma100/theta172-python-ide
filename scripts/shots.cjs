@@ -26,7 +26,14 @@ const files = {
 for (const [f, c] of Object.entries(files)) fs.writeFileSync(path.join(project, f), c);
 
 for (const scale of scales) {
-  const env = { ...process.env, NODE_ENV: 'production', THETA_SMOKE: '1', THETA_SHOTS: out, THETA_SCALE: scale, THETA_SMOKE_WORKSPACE: project };
+  // Git settings written by the tour (name, email) go to a throwaway file, never ~/.gitconfig
+  const gitConfig = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'theta-shots-git-')), 'gitconfig');
+  fs.writeFileSync(gitConfig, '');
+  const env = {
+    ...process.env, NODE_ENV: 'production', THETA_SMOKE: '1', THETA_SHOTS: out, THETA_SCALE: scale, THETA_SMOKE_WORKSPACE: project,
+    GIT_CONFIG_GLOBAL: gitConfig, GIT_CONFIG_NOSYSTEM: '1',
+  };
+  for (const k of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) delete env[k];
   delete env.ELECTRON_RUN_AS_NODE;
   const r = spawnSync(electron, ['.'], { cwd: root, env, encoding: 'utf8', timeout: 120_000 });
   const lines = (r.stdout || '').split(/\r?\n/).filter((l) => l.startsWith('THETA_'));

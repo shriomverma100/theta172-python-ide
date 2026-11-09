@@ -296,8 +296,102 @@ const STUDY_SCENES = [
   { name: 's16-pro-sheet', js: "document.getElementById('study-bar-name').click()", wait: 600 },
 ];
 
+// Phase 7 tour: THETA_SHOTS_SET=git
+const FILL_BOX = `const fillBox = async (value) => {
+    for (let i = 0; i < 40 && !document.querySelector('.quick-pick .cmd-input'); i++) await new Promise(r => setTimeout(r, 100));
+    const box = document.querySelector('.quick-pick .cmd-input');
+    if (!box) return;
+    box.value = value;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await new Promise(r => setTimeout(r, 200));
+  };`;
+const EDITED_MAIN = 'from src.helpers import add\\n\\n\\ndef report(total):\\n    print("total:", total)\\n\\n\\nreport(add(40, 2))\\n';
+const GIT_SCENES = [
+  { name: 'g01-picker', wait: 4500 },
+  { name: 'g02-play-not-repo', js: `(async () => {
+    document.querySelector('[data-pick="playground"]').click();
+    await new Promise(r => setTimeout(r, 1200));
+    document.getElementById('view-git').click();
+    ${waitFor("/Not a Git repository/.test(document.getElementById('git-state').textContent)")}
+  })()`, wait: 300 },
+  { name: 'g03-play-init', js: `(async () => {
+    document.querySelector('#git-state .git-primary').click();
+    ${waitFor("document.querySelector('#git-lists .git-file')")}
+    document.getElementById('git-message').value = 'First version of the dice game';
+  })()`, wait: 300 },
+  { name: 'g04-play-edited', js: `(async () => {
+    ${FILL_BOX}
+    document.getElementById('git-commit').click();
+    await fillBox('Ada Lovelace');
+    await fillBox('ada@example.com');
+    ${waitFor("document.querySelector('#git-lists .git-clean')")}
+    [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith('main.py'))?.click();
+    await new Promise(r => setTimeout(r, 600));
+    window.__thetaTest.setCode('${EDITED_MAIN}');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    ${waitFor("document.querySelector('#git-lists .git-file')")}
+    document.getElementById('git-history-toggle').click();
+    await new Promise(r => setTimeout(r, 800));
+  })()`, wait: 300 },
+  { name: 'g05-play-diff', js: `(async () => {
+    [...document.querySelectorAll('#git-lists .git-file__open')].find((b) => b.textContent.startsWith('main.py'))?.click();
+    ${waitFor("document.querySelector('#diff-body .cm-mergeView')")}
+  })()`, wait: 400 },
+  { name: 'g06-play-branches', js: `(async () => {
+    document.getElementById('diff-close').click();
+    document.getElementById('git-branch').click();
+    ${waitFor("document.querySelector('.quick-pick .qp-item')")}
+  })()`, wait: 300 },
+  { name: 'g07-pro-git', js: `(async () => {
+    document.querySelector('.quick-pick .cmd-input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1800));
+    document.getElementById('rail-git').click();
+    await new Promise(r => setTimeout(r, 800));
+  })()`, wait: 300 },
+  { name: 'g08-pro-diff', js: `(async () => {
+    [...document.querySelectorAll('#git-lists .git-file__open')].find((b) => b.textContent.startsWith('main.py'))?.click();
+    ${waitFor("document.querySelector('#diff-body .cm-mergeView')")}
+  })()`, wait: 400 },
+];
+
+// Editor groups tour: THETA_SHOTS_SET=groups
+const GROUP_SPLIT = `(async () => {
+  [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith('main.py'))?.click();
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('btn-split').click();
+  await new Promise(r => setTimeout(r, 400));
+  [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith('src'))?.click();
+  ${waitFor("[...document.querySelectorAll('#ws-tree .ws-row')].some((r) => r.dataset.path.endsWith('helpers.py'))")}
+  [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith('helpers.py'))?.click();
+  ${waitFor("(document.querySelector('#monaco-split .cm-content')?.textContent || '').includes('def add')")}
+  await new Promise(r => setTimeout(r, 400));
+})()`;
+const GROUP_SCENES = [
+  { name: 'e01-picker', wait: 4500 },
+  { name: 'e02-play-groups', js: `document.querySelector('[data-pick="playground"]').click(); ${GROUP_SPLIT}`, wait: 300 },
+  { name: 'e03-play-left-focused', js: "document.querySelector('#monaco-container .cm-content').focus()", wait: 400 },
+  { name: 'e04-play-drag', js: `(async () => {
+    document.getElementById('group-2-close').click();
+    await new Promise(r => setTimeout(r, 400));
+    document.documentElement.classList.add('dragging-tab');
+    document.getElementById('group-drop-right').classList.add('drop-over');
+  })()`, wait: 300 },
+  { name: 'e05-pro-groups', js: `(async () => {
+    document.documentElement.classList.remove('dragging-tab');
+    document.getElementById('group-drop-right').classList.remove('drop-over');
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1800));
+    document.getElementById('btn-split').click();
+    await new Promise(r => setTimeout(r, 400));
+    [...document.querySelectorAll('#editor-tabs .editor-tab')].find((t) => (t.textContent || '').startsWith('helpers.py'))?.click();
+    await new Promise(r => setTimeout(r, 600));
+  })()`, wait: 300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {
