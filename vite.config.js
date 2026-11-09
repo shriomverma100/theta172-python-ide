@@ -35,6 +35,11 @@ export default defineConfig(({ command }) => ({
     },
   },
 
+  // Workers ship as single classic scripts so they load from file://
+  worker: {
+    format: 'iife',
+  },
+
   optimizeDeps: {
     exclude: ['@xterm/xterm', '@xterm/addon-fit'],
   },
