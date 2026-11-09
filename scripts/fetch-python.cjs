@@ -1,0 +1,140 @@
+/**
+ * Download the Python runtime that ships inside the app:
+ *   - CPython (portable build from astral-sh/python-build-standalone)
+ *   - uv (astral-sh/uv), the fast package and environment manager
+ * Each file is checked against its pinned SHA-256 before it is unpacked.
+ *
+ * Usage: node scripts/fetch-python.cjs [--platform win32|darwin|linux] [--arch x64|arm64]
+ * Output: vendor/<os>-<arch>/python/…  and  vendor/<os>-<arch>/uv/…
+ * (os uses electron-builder's names: win, mac, linux; see package.json extraResources)
+ *
+ * To upgrade: change the versions and hashes below (hashes are listed on the
+ * GitHub release pages / API "digest" field).
+ */
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const crypto = require('crypto');
+const { execFileSync } = require('child_process');
+
+const PYTHON = { version: '3.12.16', build: '20261026' };
+const UV = { version: '0.13.7' };
+
+const TARGETS = {
+  'win32-x64': {
+    os: 'win',
+    python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`, sha256: '1f2ab53880fc67ea323398c6388e05af28addc99a8e389209f08a51fdff4b149' },
+    uv: { file: 'uv-x86_64-pc-windows-msvc.zip', sha256: '0cdc5b38fe5a8168ed6a25814f5ba43c21d313dd3187314fccb37b7cec46e021' },
+  },
+  'darwin-arm64': {
+    os: 'mac',
+    python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-aarch64-apple-darwin-install_only_stripped.tar.gz`, sha256: '353d5f1b4fd2715e7053f12f068435d5bbad16b91e057006b5d01e0925709a7e' },
+    uv: { file: 'uv-aarch64-apple-darwin.tar.gz', sha256: '81b811b57e4624df7ed3aac148e0359100d9962f3d9dce00aec533dc2e086731' },
+  },
+  'darwin-x64': {
+    os: 'mac',
+    python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-apple-darwin-install_only_stripped.tar.gz`, sha256: '37c38fda76fec1fbf310adcbafb7f0d96af13b5511bf8ea954c3aa8eec185734' },
+    uv: { file: 'uv-x86_64-apple-darwin.tar.gz', sha256: '20c47e4c1f630b8abaff8c291fa9b9aa300fef92c4fbff95adf198b55287cda7' },
+  },
+  'linux-x64': {
+    os: 'linux',
+    python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz`, sha256: 'ce4f6d0a6cfdb3bed6e44c2f9affd85943c76a42e25ad3a259002f31d6fb8a20' },
+    uv: { file: 'uv-x86_64-unknown-linux-gnu.tar.gz', sha256: 'c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83' },
+  },
+};
+
+const arg = (name, fallback) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i > 0 ? process.argv[i + 1] : fallback;
+};
+const platform = arg('platform', process.platform);
+const arch = arg('arch', process.arch);
+const target = TARGETS[`${platform}-${arch}`];
+if (!target) {
+  console.error(`No bundled Python for ${platform}-${arch}.`);
+  process.exit(1);
+}
+
+const root = path.join(__dirname, '..');
+const outDir = path.join(root, 'vendor', `${target.os}-${arch}`);
+const stamp = path.join(outDir, 'versions.json');
+const wanted = { python: `${PYTHON.version}+${PYTHON.build}`, uv: UV.version };
+
+function download(url, dest, redirects = 5) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'theta172-build' } }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
+        res.resume();
+        return resolve(download(res.headers.location, dest, redirects - 1));
+      }
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode} for ${url}`)); }
+      const file = fs.createWriteStream(dest);
+      res.pipe(file);
+      file.on('finish', () => file.close(resolve));
+      file.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+function sha256(file) {
+  return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+/** tar (bsdtar on Windows 10+) unpacks both .tar.gz and .zip */
+function extract(archive, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  // On Windows use the system tar (bsdtar); Git's GNU tar reads "D:" as a remote host
+  const winTar = process.env.SystemRoot && path.join(process.env.SystemRoot, 'System32', 'tar.exe');
+  const tar = process.platform === 'win32' && winTar && fs.existsSync(winTar) ? winTar : 'tar';
+  execFileSync(tar, ['-xf', archive, '-C', dest], { stdio: 'inherit' });
+}
+
+async function fetchOne(kind, url, spec, dest) {
+  const tmp = path.join(outDir, `.${spec.file}`);
+  console.log(`Downloading ${kind}: ${spec.file}`);
+  await download(url, tmp);
+  const got = sha256(tmp);
+  if (got !== spec.sha256) {
+    fs.rmSync(tmp, { force: true });
+    throw new Error(`Checksum mismatch for ${spec.file}\n  expected ${spec.sha256}\n  got      ${got}`);
+  }
+  fs.rmSync(dest, { recursive: true, force: true });
+  extract(tmp, dest);
+  fs.rmSync(tmp, { force: true });
+}
+
+(async () => {
+  try {
+    const have = JSON.parse(fs.readFileSync(stamp, 'utf8'));
+    if (have.python === wanted.python && have.uv === wanted.uv) {
+      console.log(`Bundled Python ${have.python} and uv ${have.uv} already present in ${path.relative(root, outDir)}`);
+      return;
+    }
+  } catch (_) { /* not fetched yet */ }
+
+  fs.mkdirSync(outDir, { recursive: true });
+  const pbs = `https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON.build}/${encodeURIComponent(target.python.file)}`;
+  const uv = `https://github.com/astral-sh/uv/releases/download/${UV.version}/${target.uv.file}`;
+
+  // The Python archive unpacks to a "python" folder
+  await fetchOne('Python', pbs, target.python, path.join(outDir, '.python-tmp'));
+  fs.rmSync(path.join(outDir, 'python'), { recursive: true, force: true });
+  fs.renameSync(path.join(outDir, '.python-tmp', 'python'), path.join(outDir, 'python'));
+  fs.rmSync(path.join(outDir, '.python-tmp'), { recursive: true, force: true });
+
+  // uv unpacks either flat (Windows zip) or into a uv-<target> folder
+  await fetchOne('uv', uv, target.uv, path.join(outDir, 'uv'));
+  const nested = fs.readdirSync(path.join(outDir, 'uv')).find((n) => n.startsWith('uv-'));
+  if (nested) {
+    for (const f of fs.readdirSync(path.join(outDir, 'uv', nested))) {
+      fs.renameSync(path.join(outDir, 'uv', nested, f), path.join(outDir, 'uv', f));
+    }
+    fs.rmSync(path.join(outDir, 'uv', nested), { recursive: true, force: true });
+  }
+
+  fs.writeFileSync(stamp, JSON.stringify(wanted, null, 2));
+  console.log(`Ready: ${path.relative(root, outDir)} (Python ${wanted.python}, uv ${wanted.uv})`);
+})().catch((err) => {
+  console.error(err.message);
+  process.exit(1);
+});

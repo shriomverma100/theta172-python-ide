@@ -31,6 +31,10 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # Portable CPython + uv that ship inside the installer (checksums pinned)
+      - name: Fetch bundled Python
+        run: node scripts/fetch-python.cjs
+
       - name: Build Vite (production)
         run: npm run build
 

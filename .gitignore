@@ -32,3 +32,6 @@ build-assets/icon.iconset
 
 # Node compile cache and local scratch
 tmp/
+
+# Bundled Python + uv (downloaded by scripts/fetch-python.cjs)
+vendor/

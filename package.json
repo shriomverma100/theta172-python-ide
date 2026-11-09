@@ -12,15 +12,16 @@
     "preview": "vite preview",
     "electron:start": "cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently -k -s first -n VITE,ELECTRON -c cyan,magenta \"vite\" \"npx wait-on tcp:5173 -t 15000 && npm run electron:start\"",
-    "electron:build": "vite build && electron-builder --win --x64",
-    "electron:build:dir": "vite build && electron-builder --win --x64 --dir",
+    "electron:build": "node scripts/fetch-python.cjs && vite build && electron-builder --win --x64",
+    "electron:build:dir": "node scripts/fetch-python.cjs && vite build && electron-builder --win --x64 --dir",
     "electron:preview": "vite build && cross-env NODE_ENV=production electron .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vite build && node scripts/smoke.cjs",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "shots": "vite build && node scripts/shots.cjs"
+    "shots": "vite build && node scripts/shots.cjs",
+    "fetch:python": "node scripts/fetch-python.cjs"
   },
   "build": {
     "compression": "normal",
@@ -52,7 +53,8 @@
       "!vite.config.js",
       "!node_modules/node-pty/{deps,src,third_party,scripts,typings}/**/*",
       "!node_modules/node-pty/prebuilds/darwin-*/**/*",
-      "!node_modules/node-pty/**/*.pdb"
+      "!node_modules/node-pty/**/*.pdb",
+      "!vendor/**/*"
     ],
     "extraMetadata": {
       "main": "electron/main.cjs"
@@ -140,7 +142,25 @@
         "owner": "shriomverma100",
         "repo": "theta172-python-ide"
       }
-    ]
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/${os}-${arch}/python",
+        "to": "python",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/test/**",
+          "!**/tests/**",
+          "!**/idle_test/**"
+        ]
+      },
+      {
+        "from": "vendor/${os}-${arch}/uv",
+        "to": "uv"
+      }
+    ],
+    "npmRebuild": false
   },
   "devDependencies": {
     "@codemirror/lang-python": "^6.2.1",

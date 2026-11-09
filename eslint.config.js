@@ -3,7 +3,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['dist/**', 'release/**', 'node_modules/**', 'tmp/**', 'build-assets/**'],
+    ignores: ['dist/**', 'release/**', 'node_modules/**', 'tmp/**', 'build-assets/**', 'vendor/**'],
   },
   // public/: plain browser scripts copied as-is (theme-init.js)
   {
