@@ -46,6 +46,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pyUninstall:   (name)   => ipcRenderer.invoke('py-uninstall', name),
   pyPackages:    ()       => ipcRenderer.invoke('py-packages'),
   pyCheck:       ()       => ipcRenderer.invoke('py-check'),
+  lspStart:      ()       => ipcRenderer.invoke('lsp-start'),
+  lspStop:       ()       => ipcRenderer.invoke('lsp-stop'),
+  lspSend:       (gen, json) => ipcRenderer.send('lsp-send', gen, json),
+  lspSettings:   (s)      => ipcRenderer.invoke('lsp-settings', s),
+  lspReadFile:   (uri)    => ipcRenderer.invoke('lsp-read-file', uri),
+  lspFormat:     (code, name) => ipcRenderer.invoke('lsp-format', code, name),
   sendPythonInput: (text) => ipcRenderer.send('python-input', text),
 
   // ── File System ──
@@ -88,6 +94,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPyLog:         (cb) => safeOn('py-log',                (_, text) => cb(text)),
   onPyStatus:      (cb) => safeOn('py-status',             (_, text) => cb(text)),
   onPyChanged:     (cb) => safeOn('py-changed',            (_, st) => cb(st)),
+  onLspMessage:    (cb) => safeOn('lsp-message',           (_, gen, json) => cb(gen, json)),
+  onLspExit:       (cb) => safeOn('lsp-exit',              (_, gen, code) => cb(gen, code)),
   onPipDone:       (cb) => safeOn('pip-done',              (_, code, pkg) => cb(code, pkg)),
 
   // ── Interactive REPL ──

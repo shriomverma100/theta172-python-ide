@@ -2,6 +2,7 @@
  * Download the Python runtime that ships inside the app:
  *   - CPython (portable build from astral-sh/python-build-standalone)
  *   - uv (astral-sh/uv), the fast package and environment manager
+ *   - ruff (astral-sh/ruff), the formatter behind "Format Document"
  * Each file is checked against its pinned SHA-256 before it is unpacked.
  *
  * Usage: node scripts/fetch-python.cjs [--platform win32|darwin|linux] [--arch x64|arm64]
@@ -19,27 +20,32 @@ const { execFileSync } = require('child_process');
 
 const PYTHON = { version: '3.12.16', build: '20261026' };
 const UV = { version: '0.13.7' };
+const RUFF = { version: '0.17.2' };
 
 const TARGETS = {
   'win32-x64': {
     os: 'win',
     python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`, sha256: '1f2ab53880fc67ea323398c6388e05af28addc99a8e389209f08a51fdff4b149' },
     uv: { file: 'uv-x86_64-pc-windows-msvc.zip', sha256: '0cdc5b38fe5a8168ed6a25814f5ba43c21d313dd3187314fccb37b7cec46e021' },
+    ruff: { file: 'ruff-x86_64-pc-windows-msvc.zip', sha256: '6f4de58abd7c8de2e8702a89fc0f221e6ca858ad23e25c658c707d83a48c79a0' },
   },
   'darwin-arm64': {
     os: 'mac',
     python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-aarch64-apple-darwin-install_only_stripped.tar.gz`, sha256: '353d5f1b4fd2715e7053f12f068435d5bbad16b91e057006b5d01e0925709a7e' },
     uv: { file: 'uv-aarch64-apple-darwin.tar.gz', sha256: '81b811b57e4624df7ed3aac148e0359100d9962f3d9dce00aec533dc2e086731' },
+    ruff: { file: 'ruff-aarch64-apple-darwin.tar.gz', sha256: '94fbca85f19e8b6bb068adb7cbc9a74e3e6c01004cc67c6b00246a094ad4ccd9' },
   },
   'darwin-x64': {
     os: 'mac',
     python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-apple-darwin-install_only_stripped.tar.gz`, sha256: '37c38fda76fec1fbf310adcbafb7f0d96af13b5511bf8ea954c3aa8eec185734' },
     uv: { file: 'uv-x86_64-apple-darwin.tar.gz', sha256: '20c47e4c1f630b8abaff8c291fa9b9aa300fef92c4fbff95adf198b55287cda7' },
+    ruff: { file: 'ruff-x86_64-apple-darwin.tar.gz', sha256: 'db57a84e385435a2c4a7c8946e588f79b9de0851d8618a1b5d4431edfff0bf01' },
   },
   'linux-x64': {
     os: 'linux',
     python: { file: `cpython-${PYTHON.version}+${PYTHON.build}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz`, sha256: 'ce4f6d0a6cfdb3bed6e44c2f9affd85943c76a42e25ad3a259002f31d6fb8a20' },
     uv: { file: 'uv-x86_64-unknown-linux-gnu.tar.gz', sha256: 'c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83' },
+    ruff: { file: 'ruff-x86_64-unknown-linux-gnu.tar.gz', sha256: '7b2e6a6e132ecf7b5fe726163b186d5d209befe93bb25f83767b2d97fbdf14e5' },
   },
 };
 
@@ -58,7 +64,7 @@ if (!target) {
 const root = path.join(__dirname, '..');
 const outDir = path.join(root, 'vendor', `${target.os}-${arch}`);
 const stamp = path.join(outDir, 'versions.json');
-const wanted = { python: `${PYTHON.version}+${PYTHON.build}`, uv: UV.version };
+const wanted = { python: `${PYTHON.version}+${PYTHON.build}`, uv: UV.version, ruff: RUFF.version };
 
 function download(url, dest, redirects = 5) {
   return new Promise((resolve, reject) => {
@@ -104,10 +110,11 @@ async function fetchOne(kind, url, spec, dest) {
 }
 
 (async () => {
+  let have = {};
   try {
-    const have = JSON.parse(fs.readFileSync(stamp, 'utf8'));
-    if (have.python === wanted.python && have.uv === wanted.uv) {
-      console.log(`Bundled Python ${have.python} and uv ${have.uv} already present in ${path.relative(root, outDir)}`);
+    have = JSON.parse(fs.readFileSync(stamp, 'utf8'));
+    if (have.python === wanted.python && have.uv === wanted.uv && have.ruff === wanted.ruff) {
+      console.log(`Bundled Python ${have.python}, uv ${have.uv} and ruff ${have.ruff} already present in ${path.relative(root, outDir)}`);
       return;
     }
   } catch (_) { /* not fetched yet */ }
@@ -117,23 +124,32 @@ async function fetchOne(kind, url, spec, dest) {
   const uv = `https://github.com/astral-sh/uv/releases/download/${UV.version}/${target.uv.file}`;
 
   // The Python archive unpacks to a "python" folder
-  await fetchOne('Python', pbs, target.python, path.join(outDir, '.python-tmp'));
-  fs.rmSync(path.join(outDir, 'python'), { recursive: true, force: true });
-  fs.renameSync(path.join(outDir, '.python-tmp', 'python'), path.join(outDir, 'python'));
-  fs.rmSync(path.join(outDir, '.python-tmp'), { recursive: true, force: true });
+  const fetchPython = async () => {
+    await fetchOne('Python', pbs, target.python, path.join(outDir, '.python-tmp'));
+    fs.rmSync(path.join(outDir, 'python'), { recursive: true, force: true });
+    fs.renameSync(path.join(outDir, '.python-tmp', 'python'), path.join(outDir, 'python'));
+    fs.rmSync(path.join(outDir, '.python-tmp'), { recursive: true, force: true });
+  };
 
-  // uv unpacks either flat (Windows zip) or into a uv-<target> folder
-  await fetchOne('uv', uv, target.uv, path.join(outDir, 'uv'));
-  const nested = fs.readdirSync(path.join(outDir, 'uv')).find((n) => n.startsWith('uv-'));
-  if (nested) {
-    for (const f of fs.readdirSync(path.join(outDir, 'uv', nested))) {
-      fs.renameSync(path.join(outDir, 'uv', nested, f), path.join(outDir, 'uv', f));
-    }
-    fs.rmSync(path.join(outDir, 'uv', nested), { recursive: true, force: true });
+  // uv and ruff unpack either flat (Windows zip) or into a <tool>-<target> folder
+  const flatten = (tool) => {
+    const dir = path.join(outDir, tool);
+    const nested = fs.readdirSync(dir).find((n) => n.startsWith(`${tool}-`));
+    if (!nested) return;
+    for (const f of fs.readdirSync(path.join(dir, nested))) fs.renameSync(path.join(dir, nested, f), path.join(dir, f));
+    fs.rmSync(path.join(dir, nested), { recursive: true, force: true });
+  };
+  if (have.python !== wanted.python || have.uv !== wanted.uv || !fs.existsSync(path.join(outDir, 'python'))) {
+    await fetchPython();
+    await fetchOne('uv', uv, target.uv, path.join(outDir, 'uv'));
+    flatten('uv');
   }
+  const ruff = `https://github.com/astral-sh/ruff/releases/download/${RUFF.version}/${target.ruff.file}`;
+  await fetchOne('ruff', ruff, target.ruff, path.join(outDir, 'ruff'));
+  flatten('ruff');
 
   fs.writeFileSync(stamp, JSON.stringify(wanted, null, 2));
-  console.log(`Ready: ${path.relative(root, outDir)} (Python ${wanted.python}, uv ${wanted.uv})`);
+  console.log(`Ready: ${path.relative(root, outDir)} (Python ${wanted.python}, uv ${wanted.uv}, ruff ${wanted.ruff})`);
 })().catch((err) => {
   console.error(err.message);
   process.exit(1);

@@ -17,7 +17,8 @@ const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
 const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
-const { registerPythonIpc } = require('./python-ipc.cjs');
+const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
+const { registerLspIpc } = require('./lsp-ipc.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
@@ -25,6 +26,7 @@ const pythonRunner = new PythonRunner({ spawn, fs, tmpDir: os.tmpdir() });
 const fileAccess = new FileAccess();
 let workspaceIpc = null; // set in app.whenReady (needs userData)
 let pythonIpc = null;    // set in app.whenReady (needs userData)
+let lspIpc = null;       // set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -353,6 +355,73 @@ const SMOKE_PROBE = `(async () => {
   info.shellTail = (window.__thetaTest?.shellText() || '').trim().slice(-60);
   checks.shellStarts = /PS |\\$ |> /.test(window.__thetaTest?.shellText() || '');
   document.getElementById('tab-terminal').click();
+
+  // Language intelligence (Phase 4), on main.py of the sample project
+  const t4 = window.__thetaTest;
+  // The project's file (its tab title is the path), not the untitled starter tab of the same name
+  const clickTab = async (name) => {
+    const all = [...document.querySelectorAll('.editor-tab')].filter((t) => (t.querySelector('.editor-tab__name')?.textContent || '') === name);
+    (all.find((t) => (t.title || '').includes('theta-smoke-project')) || all[0])?.click();
+    await sleep(200);
+  };
+  for (let i = 0; i < 150 && !t4.lspReady(); i++) await sleep(100);
+  checks.lspStarts = t4.lspReady();
+  await clickTab('main.py');
+  t4.setCode('from src.helpers import add\\n\\nprint("IMPORT_OK", add(40, 2))\\nprint(undefined_name)\\nimport os\\nos.pa\\n');
+  for (let i = 0; i < 100 && !t4.problems().files.some((f) => f.items.some((d) => d.message.includes('undefined_name'))); i++) await sleep(100);
+  await sleep(300); // the Problems view updates a moment after the server reports
+  const probs = t4.problems();
+  info.problems = probs.files.map((f) => f.name + ': ' + f.items.map((d) => d.message.split('\\n')[0]).join(' | '));
+  checks.lspDiagnostics = info.problems.some((t) => t.includes('"undefined_name" is not defined'));
+  checks.problemsStatusBar = probs.errors > 0 && document.querySelector('#status-problems [data-errors]')?.textContent === String(probs.errors);
+  document.getElementById('tab-problems').click();
+  await sleep(200);
+  checks.problemsPane = !!document.querySelector('#problems-list .problem--error');
+  document.getElementById('tab-terminal').click();
+
+  // Completions come from the language server: os.pa -> path
+  t4.cursorTo('os.pa\\n', 5);
+  t4.complete();
+  for (let i = 0; i < 80 && !document.querySelector('.cm-tooltip-autocomplete li'); i++) await sleep(100);
+  info.completions = [...document.querySelectorAll('.cm-tooltip-autocomplete li')].slice(0, 5).map((li) => li.textContent);
+  checks.lspCompletion = info.completions.some((t) => t.includes('path'));
+  document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(100);
+
+  // F12 on add() opens src/helpers.py; F12 on print() opens builtins.pyi read-only
+  t4.cursorTo('add(40', 1);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F12', bubbles: true }));
+  for (let i = 0; i < 60 && t4.activeTab() !== 'helpers.py'; i++) await sleep(100);
+  checks.goToDefinitionFile = t4.activeTab() === 'helpers.py';
+  await clickTab('main.py');
+  t4.cursorTo('print("IMPORT', 2);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F12', bubbles: true }));
+  for (let i = 0; i < 60 && !/builtins/.test(t4.activeTab() || ''); i++) await sleep(100);
+  info.libraryTab = t4.activeTab();
+  checks.goToDefinitionLibrary = t4.tabs().some((t) => t.readOnly && /^builtins\\.pyi$/.test(t.name));
+
+  // F2 renames add -> plus in main.py and src/helpers.py
+  await clickTab('main.py');
+  t4.cursorTo('add(40', 1);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+  for (let i = 0; i < 40 && !document.querySelector('.quick-pick .cmd-input'); i++) await sleep(100);
+  const renameBox = document.querySelector('.quick-pick .cmd-input');
+  if (renameBox) {
+    renameBox.value = 'plus';
+    renameBox.dispatchEvent(new Event('input', { bubbles: true }));
+    renameBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  }
+  for (let i = 0; i < 60 && !t4.code().includes('plus(40'); i++) await sleep(100);
+  await sleep(200);
+  info.tabsAfterRename = t4.tabs().map((t) => t.name + (t.unsaved ? '*' : '') + (t.readOnly ? ' (ro)' : ''));
+  checks.renameAcrossFiles = t4.code().includes('import plus') && t4.code().includes('plus(40') && t4.tabs().some((t) => t.name === 'helpers.py' && t.unsaved);
+
+  // Shift+Alt+F formats with Ruff
+  t4.setCode('x=1\\nprint( x )\\n');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true, altKey: true, bubbles: true }));
+  for (let i = 0; i < 50 && t4.code() !== 'x = 1\\nprint(x)\\n'; i++) await sleep(100);
+  checks.formatWithRuff = t4.code() === 'x = 1\\nprint(x)\\n';
+  window.confirm = () => true; // closing the sample project discards these edits
 
   // Close folder: the tree empties and the project's tabs close
   document.getElementById('ws-close').click();
@@ -783,7 +852,18 @@ app.whenReady().then(() => {
     ipcMain, app, execFile, spawn,
     getWindow: () => mainWindow,
     getRoot: () => workspaceIpc?.workspace.root || null,
-    onActiveChange: (info) => pythonRunner.setPython(info?.path || null, info ? pythonIpc?.shellEnv(process.env) : null),
+    onActiveChange: (info) => {
+      pythonRunner.setPython(info?.path || null, info ? pythonIpc?.shellEnv(process.env) : null);
+      lspIpc?.configurationChanged(); // the language server resolves imports from the new env
+    },
+  });
+  lspIpc = registerLspIpc({
+    ipcMain, spawn,
+    getWindow: () => mainWindow,
+    getRoot: () => workspaceIpc?.workspace.root || null,
+    getPython: () => pythonIpc?.active?.path || null,
+    ruffPath: bundledPaths(app).ruff,
+    onLog: isDev ? (t) => process.stderr.write(`[lsp] ${t}`) : null,
   });
   Menu.setApplicationMenu(null);
   createWindow();
@@ -800,6 +880,7 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   workspaceIpc?.dispose();
+  lspIpc?.dispose();
   pythonRunner.dispose();
   if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
   classroomServer.stop();
