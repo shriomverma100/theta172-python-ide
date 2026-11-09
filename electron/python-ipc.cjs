@@ -24,7 +24,8 @@ function bundledPaths(app, platform = process.platform, arch = process.arch) {
   const uv = path.join(base, 'uv', win ? 'uv.exe' : 'uv');
   const ruff = path.join(base, 'ruff', win ? 'ruff.exe' : 'ruff');
   const have = (p) => (fs.existsSync(p) ? p : null);
-  return { python: have(python), uv: have(uv), ruff: have(ruff) };
+  const debugpy = path.join(base, 'debugpy');
+  return { python: have(python), uv: have(uv), ruff: have(ruff), debugpy: fs.existsSync(path.join(debugpy, 'debugpy')) ? debugpy : null };
 }
 
 function registerPythonIpc({ ipcMain, app, execFile, spawn, getWindow, getRoot, onActiveChange }) {

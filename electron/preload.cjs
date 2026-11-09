@@ -52,6 +52,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   lspSettings:   (s)      => ipcRenderer.invoke('lsp-settings', s),
   lspReadFile:   (uri)    => ipcRenderer.invoke('lsp-read-file', uri),
   lspFormat:     (code, name) => ipcRenderer.invoke('lsp-format', code, name),
+  debugStart:    (opts)   => ipcRenderer.invoke('debug-start', opts),
+  debugRequest:  (cmd, args) => ipcRenderer.invoke('debug-request', cmd, args),
+  debugSetBreakpoints: (file, lines) => ipcRenderer.invoke('debug-set-breakpoints', file, lines),
+  debugInput:    (text)   => ipcRenderer.send('debug-input', text),
+  debugStop:     ()       => ipcRenderer.invoke('debug-stop'),
+  debugReadFile: (file)   => ipcRenderer.invoke('debug-read-file', file),
   sendPythonInput: (text) => ipcRenderer.send('python-input', text),
 
   // ── File System ──
@@ -96,6 +102,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPyChanged:     (cb) => safeOn('py-changed',            (_, st) => cb(st)),
   onLspMessage:    (cb) => safeOn('lsp-message',           (_, gen, json) => cb(gen, json)),
   onLspExit:       (cb) => safeOn('lsp-exit',              (_, gen, code) => cb(gen, code)),
+  onDebugEvent:    (cb) => safeOn('debug-event',           (_, ev, body) => cb(ev, body)),
+  onDebugOutput:   (cb) => safeOn('debug-output',          (_, stream, text) => cb(stream, text)),
+  onDebugEnded:    (cb) => safeOn('debug-ended',           (_, info) => cb(info)),
   onPipDone:       (cb) => safeOn('pip-done',              (_, code, pkg) => cb(code, pkg)),
 
   // ── Interactive REPL ──

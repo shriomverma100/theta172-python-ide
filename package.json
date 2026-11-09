@@ -163,6 +163,10 @@
       {
         "from": "vendor/${os}-${arch}/ruff",
         "to": "ruff"
+      },
+      {
+        "from": "vendor/${os}-${arch}/debugpy",
+        "to": "debugpy"
       }
     ],
     "npmRebuild": false

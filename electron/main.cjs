@@ -19,6 +19,7 @@ const { initAutoUpdates } = require('./updater.cjs');
 const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
 const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
 const { registerLspIpc } = require('./lsp-ipc.cjs');
+const { registerDebugIpc } = require('./debug-ipc.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
@@ -27,6 +28,7 @@ const fileAccess = new FileAccess();
 let workspaceIpc = null; // set in app.whenReady (needs userData)
 let pythonIpc = null;    // set in app.whenReady (needs userData)
 let lspIpc = null;       // set in app.whenReady
+let debugIpc = null;     // set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -421,6 +423,48 @@ const SMOKE_PROBE = `(async () => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true, altKey: true, bubbles: true }));
   for (let i = 0; i < 50 && t4.code() !== 'x = 1\\nprint(x)\\n'; i++) await sleep(100);
   checks.formatWithRuff = t4.code() === 'x = 1\\nprint(x)\\n';
+  // Debugger (Phase 5): an unsaved tab with input(), a breakpoint, stepping, evaluate
+  const ds = () => t4.debugState();
+  document.getElementById('btn-new-tab').click();
+  await sleep(200);
+  t4.setCode('name = input("Name? ")\\ntotal = 0\\nfor i in range(3):\\n    total += i\\nprint("hi", name, total)\\n');
+  t4.toggleBreakpointLine(4);
+  await sleep(100);
+  checks.breakpointGutter = !!document.querySelector('.cm-bp-dot');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  for (let i = 0; i < 100 && !/Name\\?/.test(t4.terminalText()); i++) await sleep(100);
+  t4.submitInput('Ada');
+  for (let i = 0; i < 80 && ds().pausedLine !== 4; i++) await sleep(100);
+  await sleep(400);
+  info.debugPaused = ds();
+  info.debugVars = [...document.querySelectorAll('#dbg-variables .dbg-var')].map((r) => r.textContent.replace(/\\s+/g, ' ').trim()).slice(0, 6);
+  checks.debugStopsAtBreakpoint = info.debugPaused.pausedLine === 4 && /line 4/.test(info.debugPaused.status);
+  const flat = info.debugVars.map((t) => t.replace(/ /g, ''));
+  checks.debugVariables = flat.some((t) => t.startsWith("name='Ada'")) && flat.some((t) => t.startsWith('total=0'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', bubbles: true }));
+  for (let i = 0; i < 40 && ds().pausedLine !== 3; i++) await sleep(100);
+  checks.debugStepOver = ds().pausedLine === 3;
+  const evalBox = document.getElementById('dbg-eval-input');
+  evalBox.value = 'total + 100';
+  evalBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  for (let i = 0; i < 30 && !document.querySelector('#dbg-eval-log .dbg-eval-a'); i++) await sleep(100);
+  info.debugEval = document.querySelector('#dbg-eval-log .dbg-eval-a')?.textContent;
+  checks.debugEvaluate = info.debugEval === '100';
+  t4.toggleBreakpointLine(4); // remove it, then run to the end
+  await sleep(200);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  for (let i = 0; i < 80 && ds().active; i++) await sleep(100);
+  checks.debugRunsToEnd = !ds().active && /hi Ada 3/.test(t4.terminalText());
+  // An uncaught exception pauses with its message
+  t4.setCode('def ratio(a, b):\\n    return a / b\\n\\nprint(ratio(4, 0))\\n');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  for (let i = 0; i < 100 && !/ZeroDivisionError/.test(document.getElementById('dbg-exception')?.textContent || ''); i++) await sleep(100);
+  info.debugException = document.getElementById('dbg-exception')?.textContent;
+  checks.debugException = /ZeroDivisionError/.test(info.debugException || '') && ds().pausedLine === 2;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', shiftKey: true, bubbles: true }));
+  for (let i = 0; i < 60 && ds().active; i++) await sleep(100);
+  checks.debugStops = !ds().active;
+
   window.confirm = () => true; // closing the sample project discards these edits
 
   // Close folder: the tree empties and the project's tabs close
@@ -865,6 +909,18 @@ app.whenReady().then(() => {
     ruffPath: bundledPaths(app).ruff,
     onLog: isDev ? (t) => process.stderr.write(`[lsp] ${t}`) : null,
   });
+  const tools = bundledPaths(app);
+  debugIpc = registerDebugIpc({
+    ipcMain, spawn,
+    getWindow: () => mainWindow,
+    getWorkspace: () => workspaceIpc?.workspace || null,
+    getPython: () => pythonIpc?.active?.path || null,
+    getEnv: () => pythonIpc.shellEnv(process.env),
+    // The adapter runs on the built-in Python; the program runs on the chosen one
+    getAdapterPython: () => tools.python || pythonIpc?.active?.path || null,
+    debugpyDir: tools.debugpy,
+    onLog: isDev ? (t) => process.stderr.write(`[debug] ${t}`) : null,
+  });
   Menu.setApplicationMenu(null);
   createWindow();
   if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);
@@ -881,6 +937,7 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   workspaceIpc?.dispose();
   lspIpc?.dispose();
+  debugIpc?.dispose();
   pythonRunner.dispose();
   if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
   classroomServer.stop();

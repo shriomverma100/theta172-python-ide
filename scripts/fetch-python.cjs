@@ -3,6 +3,8 @@
  *   - CPython (portable build from astral-sh/python-build-standalone)
  *   - uv (astral-sh/uv), the fast package and environment manager
  *   - ruff (astral-sh/ruff), the formatter behind "Format Document"
+ *   - debugpy (microsoft/debugpy), the debugger; one pure-Python wheel that
+ *     works with any interpreter the user picks
  * Each file is checked against its pinned SHA-256 before it is unpacked.
  *
  * Usage: node scripts/fetch-python.cjs [--platform win32|darwin|linux] [--arch x64|arm64]
@@ -21,6 +23,12 @@ const { execFileSync } = require('child_process');
 const PYTHON = { version: '3.12.16', build: '20261026' };
 const UV = { version: '0.13.7' };
 const RUFF = { version: '0.17.2' };
+const DEBUGPY = {
+  version: '1.8.22',
+  file: 'debugpy-1.8.22-py2.py3-none-any.whl',
+  url: 'https://files.pythonhosted.org/packages/56/3d/c7dc9f35bc9e22cdb53679f844bee40fd5cff871862f60595869a433400d/debugpy-1.8.22-py2.py3-none-any.whl',
+  sha256: 'a9e9d3550e15ca479c59333e90845029190531f0cacfedab3b815a57bd913947',
+};
 
 const TARGETS = {
   'win32-x64': {
@@ -64,7 +72,7 @@ if (!target) {
 const root = path.join(__dirname, '..');
 const outDir = path.join(root, 'vendor', `${target.os}-${arch}`);
 const stamp = path.join(outDir, 'versions.json');
-const wanted = { python: `${PYTHON.version}+${PYTHON.build}`, uv: UV.version, ruff: RUFF.version };
+const wanted = { python: `${PYTHON.version}+${PYTHON.build}`, uv: UV.version, ruff: RUFF.version, debugpy: DEBUGPY.version };
 
 function download(url, dest, redirects = 5) {
   return new Promise((resolve, reject) => {
@@ -113,7 +121,7 @@ async function fetchOne(kind, url, spec, dest) {
   let have = {};
   try {
     have = JSON.parse(fs.readFileSync(stamp, 'utf8'));
-    if (have.python === wanted.python && have.uv === wanted.uv && have.ruff === wanted.ruff) {
+    if (have.python === wanted.python && have.uv === wanted.uv && have.ruff === wanted.ruff && have.debugpy === wanted.debugpy) {
       console.log(`Bundled Python ${have.python}, uv ${have.uv} and ruff ${have.ruff} already present in ${path.relative(root, outDir)}`);
       return;
     }
@@ -144,12 +152,25 @@ async function fetchOne(kind, url, spec, dest) {
     await fetchOne('uv', uv, target.uv, path.join(outDir, 'uv'));
     flatten('uv');
   }
-  const ruff = `https://github.com/astral-sh/ruff/releases/download/${RUFF.version}/${target.ruff.file}`;
-  await fetchOne('ruff', ruff, target.ruff, path.join(outDir, 'ruff'));
-  flatten('ruff');
+  if (have.ruff !== wanted.ruff || !fs.existsSync(path.join(outDir, 'ruff'))) {
+    const ruff = `https://github.com/astral-sh/ruff/releases/download/${RUFF.version}/${target.ruff.file}`;
+    await fetchOne('ruff', ruff, target.ruff, path.join(outDir, 'ruff'));
+    flatten('ruff');
+  }
+  // A wheel is a zip: unpacked, the folder holds the debugpy package itself
+  await fetchOne('debugpy', DEBUGPY.url, DEBUGPY, path.join(outDir, 'debugpy'));
+  for (const extra of fs.readdirSync(path.join(outDir, 'debugpy'))) {
+    if (extra.endsWith('.dist-info')) fs.rmSync(path.join(outDir, 'debugpy', extra), { recursive: true, force: true });
+  }
+  // Precompile debugpy so the first debug session doesn't spend seconds compiling
+  // (only possible when building for this machine's platform)
+  if (platform === process.platform && arch === process.arch) {
+    const py = platform === 'win32' ? path.join(outDir, 'python', 'python.exe') : path.join(outDir, 'python', 'bin', 'python3');
+    execFileSync(py, ['-m', 'compileall', '-q', '-j', '0', path.join(outDir, 'debugpy')], { stdio: 'inherit' });
+  }
 
   fs.writeFileSync(stamp, JSON.stringify(wanted, null, 2));
-  console.log(`Ready: ${path.relative(root, outDir)} (Python ${wanted.python}, uv ${wanted.uv}, ruff ${wanted.ruff})`);
+  console.log(`Ready: ${path.relative(root, outDir)} (Python ${wanted.python}, uv ${wanted.uv}, ruff ${wanted.ruff}, debugpy ${wanted.debugpy})`);
 })().catch((err) => {
   console.error(err.message);
   process.exit(1);
