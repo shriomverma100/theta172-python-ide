@@ -1,434 +1,359 @@
 /**
- * THETA172 — Classroom UI Builder v2 (Overhauled)
- * - CodeMirror containers instead of plain text viewers
- * - In-editor classroom toolbar (no panel navigation needed)
- * - Full-height connected/live views
- * - One-time permission with revoke
- * - Smooth micro-interaction ready
+ * THETA172 — Classroom UI (Blackout).
+ * Builds the markup for the classroom screen: role choice, teacher setup and
+ * live dashboard, student setup and live view, the edit-permission dialog,
+ * and the small classroom toolbar shown inside the editor.
+ * Element ids are the contract with classroom.js; keep them stable.
+ * Anything that comes from the network is inserted as text, never as HTML.
  */
 
-// ── Helper ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────
 function el(tag, cls, html) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
-  if (html) e.innerHTML = html;
+  if (html) e.innerHTML = html; // trusted, static markup only
   return e;
 }
 
-function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
+function textEl(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  e.textContent = text;
+  return e;
 }
 
-// ── Base Structure ────────────────────────────────────────────────
+const BACK_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7 2L3 6L7 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>';
+const CLOSE_ICON = '<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.2"/></svg>';
+const MARK = `<svg class="cr-brand__mark" width="28" height="24" viewBox="0 0 210 180" aria-hidden="true">
+  <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/><rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
+  <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/><rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
+  <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/></svg>`;
+
+// ── Base structure ────────────────────────────────────────────────
 export function buildBaseStructure(onBack) {
   const fragment = document.createDocumentFragment();
-
-  // Background Structural Graphics
-  const bg = el('div', 'cr-bg-structure');
-  bg.id = 'cr-bg-structure';
-  bg.innerHTML = `
-    <div class="cr-red-block"></div>
-    <div class="cr-giant-text">class.</div>
-    <div class="cr-rotated-text">001</div>
-    <div class="cr-vertical-meta">THETA / LAN_SYNC / V.02</div>
-  `;
-  fragment.appendChild(bg);
-
   const wrapper = el('div', 'cr-content-wrapper');
 
-  // Top Nav
-  const topbar = el('div', 'cr-topbar');
+  const topbar = el('header', 'cr-topbar');
   topbar.innerHTML = `
     <div class="cr-nav-left">
-      <button class="cr-back-btn" id="cr-global-back"><- EXIT</button>
-      <span class="cr-nav-item">THETA172</span>
-      <span class="cr-nav-item">CLASSROOM</span>
+      <button class="cr-back-btn" id="cr-global-back" type="button" title="Back to the editor (Esc)">${BACK_ICON}<span>Editor</span></button>
+      <div class="cr-brand">${MARK}<span class="cr-brand__name">Classroom</span></div>
     </div>
     <div class="cr-nav-right">
-      <span class="cr-nav-item" id="cr-status">STANDBY</span>
+      <span class="cr-status" role="status"><span class="cr-status__dot" aria-hidden="true"></span><span id="cr-status">Not connected</span></span>
       <div class="cr-window-controls">
-        <button class="cr-wc-btn cr-wc-minimize" id="cr-wc-min" title="Minimize">
-          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6H10" stroke="currentColor" stroke-width="1.2"/></svg>
-        </button>
-        <button class="cr-wc-btn cr-wc-maximize" id="cr-wc-max" title="Maximize">
-          <svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
-        </button>
-        <button class="cr-wc-btn cr-wc-close" id="cr-wc-close" title="Close">
-          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.2"/></svg>
-        </button>
+        <button class="wc-btn" id="cr-wc-min" type="button" title="Minimize" aria-label="Minimize"><svg width="11" height="1" viewBox="0 0 11 1" aria-hidden="true"><rect width="11" height="1" fill="currentColor"/></svg></button>
+        <button class="wc-btn" id="cr-wc-max" type="button" title="Maximize" aria-label="Maximize"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" stroke="currentColor" fill="none"/></svg></button>
+        <button class="wc-btn wc-close" id="cr-wc-close" type="button" title="Close" aria-label="Close">${CLOSE_ICON}</button>
       </div>
     </div>
   `;
   wrapper.appendChild(topbar);
 
-  // Meta Text Blocks (Decorative)
-  const metaBlocks = el('div', 'cr-meta-blocks');
-  metaBlocks.id = 'cr-meta-blocks';
-  metaBlocks.innerHTML = `
-    <div class="cr-meta-block">
-      <div class="cr-meta-title">X/LABS</div>
-      <div class="cr-meta-desc">FOR AUTHENTICATION OF X/LABS UNREAL SPRING/SUMMER COLLECTION AND PROTECTION</div>
-    </div>
-    <div class="cr-meta-block">
-      <div class="cr-meta-title">SYNC_02</div>
-      <div class="cr-meta-desc">ZERO LATENCY LAN BROADCAST SYSTEM DESIGNED FOR REAL-TIME CODE TRANSMISSION</div>
-    </div>
-  `;
-  wrapper.appendChild(metaBlocks);
-
-  // Interactive Area
-  const interactive = el('div', 'cr-interactive-area');
+  const interactive = el('main', 'cr-interactive-area');
   interactive.id = 'cr-interactive-area';
   wrapper.appendChild(interactive);
-
   fragment.appendChild(wrapper);
 
-  // Wire back button and window controls
   setTimeout(() => {
     document.getElementById('cr-global-back')?.addEventListener('click', onBack);
-    // Window control buttons for classroom panel
-    document.getElementById('cr-wc-min')?.addEventListener('click', () => {
-      if (window.electronAPI?.minimize) window.electronAPI.minimize();
-    });
-    document.getElementById('cr-wc-max')?.addEventListener('click', () => {
-      if (window.electronAPI?.maximize) window.electronAPI.maximize();
-    });
-    document.getElementById('cr-wc-close')?.addEventListener('click', () => {
-      if (window.electronAPI?.close) window.electronAPI.close();
-    });
+    document.getElementById('cr-wc-min')?.addEventListener('click', () => window.electronAPI?.minimize?.());
+    document.getElementById('cr-wc-max')?.addEventListener('click', () => window.electronAPI?.maximize?.());
+    document.getElementById('cr-wc-close')?.addEventListener('click', () => window.electronAPI?.close?.());
   }, 0);
 
   return fragment;
 }
 
-// ── Blur/Unblur Background ────────────────────────────────────────
-function blurBackground() {
-  document.getElementById('cr-bg-structure')?.classList.add('blurred');
-  document.getElementById('cr-meta-blocks')?.classList.add('blurred');
-}
+// The old design blurred decorative graphics behind forms; Blackout has none.
+export function blurBackground() {}
+export function unblurBackground() {}
 
-function unblurBackground() {
-  document.getElementById('cr-bg-structure')?.classList.remove('blurred');
-  document.getElementById('cr-meta-blocks')?.classList.remove('blurred');
-}
-
-export { blurBackground, unblurBackground };
-
-// ── Role Selector ─────────────────────────────────────────────────
+// ── Role choice ───────────────────────────────────────────────────
 export function buildRoleSelector(onSelectRole) {
-  const wrap = el('div', 'cr-role-selector');
-
-  const teacherBtn = el('button', 'cr-role-btn');
-  teacherBtn.innerHTML = `<span>TEACHER</span> <div class="cr-arrow-box">-></div>`;
-  teacherBtn.addEventListener('click', () => onSelectRole('teacher'));
-
-  const studentBtn = el('button', 'cr-role-btn');
-  studentBtn.innerHTML = `<span>STUDENT</span> <div class="cr-arrow-box">-></div>`;
-  studentBtn.addEventListener('click', () => onSelectRole('student'));
-
-  wrap.appendChild(teacherBtn);
-  wrap.appendChild(studentBtn);
+  const wrap = el('section', 'cr-role-selector');
+  wrap.innerHTML = `
+    <div class="cr-intro">
+      <h1 class="cr-title">Classroom</h1>
+      <p class="cr-lead">Teach a class or join one. Everyone needs to be on the same Wi-Fi or LAN.</p>
+    </div>
+    <div class="cr-role-grid">
+      <button class="cr-role-btn" type="button" data-role="teacher">
+        <span class="cr-role-btn__kicker"><span class="px-mark" aria-hidden="true"></span>Teacher</span>
+        <span class="cr-role-btn__title">Start a class</span>
+        <span class="cr-role-btn__desc">See every student's code live, answer help requests and message the class.</span>
+        <span class="cr-role-btn__go" aria-hidden="true">Start →</span>
+      </button>
+      <button class="cr-role-btn" type="button" data-role="student">
+        <span class="cr-role-btn__kicker"><span class="px-mark" aria-hidden="true"></span>Student</span>
+        <span class="cr-role-btn__title">Join a class</span>
+        <span class="cr-role-btn__desc">Follow your teacher's code as they type and ask for help when you are stuck.</span>
+        <span class="cr-role-btn__go" aria-hidden="true">Join →</span>
+      </button>
+    </div>
+  `;
+  wrap.querySelectorAll('[data-role]').forEach((btn) => {
+    btn.addEventListener('click', () => onSelectRole(btn.dataset.role));
+  });
   return wrap;
 }
 
-// ── Teacher Panel ─────────────────────────────────────────────────
+// ── Shared pieces ─────────────────────────────────────────────────
+const outputSection = (headerText, preId) => `
+  <section class="cr-terminal-section" aria-label="${headerText}">
+    <div class="cr-terminal-header">${headerText}</div>
+    <pre class="cr-terminal-output" id="${preId}"></pre>
+  </section>`;
+
+const chatSection = (title, prefix, options) => `
+  <section class="cr-chat-section" aria-label="${title}">
+    <div class="cr-chat-header">${title}</div>
+    <div class="cr-chat-messages" id="cr-${prefix}-chat-messages" role="log" aria-live="polite"></div>
+    <div class="cr-chat-input-area">
+      <label class="sr-only" for="cr-${prefix}-chat-target">Send to</label>
+      <select class="cr-chat-target" id="cr-${prefix}-chat-target">${options}</select>
+      <label class="sr-only" for="cr-${prefix}-chat-input">Message</label>
+      <input type="text" class="cr-chat-input" id="cr-${prefix}-chat-input" placeholder="Write a message" autocomplete="off" maxlength="2000">
+      <button class="cr-chat-send" id="cr-${prefix}-chat-send" type="button">Send</button>
+    </div>
+  </section>`;
+
+// ── Teacher ───────────────────────────────────────────────────────
 export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }) {
   const panel = el('div', 'cr-teacher-panel');
-  panel.style.width = '100%';
-  panel.style.display = 'flex';
-  panel.style.justifyContent = 'center';
-  panel.style.alignItems = 'center';
 
-  // Setup form with back button
-  const setup = el('div', 'cr-setup');
+  const setup = el('section', 'cr-setup');
   setup.id = 'cr-teacher-setup';
   setup.innerHTML = `
-    <button class="cr-setup-back" id="cr-teacher-back"><- BACK</button>
+    <button class="cr-setup-back" id="cr-teacher-back" type="button">${BACK_ICON}<span>Back</span></button>
+    <h2 class="cr-setup-title">Start a class</h2>
+    <p class="cr-setup-lead">Students on this network will see your class and can join it.</p>
     <div class="cr-input-group">
-      <label class="cr-label">HOST_NAME</label>
-      <input type="text" class="cr-input" id="cr-teacher-name" placeholder="PROF. SMITH" autocomplete="off" spellcheck="false" />
+      <label class="cr-label" for="cr-teacher-name">Your name</label>
+      <input type="text" class="cr-input" id="cr-teacher-name" placeholder="e.g. Ms. Sharma" autocomplete="off" spellcheck="false" maxlength="64" />
+      <span class="cr-hint">Students see this name when they join.</span>
     </div>
-    <button class="cr-action-btn" id="cr-go-live-btn">
-      <span>GO_LIVE</span> <span>-></span>
-    </button>
+    <button class="cr-action-btn" id="cr-go-live-btn" type="button">Go live</button>
   `;
 
-  // Live view — full-height student list with search
-  const liveView = el('div', 'cr-live-view hidden');
+  const liveView = el('section', 'cr-live-view hidden');
   liveView.id = 'cr-live-view';
   liveView.innerHTML = `
     <div class="cr-panel-header">
       <div class="cr-panel-title">
-        <span class="cr-live-indicator"></span>
+        <span class="cr-live-indicator" aria-hidden="true"></span>
+        <span class="cr-live-label">Live</span>
         <span id="cr-live-teacher-name"></span>
-        <span class="cr-student-count-badge" id="cr-student-count-badge">0</span>
+        <span class="cr-student-count-badge" title="Students connected"><span id="cr-student-count-badge">0</span> joined</span>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="cr-close-panel-btn" id="cr-teacher-to-editor"><- EDITOR</button>
-        <button class="cr-stop-btn" id="cr-stop-live-btn">[ STOP ]</button>
+      <div class="cr-panel-actions">
+        <button class="cr-close-panel-btn" id="cr-teacher-to-editor" type="button">Back to editor</button>
+        <button class="cr-stop-btn" id="cr-stop-live-btn" type="button">End class</button>
       </div>
     </div>
-    <div class="cr-search-bar">
-      <input type="text" class="cr-search-input" id="cr-student-search" placeholder="SEARCH STUDENTS..." autocomplete="off" spellcheck="false" />
-    </div>
-    <div class="cr-students-list" id="cr-students-list">
-      <div class="cr-waiting-text">WAITING_FOR_CONNECTIONS...</div>
-    </div>
-    <div class="cr-chat-section">
-      <div class="cr-chat-header">CLASS_CHAT</div>
-      <div class="cr-chat-messages" id="cr-teacher-chat-messages"></div>
-      <div class="cr-chat-input-area">
-        <select class="cr-chat-target" id="cr-teacher-chat-target">
-          <option value="broadcast">ALL STUDENTS</option>
-        </select>
-        <input type="text" class="cr-chat-input" id="cr-teacher-chat-input" placeholder="Type a message..." autocomplete="off">
-        <button class="cr-chat-send" id="cr-teacher-chat-send">SEND</button>
+    <div class="cr-live-grid">
+      <div class="cr-students-col">
+        <div class="cr-search-bar">
+          <label class="sr-only" for="cr-student-search">Search students</label>
+          <input type="text" class="cr-search-input" id="cr-student-search" placeholder="Search by name or roll number" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="cr-students-list" id="cr-students-list">
+          <div class="cr-waiting-text">Waiting for students to join…</div>
+        </div>
       </div>
+      ${chatSection('Class chat', 'teacher', '<option value="broadcast">Everyone</option>')}
     </div>
   `;
 
-  // Student code viewer — uses CodeMirror container + live output
-  const codeViewer = el('div', 'cr-code-viewer hidden');
+  const codeViewer = el('section', 'cr-code-viewer hidden');
   codeViewer.id = 'cr-student-code-viewer';
   codeViewer.innerHTML = `
     <div class="cr-panel-header">
-      <button class="cr-stop-btn" id="cr-code-viewer-back"><- BACK</button>
-      <div class="cr-panel-title" id="cr-code-viewer-name" style="font-size: 14px;"></div>
-      <div class="cr-edit-status" id="cr-edit-status"></div>
+      <div class="cr-panel-title">
+        <button class="cr-close-panel-btn" id="cr-code-viewer-back" type="button">${BACK_ICON}<span>All students</span></button>
+        <span class="cr-viewer-name" id="cr-code-viewer-name"></span>
+      </div>
+      <div class="cr-panel-actions">
+        <span class="cr-edit-status" id="cr-edit-status" role="status"></span>
+        <button class="cr-action-btn cr-action-btn--sm" id="cr-request-edit-btn" type="button">Ask to edit</button>
+        <button class="cr-action-btn cr-action-btn--sm cr-action-btn--push hidden" id="cr-push-edit-btn" type="button">Send my edits</button>
+      </div>
     </div>
-    <div class="cr-file-bar">
-      FILE: <span id="cr-viewer-filename">MAIN.PY</span>
-    </div>
+    <div class="cr-file-bar"><span class="cr-file-bar__label">File</span><span id="cr-viewer-filename">main.py</span></div>
     <div class="cr-live-editor-container" id="cr-student-live-editor"></div>
-    <div class="cr-terminal-section">
-      <div class="cr-terminal-header">STUDENT_OUTPUT</div>
-      <pre class="cr-terminal-output" id="cr-student-terminal-output"></pre>
-    </div>
-    <div class="cr-code-actions">
-      <button class="cr-action-btn cr-action-btn--sm" id="cr-request-edit-btn">REQUEST_EDIT</button>
-      <button class="cr-action-btn cr-action-btn--sm cr-action-btn--push hidden" id="cr-push-edit-btn">PUSH_EDITS</button>
-    </div>
+    ${outputSection('Student output', 'cr-student-terminal-output')}
   `;
 
-  panel.appendChild(setup);
-  panel.appendChild(liveView);
-  panel.appendChild(codeViewer);
+  panel.append(setup, liveView, codeViewer);
 
   setTimeout(() => {
-    document.getElementById('cr-teacher-back')?.addEventListener('click', onBack);
-    document.getElementById('cr-go-live-btn')?.addEventListener('click', () => {
+    const goLive = () => {
       const name = document.getElementById('cr-teacher-name')?.value?.trim();
       if (name) onGoLive(name);
-    });
+      else document.getElementById('cr-teacher-name')?.focus();
+    };
+    document.getElementById('cr-teacher-back')?.addEventListener('click', onBack);
+    document.getElementById('cr-go-live-btn')?.addEventListener('click', goLive);
     document.getElementById('cr-stop-live-btn')?.addEventListener('click', onStopLive);
     document.getElementById('cr-teacher-to-editor')?.addEventListener('click', onClosePanel);
     document.getElementById('cr-teacher-name')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const name = e.target.value?.trim();
-        if (name) onGoLive(name);
-      }
+      if (e.key === 'Enter') goLive();
     });
   }, 0);
 
   return panel;
 }
 
-// ── Student Panel ─────────────────────────────────────────────────
+// ── Student ───────────────────────────────────────────────────────
 export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, onClosePanel }) {
   const panel = el('div', 'cr-student-panel');
-  panel.style.width = '100%';
-  panel.style.display = 'flex';
-  panel.style.justifyContent = 'center';
-  panel.style.alignItems = 'center';
 
-  // Setup form with back button
-  const setup = el('div', 'cr-setup');
+  const setup = el('section', 'cr-setup');
   setup.id = 'cr-student-setup';
   setup.innerHTML = `
-    <button class="cr-setup-back" id="cr-student-back"><- BACK</button>
+    <button class="cr-setup-back" id="cr-student-back" type="button">${BACK_ICON}<span>Back</span></button>
+    <h2 class="cr-setup-title">Join a class</h2>
+    <p class="cr-setup-lead">We look for a class on this network and connect you to it.</p>
     <div class="cr-input-group">
-      <label class="cr-label">USER_NAME</label>
-      <input type="text" class="cr-input" id="cr-student-name" placeholder="JOHN DOE" autocomplete="off" spellcheck="false" />
+      <label class="cr-label" for="cr-student-name">Your name</label>
+      <input type="text" class="cr-input" id="cr-student-name" placeholder="e.g. Aarav Gupta" autocomplete="off" spellcheck="false" maxlength="64" />
     </div>
     <div class="cr-input-group">
-      <label class="cr-label">USER_ID (ROLL)</label>
-      <input type="text" class="cr-input" id="cr-student-roll" placeholder="ID-001" autocomplete="off" spellcheck="false" />
+      <label class="cr-label" for="cr-student-roll">Roll number</label>
+      <input type="text" class="cr-input" id="cr-student-roll" placeholder="e.g. 12" autocomplete="off" spellcheck="false" maxlength="32" />
     </div>
-    <button class="cr-action-btn" id="cr-join-btn">
-      <span>CONNECT</span> <span>-></span>
-    </button>
+    <button class="cr-action-btn" id="cr-join-btn" type="button">Find my class</button>
   `;
 
-  // Discovery state
-  const discovery = el('div', 'cr-discovery hidden');
+  const discovery = el('section', 'cr-discovery hidden');
   discovery.id = 'cr-discovery';
-  discovery.innerHTML = `<span id="cr-discovery-text">SEARCHING...</span>`;
+  discovery.innerHTML = `
+    <span class="cr-searching" aria-hidden="true"><span></span><span></span><span></span></span>
+    <span id="cr-discovery-text" role="status">Looking for a class on this network…</span>
+  `;
 
-  // Connected view — full-height with CodeMirror live editor + terminal
-  const connected = el('div', 'cr-connected-view hidden');
+  const connected = el('section', 'cr-connected-view hidden');
   connected.id = 'cr-connected-view';
   connected.innerHTML = `
     <div class="cr-panel-header">
       <div class="cr-panel-title">
-        <span class="cr-live-indicator"></span>
+        <span class="cr-live-indicator" aria-hidden="true"></span>
+        <span class="cr-live-label">Live</span>
         <span id="cr-connected-teacher"></span>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="cr-close-panel-btn" id="cr-student-to-editor"><- EDITOR</button>
-        <button class="cr-stop-btn" id="cr-disconnect-btn">[ DISCONNECT ]</button>
+      <div class="cr-panel-actions">
+        <button class="cr-action-btn cr-action-btn--sm cr-action-btn--hand" id="cr-raise-hand-btn" type="button"><span class="px-mark" aria-hidden="true"></span><span class="cr-hand-label">Ask for help</span></button>
+        <button class="cr-close-panel-btn" id="cr-student-to-editor" type="button">Back to editor</button>
+        <button class="cr-stop-btn" id="cr-disconnect-btn" type="button">Leave class</button>
       </div>
     </div>
-    <div class="cr-file-bar">
-      FILE: <span id="cr-teacher-filename">MAIN.PY</span>
-      <span class="cr-cursor-indicator" id="cr-cursor-indicator">Ln 1, Col 1</span>
-    </div>
-    <div class="cr-live-editor-container" id="cr-teacher-live-editor"></div>
-    <div class="cr-terminal-section">
-      <div class="cr-terminal-header">TERMINAL_OUTPUT</div>
-      <pre class="cr-terminal-output" id="cr-terminal-output"></pre>
-    </div>
-    <div class="cr-code-actions">
-      <button class="cr-action-btn cr-action-btn--hand" id="cr-raise-hand-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.8L2.3 16.7a1 1 0 0 1 .3-1.5l.5-.3c.6-.4 1.5-.3 2 .3L6 16"/></svg>
-        RAISE HAND
-      </button>
-    </div>
-    <div class="cr-chat-section">
-      <div class="cr-chat-header">CHAT</div>
-      <div class="cr-chat-messages" id="cr-student-chat-messages"></div>
-      <div class="cr-chat-input-area">
-        <select class="cr-chat-target" id="cr-student-chat-target">
-          <option value="teacher">TEACHER</option>
-          <option value="broadcast">ALL</option>
-        </select>
-        <input type="text" class="cr-chat-input" id="cr-student-chat-input" placeholder="Type a message..." autocomplete="off">
-        <button class="cr-chat-send" id="cr-student-chat-send">SEND</button>
+    <div class="cr-connected-grid">
+      <div class="cr-connected-main">
+        <div class="cr-file-bar">
+          <span class="cr-file-bar__label">Teacher's file</span><span id="cr-teacher-filename">main.py</span>
+          <span class="cr-cursor-indicator" id="cr-cursor-indicator">Ln 1 · Col 1</span>
+        </div>
+        <div class="cr-live-editor-container" id="cr-teacher-live-editor"></div>
+        ${outputSection("Teacher's output", 'cr-terminal-output')}
       </div>
+      ${chatSection('Chat', 'student', '<option value="teacher">Teacher only</option><option value="broadcast">Everyone</option>')}
     </div>
   `;
 
-  // Edit permission dialog — overlay with blur
   const editOverlay = el('div', 'cr-edit-dialog-overlay hidden');
   editOverlay.id = 'cr-edit-dialog-overlay';
-  const editDialog = el('div', 'cr-edit-dialog');
-  editDialog.id = 'cr-edit-dialog';
-  editDialog.innerHTML = `
-    <div class="cr-dialog-icon">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-        <rect x="2" y="2" width="28" height="28" rx="4" stroke="currentColor" stroke-width="2"/>
-        <path d="M20 8L24 12L14 22H10V18L20 8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <h3>ACCESS_REQUEST</h3>
-    <div class="cr-dialog-desc">TEACHER IS REQUESTING EDIT PERMISSION FOR YOUR CODE</div>
-    <div class="cr-dialog-note">You can revoke access anytime from the editor toolbar</div>
-    <div class="cr-dialog-btns">
-      <button class="cr-action-btn cr-action-btn--allow" id="cr-grant-edit">ALLOW</button>
-      <button class="cr-stop-btn" id="cr-deny-edit">DENY</button>
+  editOverlay.innerHTML = `
+    <div class="cr-edit-dialog" id="cr-edit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cr-edit-dialog-title" aria-describedby="cr-edit-dialog-desc">
+      <h3 id="cr-edit-dialog-title"><span class="px-mark" aria-hidden="true"></span>Your teacher wants to edit your code</h3>
+      <p class="cr-dialog-desc" id="cr-edit-dialog-desc">If you allow it, your teacher can type in your editor while you watch.</p>
+      <p class="cr-dialog-note">You can turn this off at any time with "Stop teacher editing" above your code.</p>
+      <div class="cr-dialog-btns">
+        <button class="cr-stop-btn" id="cr-deny-edit" type="button">Don't allow</button>
+        <button class="cr-action-btn cr-action-btn--allow" id="cr-grant-edit" type="button">Allow</button>
+      </div>
     </div>
   `;
-  editOverlay.appendChild(editDialog);
 
-  panel.appendChild(setup);
-  panel.appendChild(discovery);
-  panel.appendChild(connected);
-  panel.appendChild(editOverlay);
+  panel.append(setup, discovery, connected, editOverlay);
 
   setTimeout(() => {
-    document.getElementById('cr-student-back')?.addEventListener('click', onBack);
-    document.getElementById('cr-join-btn')?.addEventListener('click', () => {
+    const join = () => {
       const name = document.getElementById('cr-student-name')?.value?.trim();
       const roll = document.getElementById('cr-student-roll')?.value?.trim();
       if (name && roll) onJoin(name, roll);
-    });
-    document.getElementById('cr-raise-hand-btn')?.addEventListener('click', () => {
-      onRaiseHand('HELP_REQ');
-    });
+      else document.getElementById(name ? 'cr-student-roll' : 'cr-student-name')?.focus();
+    };
+    document.getElementById('cr-student-back')?.addEventListener('click', onBack);
+    document.getElementById('cr-join-btn')?.addEventListener('click', join);
+    document.getElementById('cr-raise-hand-btn')?.addEventListener('click', () => onRaiseHand('HELP_REQ'));
     document.getElementById('cr-disconnect-btn')?.addEventListener('click', onDisconnect);
     document.getElementById('cr-student-to-editor')?.addEventListener('click', onClosePanel);
-    // Enter key on roll input to join
     document.getElementById('cr-student-roll')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const name = document.getElementById('cr-student-name')?.value?.trim();
-        const roll = e.target.value?.trim();
-        if (name && roll) onJoin(name, roll);
-      }
+      if (e.key === 'Enter') join();
     });
   }, 0);
 
   return panel;
 }
 
-// ── Student Card (for teacher's list) ──────────────────────────────
+// ── Student card (teacher's list) ─────────────────────────────────
 export function buildStudentCard({ id, name, roll, helpRequested, editPermission, onViewCode }) {
   const card = el('div', 'cr-student-item' + (helpRequested ? ' help' : ''));
   card.dataset.studentId = id;
 
-  card.innerHTML = `
-    <div class="cr-student-info">
-      <span class="cr-student-name">${escapeHtml(name)}</span>
-      <span class="cr-student-roll">ID: ${escapeHtml(roll)}</span>
-    </div>
-    <div class="cr-student-badges">
-      ${helpRequested ? '<div class="cr-badge cr-badge--alert">[ ALERT ]</div>' : ''}
-      ${editPermission ? '<div class="cr-badge cr-badge--edit">EDITING</div>' : ''}
-    </div>
-    <button class="cr-view-btn cr-view-code-btn">VIEW_SRC</button>
-  `;
+  const info = el('div', 'cr-student-info');
+  info.append(textEl('span', 'cr-student-name', name), textEl('span', 'cr-student-roll', `Roll ${roll}`));
 
-  card.querySelector('.cr-view-code-btn')?.addEventListener('click', () => onViewCode(id, name, roll));
+  const badges = el('div', 'cr-student-badges');
+  if (helpRequested) badges.append(textEl('span', 'cr-badge cr-badge--alert', 'Needs help'));
+  if (editPermission) badges.append(textEl('span', 'cr-badge cr-badge--edit', 'You can edit'));
+
+  const view = textEl('button', 'cr-view-btn cr-view-code-btn', 'View code');
+  view.type = 'button';
+  view.setAttribute('aria-label', `View ${name}'s code`);
+  view.addEventListener('click', () => onViewCode(id, name, roll));
+
+  card.append(info, badges, view);
   return card;
 }
 
-// ── In-Editor Classroom Toolbar ────────────────────────────────────
+// ── Classroom toolbar inside the editor ───────────────────────────
 export function buildEditorToolbar(role, callbacks) {
   const toolbar = el('div', 'cr-editor-toolbar');
   toolbar.id = 'cr-editor-toolbar';
+  toolbar.setAttribute('role', 'toolbar');
+  toolbar.setAttribute('aria-label', 'Classroom');
 
   if (role === 'teacher') {
     toolbar.innerHTML = `
       <div class="cr-toolbar-left">
-        <span class="cr-toolbar-live-dot"></span>
-        <span class="cr-toolbar-label">LIVE</span>
-        <span class="cr-toolbar-sep">|</span>
+        <span class="cr-toolbar-live-dot" aria-hidden="true"></span>
+        <span class="cr-toolbar-label">Live class</span>
         <span class="cr-toolbar-students" id="cr-toolbar-student-count">0 students</span>
       </div>
       <div class="cr-toolbar-right">
-        <button class="cr-toolbar-btn" id="cr-toolbar-view-panel" title="Open classroom panel">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 5H10M4 7H8M4 9H6" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/></svg>
-          PANEL
-        </button>
-        <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-stop" title="Stop session">STOP</button>
+        <button class="cr-toolbar-btn" id="cr-toolbar-view-panel" type="button">Students</button>
+        <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-stop" type="button">End class</button>
       </div>
     `;
-
     setTimeout(() => {
       document.getElementById('cr-toolbar-view-panel')?.addEventListener('click', () => callbacks.onOpenPanel?.());
       document.getElementById('cr-toolbar-stop')?.addEventListener('click', () => callbacks.onStop?.());
     }, 0);
-
   } else if (role === 'student') {
-      toolbar.innerHTML = `
+    toolbar.innerHTML = `
       <div class="cr-toolbar-left">
-        <span class="cr-toolbar-live-dot"></span>
-        <span class="cr-toolbar-label" id="cr-toolbar-teacher-name">CONNECTED</span>
+        <span class="cr-toolbar-live-dot" aria-hidden="true"></span>
+        <span class="cr-toolbar-label" id="cr-toolbar-teacher-name">Connected</span>
       </div>
       <div class="cr-toolbar-right">
-        <button class="cr-toolbar-btn cr-toolbar-btn--revoke hidden" id="cr-toolbar-revoke" title="Revoke teacher edit access">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          REVOKE EDIT
-        </button>
-        <button class="cr-toolbar-btn" id="cr-toolbar-raise-hand" title="Raise hand for help">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.8L2.3 16.7a1 1 0 0 1 .3-1.5l.5-.3c.6-.4 1.5-.3 2 .3L6 16"/></svg>
-          HAND
-        </button>
-        <button class="cr-toolbar-btn" id="cr-toolbar-open-panel" title="Open classroom panel">PANEL</button>
-        <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-disconnect" title="Disconnect">LEAVE</button>
+        <button class="cr-toolbar-btn cr-toolbar-btn--revoke hidden" id="cr-toolbar-revoke" type="button">Stop teacher editing</button>
+        <button class="cr-toolbar-btn" id="cr-toolbar-raise-hand" type="button">Ask for help</button>
+        <button class="cr-toolbar-btn" id="cr-toolbar-open-panel" type="button">Class</button>
+        <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-disconnect" type="button">Leave</button>
       </div>
     `;
-
     setTimeout(() => {
       document.getElementById('cr-toolbar-revoke')?.addEventListener('click', () => callbacks.onRevoke?.());
       document.getElementById('cr-toolbar-raise-hand')?.addEventListener('click', () => callbacks.onRaiseHand?.());
@@ -440,25 +365,18 @@ export function buildEditorToolbar(role, callbacks) {
   return toolbar;
 }
 
-// ── Show/Hide Revoke Button ────────────────────────────────────────
 export function showRevokeButton(show) {
-  const btn = document.getElementById('cr-toolbar-revoke');
-  if (btn) {
-    if (show) btn.classList.remove('hidden');
-    else btn.classList.add('hidden');
-  }
+  document.getElementById('cr-toolbar-revoke')?.classList.toggle('hidden', !show);
 }
 
-// ── Update Toolbar Student Count ───────────────────────────────────
 export function updateToolbarStudentCount(count) {
-  const el = document.getElementById('cr-toolbar-student-count');
-  if (el) el.textContent = `${count} student${count !== 1 ? 's' : ''}`;
+  const label = document.getElementById('cr-toolbar-student-count');
+  if (label) label.textContent = `${count} student${count !== 1 ? 's' : ''}`;
   const badge = document.getElementById('cr-student-count-badge');
-  if (badge) badge.textContent = count;
+  if (badge) badge.textContent = String(count);
 }
 
-// ── Update Toolbar Teacher Name ────────────────────────────────────
 export function updateToolbarTeacherName(name) {
-  const el = document.getElementById('cr-toolbar-teacher-name');
-  if (el) el.textContent = name;
+  const label = document.getElementById('cr-toolbar-teacher-name');
+  if (label) label.textContent = name;
 }

@@ -21,4 +21,6 @@ export const state = {
   activePane: 'terminal',
   /** editor font size in px */
   fontSize: 15,
+  lastError: null,      // exception name from the last run, e.g. 'NameError'
+  lastErrorLine: null,  // its line in the user's file
 };

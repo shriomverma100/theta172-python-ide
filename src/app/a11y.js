@@ -32,11 +32,13 @@ export function initAccessibility() {
   const $examples = $('examples-modal');
   const $shortcuts = $('shortcuts-modal');
   const $palette = $('cmd-palette');
+  const $settings = $('settings-modal');
 
   markDialog($examples, 'Code Examples');
   markDialog($shortcuts, 'Keyboard Shortcuts');
   markDialog($palette, 'Command Palette');
-  [$examples, $shortcuts, $palette].forEach(trapFocus);
+  markDialog($settings, 'Settings');
+  [$examples, $shortcuts, $palette, $settings].forEach(trapFocus);
 
   // Icon-only buttons need a name for screen readers
   document.querySelectorAll('[id^="btn-"]').forEach((btn) => {

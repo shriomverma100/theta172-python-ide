@@ -97,6 +97,12 @@ export function renderTabs() {
     }
 
     el.addEventListener('click', () => switchTab(tab.id));
+    // Keyboard: Tab to a file tab, Enter/Space opens it, Delete closes it
+    el.tabIndex = 0;
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchTab(tab.id); }
+      else if (e.key === 'Delete' && tabs.length > 1) { e.preventDefault(); closeTab(tab.id); }
+    });
     $tabBar.insertBefore(el, $addBtn);
   });
 }

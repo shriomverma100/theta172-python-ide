@@ -1,6 +1,6 @@
 /**
  * THETA172 — CodeMirror 6 Editor Module
- * Dual theme: Light (white surface) / Dark (black surface).
+ * Colours: the Playground or Pro dark palette, or a light palette for projectors.
  * Smooth caret, bracket matching, Python language support.
  */
 
@@ -224,253 +224,121 @@ const pythonLinter = linter((view) => {
   return diagnostics;
 }, { delay: 800 });
 
-// ── THETA172 DARK THEME ───────────────────────────────────────
-const theta172Dark = EditorView.theme({
-  '&': {
-    backgroundColor: '#111111',
-    color: '#E8E8E6',
-    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-  },
-  '.cm-content': {
-    caretColor: '#FF2D00',
-    lineHeight: '25px',
-    letterSpacing: '0.2px',
-    padding: '20px 0 60px 0',
-    contain: 'content',
-  },
-  '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: '#FF2D00',
-    borderLeftWidth: '2px',
-    transition: 'left 60ms cubic-bezier(0.22, 1, 0.36, 1), top 60ms cubic-bezier(0.22, 1, 0.36, 1)',
-  },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
-    backgroundColor: '#FF2D0055 !important',
-  },
-  '& .cm-line ::selection': {
-    backgroundColor: '#FF2D0055 !important',
-  },
-  '.cm-activeLine': {
-    backgroundColor: '#1A1A18',
-    transition: 'background-color 120ms ease',
-  },
-  '.cm-activeLineGutter': {
-    backgroundColor: '#1A1A18',
-    color: '#AAAAAA',
-    transition: 'background-color 120ms ease, color 120ms ease',
-  },
-  '.cm-gutters': {
-    backgroundColor: '#111111',
-    color: '#5E5E5C',
-    border: 'none',
-    minWidth: '3em',
-  },
-  '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 8px 0 12px',
-  },
-  '.cm-foldGutter': {
-    color: '#5E5E5C',
-  },
-  '.cm-matchingBracket': {
-    backgroundColor: 'rgba(255,45,0,0.15)',
-    outline: '1px solid rgba(255,45,0,0.4)',
-    transition: 'background-color 150ms ease, outline-color 150ms ease',
-  },
-  '.cm-searchMatch': {
-    backgroundColor: 'rgba(255,45,0,0.3)',
-  },
-  '.cm-selectionMatch': {
-    backgroundColor: 'rgba(255,45,0,0.1)',
-  },
-  '.cm-tooltip': {
-    backgroundColor: '#141414',
-    border: '1px solid #222220',
-    color: '#EAEAE8',
-    animation: 'cmTooltipIn 150ms cubic-bezier(0.22, 1, 0.36, 1)',
-  },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
-    backgroundColor: 'rgba(255,45,0,0.15)',
-    transition: 'background-color 80ms ease',
-  },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul > li': {
-    transition: 'background-color 80ms ease',
-  },
-  '.cm-panels': {
-    backgroundColor: '#141414',
-    color: '#EAEAE8',
-  },
-  '.cm-panels.cm-panels-top': {
-    borderBottom: '1px solid #222220',
-  },
-  '.cm-textfield': {
-    backgroundColor: '#1A1A18',
-    border: '1px solid #2E2E2C',
-    color: '#EAEAE8',
-    transition: 'border-color 150ms ease',
-  },
-  '.cm-textfield:focus': {
-    borderColor: '#FF2D00',
-  },
-  '.cm-button': {
-    backgroundColor: '#1A1A18',
-    border: '1px solid #2E2E2C',
-    color: '#EAEAE8',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
-  },
-  '.cm-button:hover': {
-    backgroundColor: '#2E2E2C',
-  },
-  '&.cm-focused': {
-    outline: 'none',
-  },
-  '.cm-scroller': {
-    overflow: 'auto',
-    scrollBehavior: 'smooth',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#1E1E1C80 transparent',
-  },
-}, { dark: true });
+// ── THETA172 BLACKOUT THEMES ──────────────────────────────────
+// Dark follows the approved Blackout design: black surface, red keywords,
+// bold white names, grey comments. Light is for classroom projectors.
+// Every text colour passes 4.5:1 on its background (tests/contrast.test.js).
+function blackoutTheme(c, dark) {
+  return EditorView.theme({
+    '&': { backgroundColor: c.bg, color: c.text, fontFamily: '"JetBrains Mono", Consolas, monospace' },
+    '.cm-content': { caretColor: c.caret, lineHeight: '26px', padding: '16px 0 60px 0', contain: 'content' },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: c.caret, borderLeftWidth: '2px' },
+    '.cm-activeLine': { backgroundColor: c.activeLine },
+    '.cm-activeLineGutter': { backgroundColor: c.activeLine, color: c.text },
+    '.cm-gutters': { backgroundColor: c.bg, color: c.gutter, border: 'none', minWidth: '3.4em' },
+    '.cm-lineNumbers .cm-gutterElement': { padding: '0 14px 0 16px' },
+    '.cm-foldGutter': { color: c.gutter },
+    '.cm-matchingBracket': { backgroundColor: c.bracketBg, outline: `1px solid ${c.caret}` },
+    '.cm-searchMatch': { backgroundColor: c.searchBg, outline: `1px solid ${c.caret}` },
+    '.cm-selectionMatch': { backgroundColor: c.selectionMatch },
+    '.cm-tooltip': { backgroundColor: c.surface, border: `1px solid ${c.border}`, color: c.text },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: c.selected, color: c.text },
+    '.cm-panels': { backgroundColor: c.surface, color: c.text },
+    '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${c.border}` },
+    '.cm-panels.cm-panels-bottom': { borderTop: `1px solid ${c.border}` },
+    '.cm-textfield': { backgroundColor: c.bg, border: `1px solid ${c.border}`, color: c.text },
+    '.cm-textfield:focus': { borderColor: c.caret, outline: 'none' },
+    '.cm-button': { backgroundColor: 'transparent', border: `1px solid ${c.border}`, color: c.text },
+    '.cm-button:hover': { backgroundColor: c.selected },
+    '&.cm-focused': { outline: 'none' },
+    '.cm-scroller': { overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: `${c.scroll} transparent` },
+  }, { dark });
+}
 
-const theta172DarkHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: '#D6A0F0', fontWeight: 'bold' },
-  { tag: tags.comment, color: '#636360', fontStyle: 'italic' },
-  { tag: tags.string, color: '#C3E88D' },
-  { tag: tags.number, color: '#FFB074' },
-  { tag: tags.bool, color: '#FFB074' },
-  { tag: tags.null, color: '#FFB074' },
-  { tag: tags.function(tags.variableName), color: '#92BAFF' },
-  { tag: tags.definition(tags.variableName), color: '#92BAFF' },
-  { tag: tags.typeName, color: '#92BAFF' },
-  { tag: tags.className, color: '#FFCB6B' },
-  { tag: tags.operator, color: '#9CDCFE' },
-  { tag: tags.punctuation, color: '#9CDCFE' },
-  { tag: tags.bracket, color: '#B0B0AE' },
-  { tag: tags.propertyName, color: '#F0F0EE' },
-  { tag: tags.variableName, color: '#E8E8E6' },
-  { tag: tags.self, color: '#FF6B8A' },
-  { tag: tags.special(tags.variableName), color: '#FFB074' },
-  { tag: tags.meta, color: '#7A7A78' },
+// Playground: the dark editor tile (ink) from the approved Round 5 design
+const playgroundDark = blackoutTheme({
+  bg: '#17142E', text: '#ECEAFF', caret: '#C6F24E', activeLine: '#221E44', gutter: '#9D97D3',
+  bracketBg: 'rgba(198,242,78,0.18)', searchBg: 'rgba(255,74,54,0.3)', selectionMatch: 'rgba(255,255,255,0.08)',
+  surface: '#221E44', border: '#4A4380', selected: '#2E2858', scroll: '#3A3470',
+}, true);
+
+const playgroundHighlight = HighlightStyle.define([
+  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword], color: '#FF7A68' },
+  { tag: tags.comment, color: '#A9A3D6', fontStyle: 'italic' },
+  { tag: tags.string, color: '#CDBEFF' },
+  { tag: [tags.number, tags.bool, tags.null], color: '#C6F24E' },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#FFFFFF', fontWeight: '600' },
+  { tag: tags.definition(tags.variableName), color: '#FFFFFF', fontWeight: '600' },
+  { tag: [tags.className, tags.definition(tags.className), tags.typeName], color: '#9FD8FF', fontWeight: '600' },
+  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#B9B3E6' },
+  { tag: tags.propertyName, color: '#ECEAFF' },
+  { tag: tags.variableName, color: '#ECEAFF' },
+  { tag: tags.self, color: '#FFB3D9', fontStyle: 'italic' },
+  { tag: tags.special(tags.variableName), color: '#FFD84A' },
+  { tag: tags.meta, color: '#FFD84A' },
+  { tag: tags.invalid, color: '#FF7A68', textDecoration: 'underline' },
 ]);
 
-// ── THETA172 LIGHT THEME ──────────────────────────────────────
-const theta172Light = EditorView.theme({
-  '&': {
-    backgroundColor: '#FAFAF9',
-    color: '#1A1A18',
-    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-  },
-  '.cm-content': {
-    caretColor: '#FF2D00',
-    lineHeight: '25px',
-    letterSpacing: '0.2px',
-    padding: '20px 0 60px 0',
-    contain: 'content',
-  },
-  '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: '#FF2D00',
-    borderLeftWidth: '2px',
-    transition: 'left 60ms cubic-bezier(0.22, 1, 0.36, 1), top 60ms cubic-bezier(0.22, 1, 0.36, 1)',
-  },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
-    backgroundColor: '#FF2D0040 !important',
-  },
-  '& .cm-line ::selection': {
-    backgroundColor: '#FF2D0040 !important',
-  },
-  '.cm-activeLine': {
-    backgroundColor: '#F0F0EE',
-    transition: 'background-color 120ms ease',
-  },
-  '.cm-activeLineGutter': {
-    backgroundColor: '#F0F0EE',
-    color: '#7A7A78',
-    transition: 'background-color 120ms ease, color 120ms ease',
-  },
-  '.cm-gutters': {
-    backgroundColor: '#FAFAF9',
-    color: '#C8C8C6',
-    border: 'none',
-    minWidth: '3em',
-  },
-  '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 8px 0 12px',
-  },
-  '.cm-matchingBracket': {
-    backgroundColor: 'rgba(255,45,0,0.1)',
-    outline: '1px solid rgba(255,45,0,0.3)',
-    transition: 'background-color 150ms ease, outline-color 150ms ease',
-  },
-  '.cm-searchMatch': {
-    backgroundColor: 'rgba(255,45,0,0.2)',
-  },
-  '.cm-tooltip': {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #E0E0DE',
-    color: '#1A1A18',
-    animation: 'cmTooltipIn 150ms cubic-bezier(0.22, 1, 0.36, 1)',
-  },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
-    backgroundColor: 'rgba(255,45,0,0.08)',
-    transition: 'background-color 80ms ease',
-  },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul > li': {
-    transition: 'background-color 80ms ease',
-  },
-  '.cm-panels': {
-    backgroundColor: '#F5F5F3',
-    color: '#1A1A18',
-  },
-  '.cm-panels.cm-panels-top': {
-    borderBottom: '1px solid #E0E0DE',
-  },
-  '.cm-textfield': {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #D0D0CE',
-    color: '#1A1A18',
-    transition: 'border-color 150ms ease',
-  },
-  '.cm-textfield:focus': {
-    borderColor: '#FF2D00',
-  },
-  '.cm-button': {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #D0D0CE',
-    color: '#1A1A18',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
-  },
-  '.cm-button:hover': {
-    backgroundColor: '#F0F0EE',
-  },
-  '&.cm-focused': {
-    outline: 'none',
-  },
-  '.cm-scroller': {
-    overflow: 'auto',
-    scrollBehavior: 'smooth',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#C8C8C640 transparent',
-  },
-}, { dark: false });
+// Pro: graphite, from the approved Round 4 design
+const proDark = blackoutTheme({
+  bg: '#0E0F11', text: '#E7E8EB', caret: '#FF4A36', activeLine: '#16181C', gutter: '#868A93',
+  bracketBg: 'rgba(110,168,254,0.18)', searchBg: 'rgba(242,166,90,0.28)', selectionMatch: 'rgba(255,255,255,0.07)',
+  surface: '#1B1D21', border: '#3B3F47', selected: '#23252A', scroll: '#2A2D33',
+}, true);
+
+const proHighlight = HighlightStyle.define([
+  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword], color: '#FF7A68' },
+  { tag: tags.comment, color: '#8C909A', fontStyle: 'italic' },
+  { tag: tags.string, color: '#F2A65A' },
+  { tag: [tags.number, tags.bool, tags.null], color: '#B39DFF' },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#6EA8FE' },
+  { tag: tags.definition(tags.variableName), color: '#6EA8FE' },
+  { tag: [tags.className, tags.definition(tags.className), tags.typeName], color: '#4FC6AE' },
+  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#B3B6BE' },
+  { tag: tags.propertyName, color: '#E7E8EB' },
+  { tag: tags.variableName, color: '#E7E8EB' },
+  { tag: tags.self, color: '#B39DFF', fontStyle: 'italic' },
+  { tag: tags.special(tags.variableName), color: '#E8B04E' },
+  { tag: tags.meta, color: '#E8B04E' },
+  { tag: tags.invalid, color: '#FF7A68', textDecoration: 'underline' },
+]);
+
+const theta172Light = blackoutTheme({
+  bg: '#FFFFFF', text: '#1A1A1A', caret: '#C2271A', activeLine: '#F2F2F0', gutter: '#767676',
+  bracketBg: 'rgba(194,39,26,0.12)', searchBg: 'rgba(194,39,26,0.2)', selectionMatch: 'rgba(0,0,0,0.06)',
+  surface: '#F5F5F3', border: '#8A8A8A', selected: '#E2E2E0', scroll: '#BDBDBD',
+}, false);
 
 const theta172LightHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: '#C41E00', fontWeight: 'bold' },
-  { tag: tags.comment, color: '#9E9E9C', fontStyle: 'italic' },
-  { tag: tags.string, color: '#2D8B47' },
-  { tag: tags.number, color: '#C44D00' },
-  { tag: tags.bool, color: '#C44D00' },
-  { tag: tags.null, color: '#C44D00' },
-  { tag: tags.function(tags.variableName), color: '#1565C0' },
-  { tag: tags.definition(tags.variableName), color: '#1565C0' },
-  { tag: tags.typeName, color: '#1565C0' },
-  { tag: tags.className, color: '#1565C0' },
-  { tag: tags.operator, color: '#5C6BC0' },
-  { tag: tags.punctuation, color: '#5C6BC0' },
-  { tag: tags.bracket, color: '#5C6BC0' },
-  { tag: tags.propertyName, color: '#1A1A18' },
-  { tag: tags.variableName, color: '#1A1A18' },
-  { tag: tags.self, color: '#C41E00' },
-  { tag: tags.special(tags.variableName), color: '#C44D00' },
-  { tag: tags.meta, color: '#9E9E9C' },
+  { tag: tags.keyword, color: '#C2271A' },
+  { tag: [tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword], color: '#C2271A' },
+  { tag: tags.comment, color: '#6B6B6B' },
+  { tag: tags.string, color: '#3D3D3D', fontStyle: 'italic' },
+  { tag: [tags.number, tags.bool, tags.null], color: '#A3200F' },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#000000', fontWeight: '700' },
+  { tag: tags.definition(tags.variableName), color: '#000000', fontWeight: '700' },
+  { tag: [tags.className, tags.definition(tags.className), tags.typeName], color: '#000000', fontWeight: '700' },
+  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#555555' },
+  { tag: tags.propertyName, color: '#1A1A1A' },
+  { tag: tags.variableName, color: '#1A1A1A' },
+  { tag: tags.self, color: '#A3200F', fontStyle: 'italic' },
+  { tag: tags.special(tags.variableName), color: '#A3200F' },
+  { tag: tags.meta, color: '#A3200F' },
+  { tag: tags.invalid, color: '#C2271A', textDecoration: 'underline' },
 ]);
+
+/** The dark code colours of the active app theme, for other code views (classroom). */
+export function currentCodeTheme() {
+  return appTheme === 'pro'
+    ? [proDark, syntaxHighlighting(proHighlight)]
+    : [playgroundDark, syntaxHighlighting(playgroundHighlight)];
+}
+
+function editorThemeExtensions() {
+  return currentTheme === 'light'
+    ? [theta172Light, syntaxHighlighting(theta172LightHighlight)]
+    : currentCodeTheme();
+}
 
 // ── Starter Code ──────────────────────────────────────────────
 export const STARTER_CODE = `# Welcome to Python by THETA172
@@ -497,7 +365,8 @@ print(f"Fibonacci({count}): {nums}")
 `;
 
 // ── State ─────────────────────────────────────────────────────
-let currentTheme = 'dark';
+let currentTheme = 'dark'; // 'dark' (theme colours) or 'light' (projectors)
+let appTheme = document.documentElement.dataset.theme === 'pro' ? 'pro' : 'playground';
 let editorView = null;
 
 // ── Font size extension ───────────────────────────────────────
@@ -558,10 +427,7 @@ export async function createEditor(container) {
     errorLineField,
 
     // Theme (dynamic via compartment)
-    themeCompartment.of([
-      theta172Dark,
-      syntaxHighlighting(theta172DarkHighlight),
-    ]),
+    themeCompartment.of(editorThemeExtensions()),
 
     // Font size (dynamic via compartment)
     fontSizeCompartment.of(fontSizeTheme(15)),
@@ -729,15 +595,14 @@ export function toggleEditorTheme() {
   if (!editorView) return currentTheme;
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-  const themeExt = currentTheme === 'light'
-    ? [theta172Light, syntaxHighlighting(theta172LightHighlight)]
-    : [theta172Dark, syntaxHighlighting(theta172DarkHighlight)];
-
-  editorView.dispatch({
-    effects: themeCompartment.reconfigure(themeExt),
-  });
-
+  editorView.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
   return currentTheme;
+}
+
+/** Switch the code colours to the Playground or Pro palette. */
+export function setAppTheme(name) {
+  appTheme = name === 'pro' ? 'pro' : 'playground';
+  editorView?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
 }
 
 export function getEditorTheme() {

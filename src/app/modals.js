@@ -4,7 +4,6 @@
 import { setValue, focusEditor } from '../editor.js';
 import { EXAMPLES } from '../examples.js';
 import { showToast } from '../toast.js';
-import { addRipple } from '../ripple.js';
 import { $ } from '../core/dom.js';
 import { renderShortcutsModal, cancelRecording, resetShortcuts } from './shortcuts.js';
 
@@ -69,7 +68,6 @@ function renderExamples() {
       }
     });
     $list.appendChild(item);
-    addRipple(item);
   }
 }
 

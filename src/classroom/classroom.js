@@ -22,9 +22,10 @@ import {
 import { EditorView, lineNumbers, highlightActiveLineGutter,
          highlightSpecialChars, drawSelection, highlightActiveLine } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
-import { syntaxHighlighting, bracketMatching, HighlightStyle } from '@codemirror/language';
+import { bracketMatching } from '@codemirror/language';
 import { python } from '@codemirror/lang-python';
-import { tags } from '@lezer/highlight';
+import { currentCodeTheme } from '../editor.js';
+import { fx, screenTransition } from '../fx/moments.js';
 
 // ── State ─────────────────────────────────────────────────────────
 let panelOpen = false;
@@ -50,76 +51,6 @@ let _getDocLength = () => 0;
 let _onLiveChange = null;
 let _onContentChangeHook = null;
 
-// ── CodeMirror Theme for Live Viewers ─────────────────────────────
-const liveViewerTheme = EditorView.theme({
-  '&': {
-    backgroundColor: '#111111',
-    color: '#E8E8E6',
-    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-    fontSize: '14px',
-  },
-  '.cm-content': {
-    caretColor: '#FF2D00',
-    lineHeight: '24px',
-    letterSpacing: '0.2px',
-    padding: '16px 0',
-  },
-  '.cm-gutters': {
-    backgroundColor: '#0D0D0D',
-    color: '#5E5E5C',
-    border: 'none',
-    borderRight: '1px solid #1E1E1E',
-    minWidth: '3.5em',
-  },
-  '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 12px 0 8px',
-  },
-  '.cm-activeLine': {
-    backgroundColor: '#1A1A18',
-  },
-  '.cm-activeLineGutter': {
-    backgroundColor: '#1A1A18',
-    color: '#AAAAAA',
-  },
-  '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: '#FF2D00',
-    borderLeftWidth: '2px',
-  },
-  '&.cm-focused': {
-    outline: 'none',
-  },
-  '.cm-scroller': {
-    overflow: 'auto',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#1E1E1C80 transparent',
-  },
-  '.cm-matchingBracket': {
-    backgroundColor: 'rgba(255,45,0,0.15)',
-    outline: '1px solid rgba(255,45,0,0.4)',
-  },
-}, { dark: true });
-
-const liveViewerHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: '#D6A0F0', fontWeight: 'bold' },
-  { tag: tags.comment, color: '#636360', fontStyle: 'italic' },
-  { tag: tags.string, color: '#C3E88D' },
-  { tag: tags.number, color: '#FFB074' },
-  { tag: tags.bool, color: '#FFB074' },
-  { tag: tags.null, color: '#FFB074' },
-  { tag: tags.function(tags.variableName), color: '#92BAFF' },
-  { tag: tags.definition(tags.variableName), color: '#92BAFF' },
-  { tag: tags.typeName, color: '#92BAFF' },
-  { tag: tags.className, color: '#FFCB6B' },
-  { tag: tags.operator, color: '#9CDCFE' },
-  { tag: tags.punctuation, color: '#9CDCFE' },
-  { tag: tags.bracket, color: '#B0B0AE' },
-  { tag: tags.propertyName, color: '#F0F0EE' },
-  { tag: tags.variableName, color: '#E8E8E6' },
-  { tag: tags.self, color: '#FF6B8A' },
-  { tag: tags.special(tags.variableName), color: '#FFB074' },
-  { tag: tags.meta, color: '#7A7A78' },
-]);
-
 function createReadOnlyCM(container) {
   const view = new EditorView({
     state: EditorState.create({
@@ -133,8 +64,8 @@ function createReadOnlyCM(container) {
         bracketMatching(),
         python(),
         EditorState.readOnly.of(true),
-        liveViewerTheme,
-        syntaxHighlighting(liveViewerHighlight),
+        ...currentCodeTheme(),
+        EditorView.theme({ '&': { fontSize: '14px' } }),
         EditorView.theme({
           '.cm-scroller': { overflow: 'auto' },
         }),
@@ -157,8 +88,8 @@ function createEditableCM(container, onChange) {
         highlightActiveLine(),
         bracketMatching(),
         python(),
-        liveViewerTheme,
-        syntaxHighlighting(liveViewerHighlight),
+        ...currentCodeTheme(),
+        EditorView.theme({ '&': { fontSize: '14px' } }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && onChange) {
             onChange(update);
@@ -240,16 +171,26 @@ export function openClassroomPanel() {
   if (panelOpen || !$panel) return;
   panelOpen = true;
 
-  $panel.classList.remove('hidden');
-  $panel.classList.remove('closing');
-  void $panel.offsetHeight;
+  const focusFirstInput = () => setTimeout(() => {
+    const input = $panel.querySelector('input:not([style*="display:none"])');
+    if (input) input.focus();
+  }, 300);
 
+  // With pixel effects on, the panel swaps in under a pixel dissolve
+  if (fx.enabled) {
+    screenTransition(() => {
+      $panel.classList.remove('hidden', 'closing');
+      $panel.classList.add('visible', 'no-slide');
+      focusFirstInput();
+    });
+    return;
+  }
+
+  $panel.classList.remove('hidden', 'closing', 'no-slide');
+  void $panel.offsetHeight;
   requestAnimationFrame(() => {
     $panel.classList.add('visible');
-    setTimeout(() => {
-      const input = $panel.querySelector('input:not([style*="display:none"])');
-      if (input) input.focus();
-    }, 300);
+    focusFirstInput();
   });
 }
 
@@ -257,22 +198,26 @@ export function closeClassroomPanel() {
   if (!panelOpen || !$panel) return;
   panelOpen = false;
 
-  $panel.classList.remove('visible');
+  if (fx.enabled) {
+    screenTransition(() => {
+      $panel.classList.remove('visible', 'closing');
+      $panel.classList.add('hidden');
+    });
+    return;
+  }
+
+  $panel.classList.remove('visible', 'no-slide');
   $panel.classList.add('closing');
 
   const onEnd = () => {
     $panel.classList.remove('closing');
     $panel.classList.add('hidden');
-    $panel.removeEventListener('transitionend', onEnd);
   };
   $panel.addEventListener('transitionend', onEnd, { once: true });
 
   // Fallback
   setTimeout(() => {
-    if (!panelOpen) {
-      $panel.classList.remove('closing');
-      $panel.classList.add('hidden');
-    }
+    if (!panelOpen) onEnd();
   }, 500);
 }
 
@@ -318,12 +263,10 @@ function injectEditorToolbar() {
       };
 
   const toolbar = buildEditorToolbar(role, callbacks);
-  const tabsBar = editorPane.querySelector('.editor-tabs');
-  if (tabsBar) {
-    tabsBar.insertAdjacentElement('afterend', toolbar);
-  } else {
-    editorPane.prepend(toolbar);
-  }
+  // Sits between the editor's header row (tabs + actions) and the code
+  const header = editorPane.querySelector('.pane-header--editor');
+  if (header) header.insertAdjacentElement('afterend', toolbar);
+  else editorPane.prepend(toolbar);
 }
 
 function removeEditorToolbar() {
@@ -437,7 +380,7 @@ async function handleGoLive(name) {
   if (setup) setup.classList.add('hidden');
   if (liveView) liveView.classList.remove('hidden');
   if (liveName) liveName.textContent = name;
-  if (status) status.textContent = 'HOST: ' + result.ip;
+  if (status) status.textContent = `Live on ${result.ip}`;
 
   // Inject in-editor toolbar
   injectEditorToolbar();
@@ -499,7 +442,7 @@ async function handleStopLive() {
   if (setup) setup.classList.remove('hidden');
   if (liveView) liveView.classList.add('hidden');
   if (codeViewer) codeViewer.classList.add('hidden');
-  if (status) status.textContent = 'STANDBY';
+  if (status) status.textContent = 'Not connected';
 
   showToast('Classroom session ended', 'info', 2000);
 }
@@ -554,7 +497,7 @@ function renderStudentList() {
   updateToolbarStudentCount(students.length);
 
   if (students.length === 0) {
-    list.innerHTML = `<div class="cr-waiting-text">WAITING_FOR_CONNECTIONS...</div>`;
+    list.innerHTML = `<div class="cr-waiting-text">Waiting for students to join…</div>`;
     updateChatTargetSelect();
     return;
   }
@@ -619,7 +562,7 @@ function handleViewStudentCode(studentId, name, roll) {
   // Check existing edit permission
   const student = students.find(s => s.id === studentId);
   if (student?.editPermission) {
-    if (editStatus) editStatus.textContent = '[ EDIT ACCESS GRANTED ]';
+    if (editStatus) editStatus.textContent = 'You can edit';
     if (editStatus) editStatus.className = 'cr-edit-status cr-edit-status--granted';
     if (pushBtn) pushBtn.classList.remove('hidden');
   } else {
@@ -771,7 +714,8 @@ function handleRaiseHand(message) {
   const toolbarBtn = document.getElementById('cr-toolbar-raise-hand');
   if (btn) {
     btn.classList.add('cr-hand-cooldown');
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.8L2.3 16.7a1 1 0 0 1 .3-1.5l.5-.3c.6-.4 1.5-.3 2 .3L6 16"/></svg> SENT`;
+    const label = btn.querySelector('.cr-hand-label');
+    if (label) label.textContent = 'Help requested';
   }
   if (toolbarBtn) {
     toolbarBtn.classList.add('cr-hand-cooldown');
@@ -783,7 +727,8 @@ function handleRaiseHand(message) {
     _raiseHandCooldown = false;
     if (btn) {
       btn.classList.remove('cr-hand-cooldown');
-      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.8L2.3 16.7a1 1 0 0 1 .3-1.5l.5-.3c.6-.4 1.5-.3 2 .3L6 16"/></svg> RAISE HAND`;
+      const label = btn.querySelector('.cr-hand-label');
+      if (label) label.textContent = 'Ask for help';
     }
     if (toolbarBtn) {
       toolbarBtn.classList.remove('cr-hand-cooldown');
@@ -818,7 +763,7 @@ function handleStudentDisconnect() {
   if (setup) setup.classList.remove('hidden');
   if (connected) connected.classList.add('hidden');
   if (discovery) discovery.classList.add('hidden');
-  if (status) status.textContent = 'STANDBY';
+  if (status) status.textContent = 'Not connected';
 
   showToast('Disconnected from classroom', 'info', 2000);
 }
@@ -901,7 +846,7 @@ function setupIPCListeners() {
       // Update filename
       if (viewingStudentId === info.id) {
         const fn = document.getElementById('cr-viewer-filename');
-        if (fn) fn.textContent = info.fileName?.toUpperCase() || 'MAIN.PY';
+        if (fn) fn.textContent = info.fileName || 'main.py';
       }
     });
   }
@@ -934,7 +879,7 @@ function setupIPCListeners() {
         if (viewingStudentId === info.id) {
           const editStatus = document.getElementById('cr-edit-status');
           if (editStatus) {
-            editStatus.textContent = '[ EDIT ACCESS GRANTED ]';
+            editStatus.textContent = 'You can edit';
             editStatus.className = 'cr-edit-status cr-edit-status--granted';
           }
           const pushBtn = document.getElementById('cr-push-edit-btn');
@@ -978,7 +923,7 @@ function setupIPCListeners() {
       if (viewingStudentId === info.id) {
         const editStatus = document.getElementById('cr-edit-status');
         if (editStatus) {
-          editStatus.textContent = '[ EDIT REVOKED ]';
+          editStatus.textContent = 'Editing turned off';
           editStatus.className = 'cr-edit-status cr-edit-status--revoked';
         }
         const pushBtn = document.getElementById('cr-push-edit-btn');
@@ -1006,7 +951,7 @@ function setupIPCListeners() {
   if (api.onTeacherFound) {
     api.onTeacherFound((info) => {
       const txt = document.getElementById('cr-discovery-text');
-      if (txt) txt.textContent = `Found: ${info.teacher} — Connecting...`;
+      if (txt) txt.textContent = `Found ${info.teacher}. Connecting…`;
     });
   }
 
@@ -1022,7 +967,7 @@ function setupIPCListeners() {
       if (discovery) discovery.classList.add('hidden');
       if (connected) connected.classList.remove('hidden');
       if (teacherEl) teacherEl.textContent = info.teacher;
-      if (status) status.textContent = 'VIEWING: ' + info.teacher;
+      if (status) status.textContent = `Watching ${info.teacher}`;
 
       // Create CodeMirror live viewer for teacher code
       const editorContainer = document.getElementById('cr-teacher-live-editor');
@@ -1056,7 +1001,7 @@ function setupIPCListeners() {
         setCMContent(liveViewerInstance, data.code);
       }
       const fn = document.getElementById('cr-teacher-filename');
-      if (fn && data.fileName) fn.textContent = data.fileName.toUpperCase();
+      if (fn && data.fileName) fn.textContent = data.fileName;
     });
   }
 
@@ -1081,7 +1026,7 @@ function setupIPCListeners() {
     api.onClassroomCursor((data) => {
       const indicator = document.getElementById('cr-cursor-indicator');
       if (indicator && data.line !== undefined) {
-        indicator.textContent = `Ln ${data.line}, Col ${data.col}`;
+        indicator.textContent = `Ln ${data.line} · Col ${data.col}`;
       }
     });
   }

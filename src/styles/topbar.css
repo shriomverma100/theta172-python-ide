@@ -1,491 +1,194 @@
 /* ============================================
-   THETA172 — TOPBAR  |  Editorial Brutalist
-   Palette: #EAEAE8 / #111111 / #FF3300 only
+   THETA172 — Top bar
+   Playground: brand left, status pill centre, sticker buttons right.
+   Pro: compact 44px bar with a command bar and a red Run button.
    ============================================ */
 
-/* ── TOP BAR CONTAINER ── */
 .ide-topbar {
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #EAEAE8;
-  border-bottom: 2px solid #111111;
-  padding: 0 0 0 0;
-  flex-shrink: 0;
-  gap: 0;
   position: relative;
-  z-index: 100;
-}
-
-.ide-topbar::after { display: none; }
-
-.ide-topbar__left,
-.ide-topbar__right {
-  display: flex;
+  z-index: 50;
+  display: grid;
+  /* the side groups keep their size; the centre (status pill / command bar) gives way */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0;
-  flex: 1;
-  height: 100%;
+  gap: 12px;
+  height: var(--topbar-h);
+  padding: 0 8px 0 18px;
+  background: var(--bg);
+  flex: none;
+  user-select: none;
 }
+:root[data-theme="pro"] .ide-topbar { padding-left: 14px; border-bottom: 1px solid var(--line); }
 
-.ide-topbar__right { justify-content: flex-end; }
-.ide-topbar__center {
-  flex-shrink: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  border-left: 1px solid #C8C8C6;
-  border-right: 1px solid #C8C8C6;
+.topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar-right { justify-content: flex-end; height: 100%; }
+.topbar-center { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
+
+/* ── Brand ── */
+.topbar-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.brand-mark { display: block; flex: none; }
+.brand-word { font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.brand-tag {
+  padding: 3px 10px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--surface-1);
+  background: var(--text);
+  border-radius: var(--radius-pill);
 }
+:root[data-theme="pro"] .brand-mark { width: 22px; height: 19px; }
+:root[data-theme="pro"] .brand-word { font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; }
+:root[data-theme="pro"] .brand-tag { display: none; }
 
-/* ── LOGO BUTTON ── */
-.topbar-logo-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 18px;
-  height: 100%;
-  border-right: 1px solid #C8C8C6;
-  background: #111111;
-  transition: background 150ms ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.topbar-logo-btn::before { display: none; }
-
-.topbar-logo-btn:hover {
-  background: #FF3300;
-  transform: none;
-}
-
-.topbar-logo-btn:active {
-  transform: none;
-  background: #CC2800;
-}
-
-.topbar-logo-btn svg {
-  border-radius: 0;
-  transition: transform 200ms ease;
-}
-
-.topbar-logo-btn:hover svg {
-  transform: scale(1.08);
-  box-shadow: none;
-}
-
-.topbar-brand {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: #EAEAE8;
-  transition: none;
-}
-
-.topbar-logo-btn:hover .topbar-brand { color: #EAEAE8; }
-
-/* ── COLLAB LIVE INDICATOR on logo button ── */
-.topbar-logo-btn.collab-live::after {
-  content: 'LIVE';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: #EAEAE8;
-  background: #FF3300;
-  padding: 1px 4px;
-  line-height: 1.3;
-  animation: topbarLivePulse 2s ease-in-out infinite;
-  z-index: 2;
-  pointer-events: none;
-}
-
-@keyframes topbarLivePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ── DIVIDER ── */
-.topbar-divider {
-  width: 1px;
-  height: 100%;
-  background: #C8C8C6;
-  flex-shrink: 0;
-  margin: 0;
-}
-
-/* ── FILE NAME ── */
+/* ── Current file ── */
 .topbar-file {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 14px;
   font-family: var(--font-code);
-  font-size: 12px;
-  color: #777775;
-  padding: 0 16px;
-  height: 100%;
-  background: transparent;
-  border: none;
-  border-right: 1px solid #C8C8C6;
-  transition: background 150ms ease;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface-1);
+  border: var(--border-w) solid var(--line-strong);
+  border-radius: var(--radius-pill);
 }
+.topbar-file #file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="pro"] .topbar-file { height: auto; padding: 0; background: none; border: none; color: var(--text-2); }
+:root[data-theme="pro"] .topbar-file::before { content: '/'; color: var(--text-4); margin-right: 2px; }
 
-.topbar-file:hover {
-  background: #DDDBD8;
-}
+.save-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; border: var(--border-w) solid var(--text-3); }
+.save-dot.visible { background: var(--red); border-color: var(--line-strong); }
+:root[data-theme="pro"] .save-dot { border: none; }
+:root[data-theme="pro"] .save-dot.visible { background: var(--warn-text); }
 
-.topbar-file #file-name {
-  color: #111111;
-  font-weight: 600;
-  transition: color var(--t-fast);
-}
-
-.save-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: #FF3300;
-  border-radius: 0;
-  margin-left: 4px;
-  opacity: 0;
-  transform: scale(0);
-  transition: opacity 250ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.save-dot.visible {
-  opacity: 1;
-  transform: scale(1);
-  animation: savePulse 1.5s ease infinite;
-}
-
-@keyframes savePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ═══════════════════════════════════════════════════
-   TOPBAR BUTTONS — Flat brutalist, red on hover
-   ═══════════════════════════════════════════════════ */
-.topbar-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  color: #888886;
-  padding: 0 16px;
-  height: 100%;
-  border: none;
-  border-right: 1px solid #C8C8C6;
-  border-left: none;
-  border-radius: 0;
-  background: transparent;
-  text-transform: uppercase;
-  position: relative;
-  overflow: hidden;
-  transition: background var(--dur-base) var(--ease-spring),
-              color var(--dur-base) var(--ease-smooth),
-              transform var(--dur-base) var(--ease-spring);
-  transform: scale(1);
-  min-height: unset;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.topbar-btn::before,
-.topbar-btn::after { display: none; }
-
-.topbar-btn:hover {
-  color: #EAEAE8;
-  background: #111111;
-  border-color: #111111;
-  transform: scale(1.05);
-  box-shadow: none;
-}
-
-.topbar-btn:active {
-  background: #FF3300;
-  color: #EAEAE8;
-  border-color: #FF3300;
-  transform: scale(0.97);
-  box-shadow: none;
-  transition-duration: 60ms;
-}
-
-/* Button SVG icons */
-.topbar-btn svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  transition: transform 200ms ease;
-}
-
-.topbar-btn:hover svg {
-  transform: scale(1.1);
-}
-
-/* IMPORT — highlight red on hover */
-#btn-import-file:hover {
-  background: #111111;
-  color: #EAEAE8;
-  border-color: #111111;
-}
-
-#btn-import-file:hover svg { transform: scale(1.1) translateY(-1px); }
-
-/* SAVE — highlight red on hover */
-#btn-save-file:hover {
-  background: #FF3300;
-  color: #EAEAE8;
-  border-color: #FF3300;
-}
-
-#btn-save-file:hover svg { transform: scale(1.1) translateY(1px); }
-
-/* CLEAR — stays dark but with red tint */
-#btn-clear:hover {
-  background: #111111;
-  color: #EAEAE8;
-  border-color: #111111;
-}
-
-#btn-clear:hover svg { transform: scale(1.1) rotate(45deg); }
-
-/* ── RUN BUTTON — Full red CTA (centered) ── */
-.btn-run {
-  display: flex;
+/* ── Command bar (Pro) ── */
+.cmd-bar {
+  display: none;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #EAEAE8;
-  background: #FF3300;
-  padding: 0 32px;
-  height: 100%;
-  border-radius: 0;
-  position: relative;
-  overflow: hidden;
-  min-width: 120px;
-  justify-content: center;
-  border: none;
-  border-left: 1px solid #C8C8C6;
-  transition: background var(--dur-base) var(--ease-spring),
-              color var(--dur-fast) var(--ease-smooth),
-              transform var(--dur-base) var(--ease-spring);
+  width: min(460px, 34vw);
+  height: 30px;
+  padding: 0 6px 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  text-align: left;
+  background: var(--surface-1);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  transition: border-color var(--t-fast);
 }
+.cmd-bar:hover { border-color: var(--text-4); color: var(--text-2); }
+.cmd-bar__text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmd-bar kbd { height: 20px; font-size: 11px; border-radius: 4px; }
+:root[data-theme="pro"] .cmd-bar { display: flex; }
 
-.btn-run::before,
-.btn-run::after { display: none; }
-
-.btn-run:hover {
-  background: #111111;
-  color: #EAEAE8;
-  transform: none;
-  box-shadow: none;
-  border-color: #C8C8C6;
-}
-
-.btn-run:active {
-  background: #CC2800;
-  transform: scale(0.96);
-  box-shadow: none;
-  transition-duration: 60ms;
-}
-
-.btn-run svg {
-  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.btn-run:hover svg {
-  transform: scale(1.2);
-}
-
-/* Running state */
-.btn-run.running {
-  background: #111111;
-  border-color: #C8C8C6;
-  color: #EAEAE8;
-  animation: runPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes runPulse {
-  0%, 100% { box-shadow: inset 0 0 0 0 rgba(255, 51, 0, 0); }
-  50%      { box-shadow: inset 0 0 20px 0 rgba(255, 51, 0, 0.15); }
-}
-
-.btn-run.running:hover {
-  background: #FF3300;
-  transform: none;
-  box-shadow: none;
-  animation: none;
-}
-
-/* ── RUN STATUS (Center) ── */
+/* ── Run state: the Playground status pill / the Pro kernel chip ── */
 .run-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  height: 46px;
+  padding: 0 22px 0 16px;
   font-family: var(--font-code);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #888886;
-  text-transform: uppercase;
-  padding: 0 18px;
-  height: 100%;
+  font-size: var(--fs-sm);
+  color: #FFFFFF;
+  background: var(--ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 3px 3px 0 var(--red);
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+}
+#run-status-text { overflow: hidden; text-overflow: ellipsis; }
+.run-status__dot { width: 10px; height: 10px; flex: none; background: var(--lime); }
+.run-status--running .run-status__dot { background: var(--red); animation: liveBlink 0.6s steps(2) infinite; }
+.run-status--error .run-status__dot { background: var(--red); }
+.run-status--idle .run-status__dot { background: #8E87C9; }
+
+:root[data-theme="pro"] .run-status {
+  height: 30px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-2);
   background: transparent;
-  border: none;
-  transition: all 200ms ease;
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
 }
+:root[data-theme="pro"] .run-status__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-text); }
+:root[data-theme="pro"] .run-status--running .run-status__dot,
+:root[data-theme="pro"] .run-status--error .run-status__dot { background: var(--red); }
+:root[data-theme="pro"] .run-status--idle .run-status__dot { background: var(--text-4); }
+:root[data-theme="pro"] .run-status--error { color: var(--accent-text); }
 
-.run-status__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 0;
-  background: #C8C8C6;
-  flex-shrink: 0;
-  transition: background var(--dur-slow) var(--ease-smooth);
-}
-
-.run-status--idle   .run-status__dot { background: #C8C8C6; }
-.run-status--ready  .run-status__dot { background: #111111; }
-.run-status--running .run-status__dot {
-  background: #FF3300;
-  animation: pulseDot 700ms ease infinite;
-}
-.run-status--running {
-  color: #FF3300;
-}
-.run-status--done  .run-status__dot { background: #111111; }
-.run-status--error .run-status__dot { background: #FF3300; }
-
-@keyframes pulseDot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(0.4); opacity: 0.3; }
-}
-
-/* ── WINDOW CONTROLS ── */
-.window-controls {
-  margin-left: 0;
-  height: 100%;
-  display: flex;
+/* ── Action buttons ── */
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.topbar-btn {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  border-left: 1px solid #C8C8C6;
-  flex-shrink: 0;
+  justify-content: center;
+  gap: 8px;
+  height: var(--control-h);
+  padding: 0 14px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-1);
+  border: var(--border-w) solid var(--line-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+  white-space: nowrap;
+  transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
+.topbar-btn:hover { background: var(--surface-3); }
+.topbar-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.topbar-btn--icon { width: var(--control-h); padding: 0; }
+:root[data-theme="pro"] .topbar-actions { display: none; }
 
-.wc-btn {
-  border-radius: 0;
-  margin: 0;
-  width: 42px;
-  height: 100%;
-  color: #888886;
-  transition: background var(--dur-base) var(--ease-spring),
-              color var(--dur-fast) var(--ease-smooth),
-              transform var(--dur-base) var(--ease-spring);
-  transform: scale(1);
-}
+.topbar-btn__live { display: none; width: 8px; height: 8px; background: var(--red); }
+.topbar-btn.classroom-live { background: var(--red); color: var(--on-red); }
+.topbar-btn.classroom-live .topbar-btn__live { display: inline-block; background: var(--ink); animation: liveBlink 1.2s steps(2) infinite; }
 
-.wc-btn:hover {
-  background: #DDDBD8;
-  color: #111111;
-  transform: scale(1.08);
+/* ── Theme switch ── */
+.theme-switch { display: inline-flex; flex: none; padding: 3px; background: var(--ink); border-radius: var(--radius-pill); }
+.theme-switch button {
+  height: 32px;
+  padding: 0 14px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #FFFFFF;
+  border-radius: var(--radius-pill);
 }
+.theme-switch button[aria-pressed="true"] { background: var(--lime); color: var(--ink); font-weight: 700; }
+:root[data-theme="pro"] .theme-switch { padding: 0; background: transparent; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+:root[data-theme="pro"] .theme-switch button { height: 28px; padding: 0 10px; font-size: var(--fs-xs); color: var(--text-2); border-radius: 0; }
+:root[data-theme="pro"] .theme-switch button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 
-.wc-close:hover {
-  background: #FF3300;
-  color: #EAEAE8;
+/* ── Run button ── */
+.btn-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  font-weight: 700;
+  color: var(--on-red);
+  background: var(--red);
+  white-space: nowrap;
+  transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
+.btn-run:hover { background: var(--red-hover); }
+.btn-run.running { background: var(--ink); color: #FFFFFF; }
+:root[data-theme="pro"] .btn-run.running { background: var(--surface-4); color: var(--text); }
 
-/* ── RESPONSIVE: Keep window controls visible at all sizes ── */
-@media (max-width: 1200px) {
-  /* Hide text labels — show icons only */
-  .topbar-btn > span {
-    display: none;
-  }
-  .topbar-btn {
-    padding: 0 12px;
-    gap: 0;
-  }
-  .topbar-brand {
-    display: none;
-  }
-  #run-btn-text {
-    display: none;
-  }
-  .btn-run {
-    padding: 0 20px;
-    min-width: 60px;
-  }
-}
+/* Header Run: Pro only (Playground runs from the run rail) */
+.ide-topbar .btn-run { display: none; height: 30px; padding: 0 14px 0 12px; font-size: var(--fs-sm); border-radius: 8px; }
+:root[data-theme="pro"] .ide-topbar .btn-run { display: inline-flex; }
 
-@media (max-width: 950px) {
-  .topbar-file {
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  #run-status-text {
-    display: none;
-  }
-  .run-status {
-    padding: 0 12px;
-  }
-}
-
-@media (max-width: 800px) {
-  .topbar-btn {
-    padding: 0 8px;
-  }
-  .topbar-divider {
-    display: none;
-  }
-  .topbar-file {
-    display: none;
-  }
-  .wc-btn {
-    width: 36px;
-  }
-  .btn-run {
-    padding: 0 14px;
-    min-width: 50px;
-  }
-}
-
-@media (max-width: 600px) {
-  .ide-topbar__center {
-    flex: 1;
-    justify-content: flex-end;
-    border-left: none;
-    border-right: none;
-  }
-  .ide-topbar__right {
-    flex: unset;
-  }
-  .ide-topbar__left {
-    flex: unset;
-  }
-  .run-status {
-    display: none;
-  }
-  .topbar-btn {
-    padding: 0 6px;
-  }
-  .wc-btn {
-    width: 32px;
-  }
-  .topbar-logo-btn {
-    padding: 0 10px;
-  }
-}
+/* ── Narrow windows ── */
+@media (max-width: 1440px) { #btn-examples, #btn-shortcuts { display: none; } }
+@media (max-width: 1080px) { .brand-tag, .topbar-file { display: none; } }
+@media (max-width: 900px) { #btn-import-file, #btn-save-file { display: none; } .run-status { max-width: 30vw; } }

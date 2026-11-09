@@ -5,6 +5,11 @@ export default [
   {
     ignores: ['dist/**', 'release/**', 'node_modules/**', 'tmp/**', 'build-assets/**'],
   },
+  // public/: plain browser scripts copied as-is (theme-init.js)
+  {
+    files: ['public/**/*.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.browser } },
+  },
   js.configs.recommended,
   {
     rules: {

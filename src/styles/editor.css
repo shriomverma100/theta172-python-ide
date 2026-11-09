@@ -1,188 +1,31 @@
 /* ============================================
-   THETA172 — Editor Pane (CodeMirror 6)
-   ULTRA-SMOOTH EDITION
+   THETA172 — Editor (CodeMirror 6)
+   Text colours live in src/editor.js (one palette per theme,
+   plus a light palette for projectors).
    ============================================ */
 
-.monaco-container {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  min-height: 0;
-  contain: layout style;
-}
+.monaco-container { position: relative; flex: 1; min-height: 0; overflow: hidden; contain: layout style; }
+.monaco-container.drag-over { outline: 2px dashed var(--red); outline-offset: -8px; background: var(--red-tint); }
 
-/* Drag-over indicator */
-.monaco-container.drag-over {
-  outline: 2px dashed #FF3300;
-  outline-offset: -4px;
-  background: rgba(255, 45, 0, 0.04);
-}
+.monaco-container .cm-editor { width: 100%; height: 100%; }
+.monaco-container .cm-scroller { font-family: var(--font-code) !important; overscroll-behavior: contain; }
+.cm-editor .cm-content { cursor: text; }
+.cm-editor .cm-gutters { cursor: default; border-right: none; }
 
-/* CodeMirror fills its container */
-.monaco-container .cm-editor {
-  height: 100%;
-  width: 100%;
-}
+/* Show exactly what was typed: no "->" or "!=" ligatures */
+.monaco-container .cm-content { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 
-.monaco-container .cm-scroller {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
-  scroll-behavior: smooth;
-  overscroll-behavior: contain;
-}
-
-/* ── Ultra-smooth caret animation ── */
-.cm-cursor {
-  transition: left 60ms cubic-bezier(0.22, 1, 0.36, 1),
-              top 60ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-
-/* Smooth active line highlight */
-.cm-activeLine {
-  transition: background-color 120ms ease !important;
-}
-
-.cm-activeLineGutter {
-  transition: background-color 120ms ease, color 120ms ease !important;
-}
-
-/* Smooth bracket matching glow */
-.cm-matchingBracket {
-  transition: background-color 150ms ease, outline-color 150ms ease !important;
-}
-
-/* Scrollbar styling */
-.monaco-container .cm-scroller::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.monaco-container .cm-scroller::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.monaco-container .cm-scroller::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.25);
-  border-radius: 0;
-  transition: background 200ms ease;
-}
-
-.monaco-container .cm-scroller::-webkit-scrollbar-thumb:hover {
-  background: rgba(128, 128, 128, 0.4);
-}
-
-/* ── Autocomplete tooltip animation ── */
-@keyframes cmTooltipIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.cm-tooltip {
-  animation: cmTooltipIn 150ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-
-.cm-tooltip-autocomplete {
-  border-radius: 0 !important;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
-  font-size: 12px !important;
-}
-
-/* Smooth autocomplete item selection */
-.cm-tooltip-autocomplete > ul > li {
-  transition: background-color 80ms ease !important;
-}
-
-/* Search panel styling */
-.cm-panels {
-  font-family: 'Space Grotesk', system-ui, sans-serif !important;
-  font-size: 12px !important;
-  animation: cmTooltipIn 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.cm-panel input[type="text"],
-.cm-panel input[type="checkbox"] {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
-  transition: border-color 150ms ease;
-}
-
-.cm-panel input[type="text"]:focus {
-  border-color: #FF2D00 !important;
-}
-
-/* Fold gutter markers */
-.cm-foldGutter .cm-gutterElement {
-  font-size: 10px;
-  padding: 0 2px;
-  cursor: pointer;
-  transition: color 150ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.cm-foldGutter .cm-gutterElement:hover {
-  color: #FF2D00;
-}
-
-/* CodeMirror text cursor — override body's cursor:default */
-.cm-editor .cm-content {
-  cursor: text;
-  contain: content;
-}
-
-.cm-editor .cm-gutters {
-  cursor: default;
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-/* Dark theme gutter separator */
-.ide-pane--editor.theme-dark .cm-editor .cm-gutters {
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Selection must be clearly visible */
-.cm-editor .cm-selectionBackground {
-  background-color: rgba(255, 45, 0, 0.4) !important;
-}
-
-.cm-editor.cm-focused .cm-selectionBackground {
-  background-color: rgba(255, 45, 0, 0.45) !important;
-}
-
-.cm-editor .cm-content ::selection {
-  background-color: rgba(255, 45, 0, 0.45) !important;
-}
-
+.cm-editor .cm-selectionBackground { background-color: rgba(255, 74, 54, 0.3) !important; }
+.cm-editor.cm-focused .cm-selectionBackground { background-color: rgba(255, 74, 54, 0.38) !important; }
+.cm-editor .cm-content ::selection,
 .cm-editor .cm-line::selection,
-.cm-editor .cm-line *::selection {
-  background-color: rgba(255, 45, 0, 0.45) !important;
-}
+.cm-editor .cm-line *::selection { background-color: rgba(255, 74, 54, 0.38) !important; }
 
-/* Error line highlight (Python traceback) */
-.cm-error-line {
-  background-color: rgba(255, 40, 40, 0.15) !important;
-  border-left: 3px solid #FF3333;
-  transition: background-color 200ms ease;
-}
+/* Line from a Python traceback */
+.cm-error-line { background-color: rgba(255, 74, 54, 0.18) !important; box-shadow: inset 3px 0 0 var(--red); }
 
-/* ── Fix Indent Button Loading State ── */
-.pane-action-btn.loading {
-  pointer-events: none;
-  opacity: 0.7;
-}
+.cm-foldGutter .cm-gutterElement { padding: 0 3px; cursor: pointer; }
+.cm-foldGutter .cm-gutterElement:hover { color: var(--red); }
 
-.pane-action-btn.loading svg {
-  animation: spinIndent 0.8s linear infinite;
-}
-
-@keyframes spinIndent {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* ── Smooth line number transitions ── */
-.cm-lineNumbers .cm-gutterElement {
-  transition: color 100ms ease;
-}
+/* AI Fix busy state */
+.pane-action-btn.loading { pointer-events: none; opacity: 0.6; }

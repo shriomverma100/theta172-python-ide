@@ -15,16 +15,21 @@
  *   window-chrome.js window buttons + unsaved-changes flow
  *   context-menu.js  editor right-click menu
  *   a11y.js          accessibility wiring
+ *   boot.js          start-up screen
+ *   settings.js      settings dialog, pixel effects switch
+ *   theme.js         Playground / Pro themes and the first-launch picker
+ *
+ * Pixel effects (pixelfx) live in src/fx/.
  */
 import {
-  createEditor, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
+  createEditor, setAppTheme, layout as editorLayout, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
   onContentChange, onCursorChange, openFindReplace, getView,
 } from './editor.js';
 import { TerminalManager } from './terminal.js';
 import { ReplManager } from './repl.js';
 import { showToast } from './toast.js';
-import { addRipple } from './ripple.js';
-import { initSmoothEngine } from './smooth.js';
+import { fontsReady } from './styles/fonts.js';
+import { fx, startLoadingLoop, runSucceeded, runFailed, screenTransition } from './fx/moments.js';
 import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import {
@@ -32,17 +37,21 @@ import {
   broadcastCurrentCode, isTeacherLive, isStudentConnected, streamStudentCode,
 } from './classroom/classroom.js';
 
-import { $, $$ } from './core/dom.js';
+import { $ } from './core/dom.js';
 import { storageGet } from './core/storage.js';
+import { xtermTheme } from './core/terminal-theme.js';
+import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker } from './app/theme.js';
 import { state } from './app/state.js';
 import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved } from './app/tabs.js';
 import { saveToFile, saveAsFile, openFile, initFileInputs } from './app/files.js';
 import { updateCodeStats, markUnsaved, scheduleAutoSave, saveCode } from './app/autosave.js';
-import { initRuntime, runCode, stopCode, animateLoadingSteps } from './app/runtime.js';
+import { initRuntime, runCode, stopCode } from './app/runtime.js';
+import { startBoot, setBootStep } from './app/boot.js';
+import { initSettings, openSettings, closeSettings, toggleFx } from './app/settings.js';
 import { initPaneTabs, initGutter, clearOutput, adjustFontSize } from './app/layout.js';
 import { initShortcuts } from './app/shortcuts.js';
 import { initCommandPalette, toggleCommandPalette, openCommandPalette, isPaletteOpen, closeCommandPalette } from './app/commands.js';
-import { initModals, openExamples, closeAllModals } from './app/modals.js';
+import { initModals, openExamples, openShortcuts, closeAllModals } from './app/modals.js';
 import { fixCode } from './app/ai-fix.js';
 import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js';
 import { initContextMenu } from './app/context-menu.js';
@@ -50,7 +59,7 @@ import { initAccessibility } from './app/a11y.js';
 
 // ── Global error reporting ───────────────────────────────────────
 window.onerror = (message, source, line, col, error) => {
-  console.error('[THETA] Uncaught error:', { message, source, line, col, error });
+  console.error(`[THETA] Uncaught error: ${message} (${source}:${line}:${col})`, error);
   try { showToast(`Error: ${message}`, 'error', 4000); } catch (_) { /* toast itself failed */ }
   return true;
 };
@@ -90,6 +99,9 @@ const actions = {
   'focus-editor': focusEditor,
   'focus-terminal': () => state.terminal?.focus(),
   'toggle-theme': handleThemeToggle,
+  'toggle-fx': toggleFx,
+  'switch-theme': () => toggleTheme(screenTransition),
+  'settings': openSettings,
   'cmd-palette': toggleCommandPalette,
   'examples': openExamples,
   'reset-code': () => { setValue(STARTER_CODE); showToast('Code reset to starter template', 'info'); },
@@ -98,10 +110,19 @@ const actions = {
 function handleEscape(e) {
   if (handleClassroomKeydown(e)) return;
   closeAllModals();
+  closeSettings();
   if (isPaletteOpen()) closeCommandPalette();
 }
 
 function initButtons() {
+  // Pro icon rail and the Playground class tile
+  $('rail-editor')?.addEventListener('click', focusEditor);
+  $('rail-classroom')?.addEventListener('click', () => openClassroomPanel());
+  $('rail-examples')?.addEventListener('click', openExamples);
+  $('rail-keys')?.addEventListener('click', openShortcuts);
+  $('rail-settings')?.addEventListener('click', openSettings);
+  $('btn-class-tile')?.addEventListener('click', () => openClassroomPanel());
+  $('btn-run-rail')?.addEventListener('click', runCode);
   $('btn-run')?.addEventListener('click', runCode);
   $('btn-clear')?.addEventListener('click', clearOutput);
   $('btn-copy-code')?.addEventListener('click', copyCode);
@@ -111,7 +132,7 @@ function initButtons() {
   $('btn-font-inc')?.addEventListener('click', () => adjustFontSize(1));
   $('btn-font-dec')?.addEventListener('click', () => adjustFontSize(-1));
   $('btn-palette')?.addEventListener('click', openCommandPalette);
-  $('back-to-landing')?.addEventListener('click', () => openClassroomPanel());
+  $('btn-classroom')?.addEventListener('click', () => openClassroomPanel());
   $('btn-new-tab')?.addEventListener('click', () => addNewTab(null, '# New file\n'));
 }
 
@@ -119,7 +140,7 @@ function initButtons() {
 function initEditorEvents() {
   onCursorChange((pos) => {
     const $pos = $('cursor-pos');
-    if ($pos) $pos.textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
+    if ($pos) $pos.textContent = `Ln ${pos.lineNumber} · Col ${pos.column}`;
     if (isTeacherLive()) window.electronAPI?.classroomBroadcastCursor?.(pos.lineNumber, pos.column);
   });
 
@@ -140,7 +161,16 @@ function initEditorEvents() {
 
 function initClassroom() {
   initClassroomPanel({
-    onLiveChange: (live) => $('back-to-landing')?.classList.toggle('classroom-live', live),
+    onLiveChange: (live) => {
+      $('btn-classroom')?.classList.toggle('classroom-live', live);
+      document.querySelector('.class-tile')?.classList.toggle('is-live', live);
+      const $status = $('class-tile-status');
+      const $text = $('class-tile-text');
+      if ($status) $status.textContent = live ? 'Your class is live' : 'Classroom';
+      if ($text) $text.textContent = live
+        ? 'Students can see your code. Open the classroom to see theirs.'
+        : 'Teach a class or join one on the same Wi-Fi or LAN.';
+    },
     editorGetters: {
       getCode: () => getValue() || '',
       getCursor: () => {
@@ -158,12 +188,11 @@ function initClassroom() {
 
 // ── Boot ─────────────────────────────────────────────────────────
 async function initIDE() {
-  animateLoadingSteps();
-  $('lstep-0')?.classList.add('active');
+  startBoot();
 
   const $editorHost = $('monaco-container');
   state.editor = await createEditor($editorHost);
-  $('lstep-0')?.classList.replace('active', 'done');
+  setBootStep(1);
 
   const savedCode = storageGet('theta-code');
   initTabs(savedCode || STARTER_CODE);
@@ -175,6 +204,8 @@ async function initIDE() {
   initEditorEvents();
   updateCodeStats();
 
+  // xterm measures its cells when it opens, so wait for JetBrains Mono
+  await fontsReady();
   state.terminal = new TerminalManager($('terminal-container'));
   state.terminal.init();
 
@@ -190,6 +221,7 @@ async function initIDE() {
   initFileInputs($editorHost || document.querySelector('.ide-body'));
   initContextMenu($editorHost, { runCode, openFindReplace });
   initClassroom();
+  initSettings();
 
   // Read-only hooks for the Electron smoke test (never enabled otherwise).
   // The terminal renders with WebGL, so its text is not in the DOM.
@@ -202,17 +234,56 @@ async function initIDE() {
         for (let i = 0; i < buf.length; i++) text += (buf.getLine(i)?.translateToString(true) ?? '') + '\n';
         return text;
       },
+      fxStats: () => fx.stats(),
+      setCode: (code) => setValue(code),
+      // Plays each pixel moment alone and reports its cost per drawn frame
+      async fxBench() {
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const at = document.querySelector('.exec-time-wrap');
+        const runs = {
+          loadingLoop: async () => { const h = startLoadingLoop(at); await wait(2500); h?.cancel(); },
+          runSucceeded: async () => { runSucceeded(at); await wait(1400); },
+          runFailed: async () => { runFailed(at); await wait(700); },
+          screenTransition: () => screenTransition(() => {}),
+        };
+        const out = {};
+        for (const [name, run] of Object.entries(runs)) {
+          await fx.stats(); // reset
+          await run();
+          await wait(100);
+          out[name] = await fx.stats();
+        }
+        return out;
+      },
     };
   }
 
-  setTimeout(() => $$('button').forEach(addRipple), 100);
-  setTimeout(initSmoothEngine, 200);
-
   await initRuntime();
+
+  // First launch: choose Playground or Pro. Pro starts with pixel effects off.
+  if (!hasChosenTheme()) {
+    showThemePicker({
+      onChosen: (theme) => {
+        if (theme === 'pro' && storageGet('theta-fx') === null) fx.setUserEnabled(false);
+      },
+    });
+  }
 }
 
 // Static UI that doesn't depend on the editor
 initWindowControls();
+initThemeControls(screenTransition);
+onThemeChange((theme) => {
+  setAppTheme(theme);
+  state.terminal?.setTheme(xtermTheme(theme));
+  state.replManager?.setTheme(xtermTheme(theme));
+  // The layout changes shape: let the editor and terminals re-measure
+  requestAnimationFrame(() => {
+    editorLayout();
+    state.terminal?.fit();
+    state.replManager?.fit();
+  });
+});
 initUnsavedHandling({ hasUnsaved: hasUnsavedTabs, save: saveAll });
 initTheme({
   $editorPane: $('editor-pane'),
@@ -225,7 +296,6 @@ initTheme({
 state.pipManager = new PipManager();
 state.pipManager.init(); // runtime.js binds it to the chosen runtime
 initAccessibility();
-document.querySelectorAll('.btn-launch-main, .btn-launch-small').forEach(addRipple);
 
 initIDE().catch((err) => {
   console.error('[THETA] IDE failed to start:', err);

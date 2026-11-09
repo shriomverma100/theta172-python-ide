@@ -7,6 +7,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
+import { xtermTheme, XTERM_FONT } from './core/terminal-theme.js';
 
 export class TerminalManager {
   constructor(container) {
@@ -24,12 +25,12 @@ export class TerminalManager {
 
   init() {
     this.term = new Terminal({
-      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-      fontSize: 13,
+      fontFamily: XTERM_FONT,
+      fontSize: 14,
       fontWeight: '400',
       fontWeightBold: '600',
-      lineHeight: 1.65,
-      letterSpacing: 0.2,
+      lineHeight: 1.5,
+      letterSpacing: 0,
       cursorBlink: true,
       cursorStyle: 'bar',
       cursorWidth: 2,
@@ -37,29 +38,7 @@ export class TerminalManager {
       scrollback: 10000,
       convertEol: true,
       smoothScrollDuration: 150,   // silky smooth scroll
-      theme: {
-        background:          '#111111',
-        foreground:          '#EAEAE8',
-        cursor:              '#FF2D00',
-        cursorAccent:        '#111111',
-        selectionBackground: 'rgba(255,45,0,0.25)',
-        black:         '#111111',
-        red:           '#FF5A3C',
-        green:         '#A8E6A3',
-        yellow:        '#FFD280',
-        blue:          '#82AAFF',
-        magenta:       '#C792EA',
-        cyan:          '#89DDFF',
-        white:         '#EAEAE8',
-        brightBlack:   '#444442',
-        brightRed:     '#FF7A5C',
-        brightGreen:   '#C8F0C3',
-        brightYellow:  '#FFDF9F',
-        brightBlue:    '#A2CAFF',
-        brightMagenta: '#E7B2FF',
-        brightCyan:    '#A9F0FF',
-        brightWhite:   '#FFFFFF',
-      },
+      theme: xtermTheme(),
     });
 
     this.fitAddon = new FitAddon();
@@ -97,16 +76,16 @@ export class TerminalManager {
 
   /** Typewriter welcome animation */
   _writeWelcomeTypewriter() {
-    const RED   = '\x1b[38;2;255;45;0m';
-    const DIM   = '\x1b[38;2;74;74;72m';
+    const RED   = '\x1b[38;2;255;74;54m';
+    const DIM   = '\x1b[38;2;143;143;143m';
     const BOLD  = '\x1b[1m';
-    const LIGHT = '\x1b[38;2;170;170;168m';
+    const LIGHT = '\x1b[38;2;196;196;196m';
     const RESET = '\x1b[0m';
 
     const lines = [
       `${RED}${'─'.repeat(52)}${RESET}`,
       ``,
-      `  ${BOLD}${'\x1b[38;2;234;234;232m'}PYTHON${RESET} ${RED}by THETA172${RESET}`,
+      `  ${BOLD}${'\x1b[38;2;245;245;243m'}PYTHON${RESET} ${RED}by THETA172${RESET}`,
       `  ${LIGHT}Python 3.11  ·  Pyodide  ·  WebAssembly${RESET}`,
       ``,
       `  ${DIM}Ctrl+Enter${RESET}${DIM} run  ·  ${RESET}${DIM}Ctrl+T${RESET}${DIM} theme  ·  ${RESET}${DIM}Ctrl+Shift+P${RESET}${DIM} commands${RESET}`,
@@ -126,17 +105,17 @@ export class TerminalManager {
   }
 
   writeOutput(text) {
-    this.term.write('\x1b[38;2;234;234;232m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
+    this.term.write('\x1b[38;2;245;245;243m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
     this.term.scrollToBottom();
   }
 
   writeError(text) {
-    this.term.write('\x1b[38;2;255;90;60m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
+    this.term.write('\x1b[38;2;255;110;93m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
     this.term.scrollToBottom();
   }
 
   writeSystem(text) {
-    this.term.write('\x1b[38;2;100;100;98m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
+    this.term.write('\x1b[38;2;166;166;166m' + text.replace(/\n/g, '\r\n') + '\x1b[0m');
     this.term.scrollToBottom();
   }
 
@@ -145,7 +124,7 @@ export class TerminalManager {
     this.inputBuffer = '';
     this._historyIndex = -1;
     if (prompt) {
-      this.term.write('\x1b[38;2;160;160;158m' + prompt + '\x1b[0m');
+      this.term.write('\x1b[38;2;196;196;196m' + prompt + '\x1b[0m');
     }
     this.term.focus();
   }
@@ -197,7 +176,7 @@ export class TerminalManager {
         // Only paste first line (no multiline input)
         const firstLine = text.split('\n')[0].replace(/\r/g, '');
         this.inputBuffer += firstLine;
-        this.term.write('\x1b[38;2;234;234;232m' + firstLine + '\x1b[0m');
+        this.term.write('\x1b[38;2;245;245;243m' + firstLine + '\x1b[0m');
       }).catch(() => {});
       return;
     }
@@ -232,7 +211,7 @@ export class TerminalManager {
     if (domEvent.keyCode < 32 || domEvent.keyCode === 127) return;
 
     this.inputBuffer += key;
-    this.term.write('\x1b[38;2;234;234;232m' + key + '\x1b[0m');
+    this.term.write('\x1b[38;2;245;245;243m' + key + '\x1b[0m');
   }
 
   /** Replace current input buffer with new text (for history navigation) */
@@ -242,15 +221,15 @@ export class TerminalManager {
       this.term.write('\x08 \x08');
     }
     this.inputBuffer = text;
-    this.term.write('\x1b[38;2;234;234;232m' + text + '\x1b[0m');
+    this.term.write('\x1b[38;2;245;245;243m' + text + '\x1b[0m');
   }
 
   writeRunSeparator() {
     // Push old output above viewport so new run starts at top
     this.softClear();
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    this.term.write('\x1b[38;2;255;45;0m▶\x1b[0m ');
-    this.term.writeln(`\x1b[38;2;60;60;58m${time}\x1b[0m`);
+    this.term.write('\x1b[38;2;255;74;54m▶\x1b[0m ');
+    this.term.writeln(`\x1b[38;2;143;143;143m${time}\x1b[0m`);
     this.term.writeln('');
     this.term.scrollToBottom();
   }
@@ -258,15 +237,15 @@ export class TerminalManager {
   writeDoneSeparator(durationMs) {
     const secs = (durationMs / 1000).toFixed(3);
     this.term.writeln('');
-    this.term.writeln(`\x1b[38;2;50;50;48m${'─'.repeat(36)}\x1b[0m`);
-    this.term.writeln(`\x1b[38;2;60;60;58mDone in ${secs}s\x1b[0m`);
+    this.term.writeln(`\x1b[38;2;85;85;85m${'─'.repeat(36)}\x1b[0m`);
+    this.term.writeln(`\x1b[38;2;143;143;143mDone in ${secs}s\x1b[0m`);
     this.term.writeln('');
     this.term.scrollToBottom();
   }
 
   writeInterrupted() {
     this.term.writeln('');
-    this.term.writeln('\x1b[38;2;255;45;0m[Interrupted]\x1b[0m');
+    this.term.writeln('\x1b[38;2;255;74;54m[Interrupted]\x1b[0m');
     this.term.writeln('');
     this.term.scrollToBottom();
   }
@@ -287,6 +266,11 @@ export class TerminalManager {
   }
 
   fit() { this.fitAddon?.fit(); }
+
+  /** Recolour for the active app theme (Playground / Pro). */
+  setTheme(theme) {
+    if (this.term) this.term.options.theme = theme;
+  }
   focus() { this.term?.focus(); }
 
   dispose() {

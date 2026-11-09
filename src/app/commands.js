@@ -24,7 +24,10 @@ const COMMANDS = [
   { id: 'font-dec',       name: 'Decrease Font Size',     icon: '<path d="M3 5H8M3 9H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' },
   { id: 'reset-code',     name: 'Reset to Starter Code',  icon: '<path d="M2 7C2 4.2 4.2 2 7 2s5 2.2 5 5-2.2 5-5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2 4V7H5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>' },
   { id: 'toggle-theme',   name: 'Toggle Editor Theme',    icon: '<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M7 2A5 5 0 017 12V2Z" fill="currentColor"/>' },
-  { id: 'cmd-palette',    name: 'Command Palette',        icon: '<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' },
+  { id: 'switch-theme',   name: 'Switch Theme (Playground / Pro)', icon: '<rect x="1.5" y="2.5" width="11" height="9" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M7 2.5v9" stroke="currentColor" stroke-width="1.2"/><path d="M2 3h5v8H2Z" fill="currentColor" opacity=".4"/>' },
+  { id: 'toggle-fx',      name: 'Toggle Pixel Effects',   icon: '<rect x="2" y="2" width="4" height="4" fill="currentColor"/><rect x="8" y="8" width="4" height="4" fill="currentColor"/><rect x="8" y="2" width="4" height="4" stroke="currentColor" stroke-width="1"/>' },
+  { id: 'settings',       name: 'Open Settings',          icon: '<path d="M2 4H8M11 4H12M2 10H4M7 10H12" stroke="currentColor" stroke-width="1.2"/><rect x="8" y="2.5" width="3" height="3" stroke="currentColor" stroke-width="1.1"/><rect x="4" y="8.5" width="3" height="3" stroke="currentColor" stroke-width="1.1"/>' },
+  { id: 'cmd-palette',    name: 'Command Palette',       icon: '<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' },
 ];
 
 let actions = {};

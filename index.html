@@ -1,528 +1,370 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="playground">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Python by THETA172 — A fast, precision Python coding environment. Real terminal I/O, instant execution." />
+  <meta name="description" content="Python by THETA172 — a Python IDE for classrooms and data work." />
   <title>Python by THETA172</title>
+  <!-- Applies the saved theme before anything paints (no flash) -->
+  <script src="./theme-init.js"></script>
   <style>
-    .ide-topbar,.landing-nav{-webkit-app-region:drag}
-    .ide-topbar button,.ide-topbar input,.landing-nav button,.topbar-file,.run-status,.window-controls{-webkit-app-region:no-drag}
+    .ide-topbar { -webkit-app-region: drag; }
+    .ide-topbar button, .ide-topbar input, .ide-topbar a, .topbar-file, .run-status, .window-controls { -webkit-app-region: no-drag; }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/src/styles/tokens.css" />
   <link rel="stylesheet" href="/src/styles/base.css" />
-  <link rel="stylesheet" href="/src/styles/landing.css" />
   <link rel="stylesheet" href="/src/styles/ide.css" />
   <link rel="stylesheet" href="/src/styles/topbar.css" />
   <link rel="stylesheet" href="/src/styles/editor.css" />
   <link rel="stylesheet" href="/src/styles/terminal.css" />
   <link rel="stylesheet" href="/src/styles/features.css" />
   <link rel="stylesheet" href="/src/styles/classroom.css" />
+  <link rel="stylesheet" href="/src/styles/theme-picker.css" />
+  <link rel="stylesheet" href="/src/styles/fx.css" />
 </head>
 <body>
 
-  <!-- Global top progress bar -->
+  <!-- Top-edge progress bar while code runs -->
   <div id="run-progress-bar" class="run-progress-bar"></div>
 
-  <!-- ═══════════════════════════════════════════════════════════
-       LANDING PAGE
-  ═══════════════════════════════════════════════════════════ -->
-  <div id="landing" class="landing hidden">
-    <!-- Floating particles -->
-    <div class="landing-particles" id="landing-particles"></div>
-
-    <!-- Code stream canvas -->
-    <canvas id="code-stream-canvas"></canvas>
-
-    <nav class="landing-nav">
-      <div class="landing-nav__logo">
-        <div class="nav-logo-θ">Θ</div>
-        <span class="landing-nav__brand">THETA172</span>
-      </div>
-      <div class="landing-nav__links">
-        <span class="landing-nav__tag">Python Runtime v3.11</span>
-        <div class="window-controls landing-wc">
-          <button class="wc-btn wc-minimize" id="landing-wc-min" title="Minimize">
-            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6H10" stroke="currentColor" stroke-width="1.2"/></svg>
-          </button>
-          <button class="wc-btn wc-maximize" id="landing-wc-max" title="Maximize">
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
-          </button>
-          <button class="wc-btn wc-close" id="landing-wc-close" title="Close">
-            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.2"/></svg>
-          </button>
-        </div>
-      </div>
-    </nav>
-
-    <main class="landing-hero">
-      <!-- ── LEFT PANEL: KINETIC HERO ── -->
-      <div class="landing-hero__left">
-
-        <!-- Identity badge -->
-        <div class="landing-hero__label">
-          <span class="label-tag">
-            <span class="label-tag-bar"></span>
-            <span class="label-status-dot"></span>
-            THETA172 / PYTHON
-          </span>
-        </div>
-
-        <!-- Kinetic title with morphing word -->
-        <h1 class="landing-hero__title">
-          <span class="title-line title-line--thin">[ PYTHON EXECUTION ENGINE ]</span>
-          <div class="title-morph-wrap">
-            <span class="title-word-static" id="title-word-left">CODE</span>
-            <span class="title-word-accent" id="title-word-morph" data-text="FAST.">FAST.</span>
-          </div>
-          <span class="title-accent-bar"></span>
-        </h1>
-
-        <!-- Subheadline -->
-        <p class="landing-hero__sub">
-          A precision Python environment for people who care about craft.
-          Real terminal. Instant execution. No friction. No limits.
-        </p>
-
-        <!-- CTA -->
-        <button id="launch-ide-main" class="btn-launch-main">
-          <span class="btn-launch__prefix">&gt;&gt;&gt;</span>
-          <span class="btn-launch__text">Initialize <strong>THETA.Python</strong></span>
-          <span class="btn-launch__cursor"></span>
-          <svg class="btn-launch__arrow" width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M3 9H15M15 9L10 4M15 9L10 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-
-        <!-- Stat metrics -->
-        <div class="landing-hero__meta">
-          <div class="meta-item">
-            <span class="meta-item__value" data-count="50" data-suffix="ms">—</span>
-            <span class="meta-item__label">Cold Start</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-item__value" data-count="100">—</span>
-            <span class="meta-item__label">% Offline</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-item__value" data-count="3" data-suffix=".11">—</span>
-            <span class="meta-item__label">Python Ver</span>
-          </div>
-        </div>
-
-        <!-- Marquee strip (left panel bottom) -->
-        <div class="landing-marquee-wrap">
-          <div class="landing-marquee" id="landing-marquee">
-            <span class="marquee-item"><span class="marquee-item__dot"></span>CodeMirror 6</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Pyodide WASM</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Real Terminal I/O</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Live Pip Install</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Interactive REPL</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>AI Code Fix</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Multi-Tab Editor</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Dark + Light Theme</span>
-            <!-- duplicate for seamless loop -->
-            <span class="marquee-item"><span class="marquee-item__dot"></span>CodeMirror 6</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Pyodide WASM</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Real Terminal I/O</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Live Pip Install</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Interactive REPL</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>AI Code Fix</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Multi-Tab Editor</span>
-            <span class="marquee-item"><span class="marquee-item__dot"></span>Dark + Light Theme</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── RIGHT PANEL: DARK SHOWCASE ── -->
-      <div class="landing-hero__right">
-
-        <!-- Accent stat block -->
-        <div class="landing-accent-block" id="landing-accent-block">
-          <div class="accent-block__left">
-            <div class="accent-block__number">001</div>
-            <div class="accent-block__label">
-              <span>PYTHON</span>
-              <span>EXECUTION</span>
-              <span>ENGINE</span>
-            </div>
-          </div>
-          <div class="accent-block__right">{ λ }</div>
-        </div>
-
-        <!-- Stat cards row -->
-        <div class="landing-cards-row">
-          <div class="landing-stat-card" id="stat-card-1">
-            <div class="stat-card__label">Startup Time</div>
-            <div class="stat-card__value">
-              <span class="stat-val" data-target="50">0</span>
-              <span class="stat-card__unit">ms</span>
-            </div>
-            <div class="stat-card__bar"><div class="stat-card__bar-fill" data-width="70"></div></div>
-          </div>
-          <div class="landing-stat-card" id="stat-card-2">
-            <div class="stat-card__label">Python Version</div>
-            <div class="stat-card__value">
-              <span class="stat-val" data-target="3">0</span>
-              <span class="stat-card__unit">.11</span>
-            </div>
-            <div class="stat-card__bar"><div class="stat-card__bar-fill" data-width="90"></div></div>
-          </div>
-        </div>
-
-        <!-- Live code preview -->
-        <div class="landing-code-preview" id="landing-code-preview">
-          <div class="code-preview__bar">
-            <div class="code-preview__dots">
-              <span></span><span></span><span></span>
-            </div>
-            <span class="code-preview__filename">main.py</span>
-          </div>
-          <pre class="code-preview__content"><code id="typing-code"></code></pre>
-          <div class="code-preview__terminal" id="typing-terminal"></div>
-        </div>
-
-        <!-- Scroll hint -->
-        <div class="landing-scroll-hint" id="scroll-hint">
-          <div class="scroll-hint__line"></div>
-          <span class="scroll-hint__text">Run Python</span>
-        </div>
-
-      </div>
-    </main>
-
-    <footer class="landing-footer">
-      <span>THETA172 &copy; 2025 · designed by nothing frontend team</span>
-      <span>Python 3.11 &middot; WebAssembly &middot; In-Browser</span>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       IDE PAGE
-  ═══════════════════════════════════════════════════════════ -->
   <div id="ide" class="ide">
 
-    <!-- Top Bar -->
+    <!-- ═══ TOP BAR ═══ -->
     <header class="ide-topbar">
-      <div class="ide-topbar__left">
-        <button id="back-to-landing" class="topbar-logo-btn" title="Back to home">
-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-            <rect width="26" height="26" fill="#FF3300"/>
-            <rect x="3" y="3" width="20" height="20" stroke="#EAEAE8" stroke-width="1.5" fill="none"/>
-            <text x="13" y="17" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="11" fill="#EAEAE8">Θ</text>
+      <div class="topbar-left">
+        <div class="topbar-brand" aria-label="Python by THETA172">
+          <svg class="brand-mark" width="34" height="29" viewBox="0 0 210 180" aria-hidden="true">
+            <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/>
+            <rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
+            <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/>
+            <rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
+            <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
           </svg>
-          <span class="topbar-brand">THETA172</span>
-        </button>
-        <div class="topbar-divider"></div>
-        <div class="topbar-file">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 1.5H8L11 4.5V12.5H3V1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M8 1.5V4.5H11" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M5.5 7H8.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-            <path d="M5.5 9H7.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-          </svg>
+          <span class="brand-word">theta172</span>
+          <span class="brand-tag">python</span>
+        </div>
+        <div class="topbar-file" title="Current file">
           <span id="file-name">main.py</span>
           <span id="save-dot" class="save-dot" title="Unsaved changes"></span>
         </div>
       </div>
 
-      <div class="ide-topbar__center">
-        <div id="run-status" class="run-status run-status--idle">
-          <div class="run-status__dot"></div>
+      <div class="topbar-center">
+        <button id="btn-palette" class="cmd-bar" type="button" title="Command palette (Ctrl+Shift+P)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="m9.5 9.5 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span class="cmd-bar__text">Search or run a command…</span>
+          <kbd>Ctrl Shift P</kbd>
+        </button>
+        <div id="run-status" class="run-status run-status--idle" role="status" aria-live="polite">
+          <span class="run-status__dot" aria-hidden="true"></span>
           <span id="run-status-text">Ready</span>
         </div>
-        <button id="btn-run" class="btn-run" title="Run Code">
-          <svg class="run-icon-play" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M4.5 2L13 8L4.5 14V2Z" fill="currentColor"/>
-          </svg>
-          <svg class="run-icon-stop hidden" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/>
-          </svg>
-          <span id="run-btn-text">Run</span>
-        </button>
       </div>
 
-      <div class="ide-topbar__right">
-        <input type="file" id="import-file-input" accept=".py,.pyw,.txt" style="display:none" />
-        <button id="btn-import-file" class="topbar-btn" title="Import .py file">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M2 4H7L8.5 2H15V14H2V4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-            <path d="M9 7V12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            <path d="M7 9L9 7L11 9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span>Import</span>
-        </button>
-        <button id="btn-shortcuts" class="topbar-btn" title="Keyboard Shortcuts">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="1.5" y="4.5" width="15" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/>
-            <rect x="4" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
-            <rect x="7.75" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
-            <rect x="11.5" y="7" width="2.5" height="2" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.6"/>
-            <rect x="5.5" y="10.5" width="7" height="1.5" rx="0.5" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
-          </svg>
-          <span>Keys</span>
-        </button>
-        <button id="btn-save-file" class="topbar-btn" title="Save as .py file">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M3 2H12L15 5V15H3V2Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-            <rect x="6" y="9" width="6" height="6" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-            <path d="M6 2V5H11V2" stroke="currentColor" stroke-width="1" opacity="0.4"/>
-            <path d="M9 11V14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            <path d="M7.5 12.5L9 14L10.5 12.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span>Save</span>
-        </button>
-        <button id="btn-clear" class="topbar-btn" title="Clear Terminal">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
-            <path d="M6 12L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M6 6L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span>Clear</span>
+      <div class="topbar-right">
+        <nav class="topbar-actions" aria-label="Main actions">
+          <input type="file" id="import-file-input" accept=".py,.pyw,.txt" hidden />
+          <button id="btn-classroom" class="topbar-btn" type="button" title="Open the classroom">
+            <span class="topbar-btn__live" aria-hidden="true"></span>Classroom
+          </button>
+          <button id="btn-import-file" class="topbar-btn" type="button" title="Open a .py file (Ctrl+O)">Open</button>
+          <button id="btn-save-file" class="topbar-btn" type="button" title="Save (Ctrl+S)">Save</button>
+          <button id="btn-examples" class="topbar-btn" type="button" title="Code examples">Examples</button>
+          <button id="btn-shortcuts" class="topbar-btn" type="button" title="Keyboard shortcuts">Keys</button>
+          <button id="btn-settings" class="topbar-btn topbar-btn--icon" type="button" title="Settings" aria-label="Settings">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M2 4H9M12 4H14M2 12H4M7 12H14" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="9" y="2" width="3" height="4" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="4" y="10" width="3" height="4" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </button>
+        </nav>
+        <div class="theme-switch" role="group" aria-label="Theme">
+          <button type="button" data-theme-choice="playground" aria-pressed="true">Playground</button>
+          <button type="button" data-theme-choice="pro" aria-pressed="false">Pro</button>
+        </div>
+        <button id="btn-run" class="btn-run" data-run-btn type="button" title="Run (Ctrl+Enter)">
+          <svg class="run-icon-play" width="10" height="12" viewBox="0 0 10 12" aria-hidden="true"><path d="M1 1 9 6 1 11Z" fill="currentColor"/></svg>
+          <svg class="run-icon-stop hidden" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" fill="currentColor"/></svg>
+          <span class="run-label" id="run-btn-text">Run</span>
         </button>
         <div class="window-controls">
-          <button id="btn-wc-min" class="wc-btn wc-min" title="Minimize">
-            <svg width="11" height="1" viewBox="0 0 11 1"><rect width="11" height="1" fill="currentColor"/></svg>
+          <button id="btn-wc-min" class="wc-btn wc-min" type="button" title="Minimize" aria-label="Minimize">
+            <svg width="11" height="1" viewBox="0 0 11 1" aria-hidden="true"><rect width="11" height="1" fill="currentColor"/></svg>
           </button>
-          <button id="btn-wc-max" class="wc-btn wc-max" title="Maximize / Restore">
-            <svg id="wc-max-icon" width="10" height="10" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+          <button id="btn-wc-max" class="wc-btn wc-max" type="button" title="Maximize / Restore" aria-label="Maximize">
+            <svg id="wc-max-icon" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" stroke="currentColor" fill="none" stroke-width="1"/></svg>
           </button>
-          <button id="btn-wc-close" class="wc-btn wc-close" title="Close">
-            <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <button id="btn-wc-close" class="wc-btn wc-close" type="button" title="Close" aria-label="Close">
+            <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.2"/></svg>
           </button>
         </div>
-
       </div>
     </header>
 
-    <!-- Main Split Area -->
+    <!-- ═══ WORKSPACE ═══ -->
     <div class="ide-body">
-      <div id="editor-pane" class="ide-pane ide-pane--editor theme-dark">
-        <div class="pane-header">
-          <div class="pane-header__title">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M2.5 4L5.5 7L2.5 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M7 10H10.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            Editor
+
+      <!-- Pro: icon rail -->
+      <nav class="ide-rail" aria-label="Views">
+        <button id="rail-editor" class="rail-btn is-active" type="button" title="Editor" aria-label="Editor">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 2.5h6.5l3.5 3.5v9.5H4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.5 9.5h5M6.5 12h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <button id="rail-classroom" class="rail-btn" type="button" title="Classroom" aria-label="Classroom">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="6.5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="12.5" cy="7" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 15c.5-3 2.5-4.5 4.5-4.5S10.5 12 11 15M11 11.5c2.5-.5 4.5.8 5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <button id="rail-examples" class="rail-btn" type="button" title="Examples" aria-label="Examples">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="10.5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2.5" y="10.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="10.5" y="10.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+        <button id="rail-keys" class="rail-btn" type="button" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="4.5" width="15" height="9" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 7.5h1M8.5 7.5h1M12.5 7.5h1M5.5 10.5h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <span class="rail-spacer"></span>
+        <button id="rail-settings" class="rail-btn" type="button" title="Settings" aria-label="Settings">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M2.5 5h8M14 5h1.5M2.5 13h2M8 13h7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="10.5" y="3" width="3.5" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="4.5" y="11" width="3.5" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+      </nav>
+
+      <section id="editor-pane" class="ide-pane ide-pane--editor theme-dark" aria-label="Editor">
+        <div class="pane-header pane-header--editor">
+          <div class="editor-tabs" id="editor-tabs">
+            <div class="editor-tab active" data-tab-id="tab-0">
+              <span class="editor-tab__name">main.py</span>
+              <span class="editor-tab__dot"></span>
+            </div>
+            <button class="editor-tab-add" id="btn-new-tab" type="button" title="New file (Ctrl+N)" aria-label="New file">
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1V11M1 6H11" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
           </div>
           <div class="pane-header__actions">
-            <span id="cursor-pos" class="status-item" style="font-size:12px; border:none; padding:0;">Ln 1, Col 1</span>
-            <button id="btn-copy-code" class="pane-action-btn" title="Copy code">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <rect x="3.5" y="3.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.1"/>
-                <path d="M3.5 3.5V2A1 1 0 012 1H1M1 1V8A1 1 0 002 9H3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-              </svg>
-              Copy
-            </button>
-            <button id="btn-fix-indent" class="pane-action-btn" title="Fix code (AI)">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 2L5 6L2 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7 6H11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                <circle cx="10" cy="2" r="1.2" stroke="currentColor" stroke-width="0.8" fill="none"/>
-              </svg>
-              Fix Code
-            </button>
-            <button id="btn-font-dec" class="pane-action-btn" title="Decrease font">A−</button>
-            <button id="btn-font-inc" class="pane-action-btn" title="Increase font">A+</button>
+            <button id="btn-copy-code" class="pane-action-btn" type="button" title="Copy all code">Copy</button>
+            <button id="btn-fix-indent" class="pane-action-btn" type="button" title="Fix this code with AI">AI Fix</button>
+            <div class="font-stepper" role="group" aria-label="Editor font size">
+              <button id="btn-font-dec" class="pane-action-btn" type="button" title="Smaller text" aria-label="Smaller text">A−</button>
+              <button id="btn-font-inc" class="pane-action-btn" type="button" title="Larger text" aria-label="Larger text">A+</button>
+            </div>
           </div>
-        </div>
-        <!-- Tab bar for multi-file support -->
-        <div class="editor-tabs" id="editor-tabs">
-          <div class="editor-tab active" data-tab-id="tab-0">
-            <span class="editor-tab__name">main.py</span>
-            <span class="editor-tab__dot" title="Unsaved changes"></span>
-          </div>
-          <button class="editor-tab-add" id="btn-new-tab" title="New file">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-              <path d="M5.5 1V10M1 5.5H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-          </button>
         </div>
         <div id="monaco-container" class="monaco-container"></div>
-      </div>
+      </section>
 
-      <div class="ide-gutter" id="split-gutter">
+      <div class="ide-gutter" id="split-gutter" role="separator" aria-label="Resize editor and output">
         <div class="gutter-handle"></div>
       </div>
 
-      <div id="terminal-pane" class="ide-pane ide-pane--terminal">
+      <section id="terminal-pane" class="ide-pane ide-pane--terminal" aria-label="Output">
         <div class="pane-header">
-          <div class="pane-header__tabs">
-            <button id="tab-terminal" class="pane-tab active" data-pane="terminal" title="Script Output">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
-                <path d="M3.5 4.5L6 7L3.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7.5 9.5H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-              </svg>
-              Terminal
-            </button>
-            <button id="tab-repl" class="pane-tab" data-pane="repl" title="Interactive Python REPL">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M1 3L4 6.5L1 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M5.5 10H11.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-              </svg>
-              REPL
-            </button>
+          <div class="pane-header__tabs" role="tablist" aria-label="Output panels">
+            <button id="tab-terminal" class="pane-tab active" data-pane="terminal" type="button" role="tab" title="Program output">Output</button>
+            <button id="tab-repl" class="pane-tab" data-pane="repl" type="button" role="tab" title="Interactive Python">REPL</button>
           </div>
+          <span class="mascot" aria-hidden="true"><span class="mascot__px"></span></span>
           <div class="pane-header__actions">
-            <span id="exec-time" class="exec-time"></span>
+            <span class="exec-time-wrap" title="Run time">
+              <span class="exec-mark" aria-hidden="true"><span></span><span></span></span>
+              <span id="exec-time" class="exec-time"></span>
+            </span>
+            <button id="btn-clear" class="pane-action-btn" type="button" title="Clear output (Ctrl+L)">Clear</button>
           </div>
         </div>
-        <!-- Pip Install Bar -->
+
         <div class="pip-bar" id="pip-bar">
-          <span class="pip-bar__prefix">pip install</span>
-          <input id="pip-input" class="pip-bar__input" placeholder="package-name" autocomplete="off" spellcheck="false" />
-          <button id="pip-install-btn" class="pip-bar__btn" title="Install">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 2V10M2 6H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <button id="pip-list-btn" class="pip-bar__btn" title="Show installed packages">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M3 3H9M3 6H9M3 9H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <span id="pip-status" class="pip-bar__status"></span>
+          <label class="pip-bar__prefix" for="pip-input">pip install</label>
+          <input id="pip-input" class="pip-bar__input" placeholder="package name, e.g. numpy" autocomplete="off" spellcheck="false" />
+          <button id="pip-install-btn" class="pip-bar__btn" type="button" title="Install package">Install</button>
+          <button id="pip-list-btn" class="pip-bar__btn" type="button" title="Show installed packages">Packages</button>
+          <span id="pip-status" class="pip-bar__status" role="status"></span>
         </div>
-        <!-- Installed Packages Panel (hidden by default) -->
+
         <div id="pip-packages-panel" class="pip-packages-panel hidden">
           <div class="pip-packages-header">
-            <span>Installed Packages</span>
-            <button id="pip-packages-close" class="pip-packages-close">&times;</button>
+            <span>Installed packages</span>
+            <button id="pip-packages-close" class="pip-packages-close" type="button" aria-label="Close package list">&times;</button>
           </div>
           <div id="pip-packages-list" class="pip-packages-list">
             <span class="pip-packages-empty">No packages installed yet</span>
           </div>
         </div>
-        <div id="terminal-container" class="terminal-container"></div>
-        <div id="repl-container" class="terminal-container hidden"></div>
-      </div>
+
+        <div class="terminal-well">
+          <div id="terminal-container" class="terminal-container"></div>
+          <div id="repl-container" class="terminal-container hidden"></div>
+        </div>
+      </section>
+
+      <!-- Playground: classroom tile -->
+      <section class="class-tile" aria-label="Classroom">
+        <span class="class-tile__live"><span class="class-tile__dot" aria-hidden="true"></span><span id="class-tile-status">Classroom</span></span>
+        <span class="class-tile__text" id="class-tile-text">Teach a class or join one on the same Wi-Fi or LAN.</span>
+        <button id="btn-class-tile" class="class-tile__btn" type="button">Open classroom</button>
+      </section>
     </div>
 
-    <!-- Status Bar -->
+    <!-- ═══ Playground: run rail ═══ -->
+    <footer class="ide-runbar" aria-label="Run">
+      <button id="btn-run-rail" class="btn-run btn-run--rail" data-run-btn type="button" title="Run (Ctrl+Enter)">
+        <svg class="run-icon-play" width="13" height="15" viewBox="0 0 13 15" aria-hidden="true"><path d="M1 1 12 7.5 1 14Z" fill="currentColor"/></svg>
+        <svg class="run-icon-stop hidden" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect width="12" height="12" fill="currentColor"/></svg>
+        <span class="run-label">Run</span>
+        <kbd>Ctrl ↵</kbd>
+      </button>
+      <span class="runbar-label">Your runs</span>
+      <ol id="run-history" class="run-history" aria-label="Run history">
+        <li class="run-history__empty">Runs appear here</li>
+      </ol>
+      <span class="runbar-runtime" id="runbar-runtime">Python</span>
+    </footer>
+
+    <!-- ═══ Pro: status bar ═══ -->
     <footer class="ide-statusbar">
       <div class="statusbar__left">
-        <div class="status-item">
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-            <path d="M1.5 5.5C1.5 3.29 3.29 1.5 5.5 1.5S9.5 3.29 9.5 5.5 7.71 9.5 5.5 9.5 1.5 7.71 1.5 5.5z" stroke="currentColor" stroke-width="1.1"/>
-            <path d="M5.5 3.5V5.5L7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-          </svg>
-          Python <span id="python-version">3.11</span>
-        </div>
-        <div class="status-sep"></div>
-        <div class="status-item"><span id="runtime-type">Pyodide &middot; WASM</span></div>
-        <div class="status-sep"></div>
-        <div class="status-item"><span id="line-count">1 line</span></div>
-        <div class="status-sep"></div>
-        <div class="status-item"><span id="char-count">0 chars</span></div>
+        <span class="status-item">Python <span id="python-version">3.11</span></span>
+        <span class="status-item"><span id="runtime-type">Pyodide · WASM</span></span>
+        <span class="status-item status-item--runtime"><span class="status-px" aria-hidden="true"></span><span id="pyodide-status">Loading runtime…</span></span>
       </div>
       <div class="statusbar__right">
-        <div id="status-theme" class="status-theme-indicator" title="Toggle editor theme">
-          <span class="theme-dot"></span>
-          <span id="status-theme-text">Dark</span>
-        </div>
-        <div class="status-sep"></div>
-        <div class="status-item">UTF-8</div>
-        <div class="status-sep"></div>
-        <div class="status-item">
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-            <rect x="1.5" y="1.5" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
-            <path d="M4 5.5L5 6.5L7.5 4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span id="pyodide-status">Loading runtime...</span>
-        </div>
+        <span id="cursor-pos" class="status-item">Ln 1 · Col 1</span>
+        <span class="status-item"><span id="line-count">1 line</span></span>
+        <span class="status-item"><span id="char-count">0 chars</span></span>
+        <span class="status-item">UTF-8</span>
+        <button id="status-theme" class="status-btn" type="button" title="Switch editor between dark and light (Ctrl+T)">
+          Editor <span id="status-theme-text">Dark</span>
+        </button>
+        <button id="status-fx" class="status-btn" type="button" title="Pixel effects on or off">
+          FX <span id="status-fx-text">On</span>
+        </button>
       </div>
     </footer>
 
-    <!-- Pyodide Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay">
+    <!-- ═══ START-UP SCREEN ═══ -->
+    <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Starting Python by THETA172">
       <div class="loading-content">
-        <div class="loading-logo">
-          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-            <rect width="52" height="52" fill="#111111"/>
-            <rect x="5" y="5" width="42" height="42" stroke="#FF3300" stroke-width="2.5" fill="none"/>
-            <text x="26" y="33" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="20" fill="#FF3300">Θ</text>
+        <div class="boot-stage" id="boot-stage">
+          <svg class="boot-mark" width="105" height="90" viewBox="0 0 210 180" aria-hidden="true">
+            <rect class="bm bm1" x="0" y="60" width="130" height="40"/>
+            <rect class="bm bm2" x="45" y="100" width="45" height="80"/>
+            <rect class="bm bm3" x="135" y="100" width="38" height="80"/>
+            <rect class="bm bm4" x="141" y="36" width="24" height="24"/>
+            <rect class="bm bm5" x="173" y="0" width="32" height="32"/>
           </svg>
         </div>
         <div class="loading-text">
-          <span class="loading-brand">THETA172</span>
-          <span class="loading-sub">Python by THETA172</span>
+          <span class="loading-brand">
+            <svg class="loading-brand__mark" width="28" height="24" viewBox="0 0 210 180" aria-hidden="true">
+              <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/>
+              <rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
+              <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/>
+              <rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
+              <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
+            </svg>
+            <span class="loading-brand__word">theta<span>172</span></span>
+          </span>
+          <span class="loading-sub">Python</span>
         </div>
-        <div class="loading-bar-wrap">
+        <div class="loading-bar-wrap" aria-hidden="true">
           <div class="loading-bar" id="loading-bar"></div>
         </div>
-        <div class="loading-steps">
-          <span class="loading-step" id="lstep-0">Loading editor...</span>
-          <span class="loading-step" id="lstep-1">Initializing runtime...</span>
-          <span class="loading-step" id="lstep-2">Loading Pyodide engine...</span>
-          <span class="loading-step" id="lstep-3">Setting up environment...</span>
-          <span class="loading-step" id="lstep-4">Ready.</span>
-        </div>
+        <ol class="loading-steps">
+          <li class="loading-step" id="lstep-0">Loading the editor</li>
+          <li class="loading-step" id="lstep-1">Setting up the terminal</li>
+          <li class="loading-step" id="lstep-2">Looking for Python on this computer</li>
+          <li class="loading-step" id="lstep-3">Starting the Python runtime</li>
+          <li class="loading-step" id="lstep-4">Ready</li>
+        </ol>
+        <p class="boot-detail" id="boot-detail"></p>
       </div>
     </div>
 
-    <!-- Examples Modal -->
+    <!-- ═══ MODALS ═══ -->
     <div id="examples-modal" class="modal hidden">
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <span class="modal-title">Code Examples</span>
-          <button id="close-examples" class="modal-close">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+          <span class="modal-title">Code examples</span>
+          <button id="close-examples" class="modal-close" type="button" aria-label="Close">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.6"/></svg>
           </button>
         </div>
         <div class="examples-list" id="examples-list"></div>
       </div>
     </div>
 
-    <!-- Shortcuts Modal (Editable) -->
     <div id="shortcuts-modal" class="modal hidden">
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-content--shortcuts">
         <div class="modal-header">
-          <span class="modal-title">Keyboard Shortcuts</span>
+          <span class="modal-title">Keyboard shortcuts</span>
           <div class="modal-header-actions">
-            <button id="reset-shortcuts" class="modal-header-btn" title="Reset to defaults">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M2 6.5C2 4 4 2 6.5 2S11 4 11 6.5 9 11 6.5 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                <path d="M2 3.5V6.5H5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Reset
-            </button>
-            <button id="close-shortcuts" class="modal-close">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
+            <button id="reset-shortcuts" class="modal-header-btn" type="button" title="Reset to defaults">Reset</button>
+            <button id="close-shortcuts" class="modal-close" type="button" aria-label="Close">
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.6"/></svg>
             </button>
           </div>
         </div>
-        <div class="shortcuts-list" id="shortcuts-list">
-          <!-- Dynamically populated by JS -->
+        <div class="shortcuts-list" id="shortcuts-list"></div>
+        <div class="shortcuts-footer">Click a key binding to change it · Escape cancels</div>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">Settings</span>
+          <button id="close-settings" class="modal-close" type="button" aria-label="Close">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
         </div>
-        <div class="shortcuts-footer">
-          <span>Click the key binding to edit · Press Escape to cancel</span>
+        <div class="settings-list">
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name">Theme</span>
+              <span class="setting-row__hint">Playground for learning and class. Pro for data and ML work.</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Theme">
+              <button type="button" data-theme-choice="playground" aria-pressed="true">Playground</button>
+              <button type="button" data-theme-choice="pro" aria-pressed="false">Pro</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name" id="set-fx-label">Pixel effects</span>
+              <span class="setting-row__hint" id="set-fx-hint">Small pixel animations when code runs, fails or a screen changes.</span>
+            </div>
+            <button id="set-fx" class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="set-fx-label" aria-describedby="set-fx-hint"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name">Editor colours</span>
+              <span class="setting-row__hint">Light helps on classroom projectors.</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Editor colours">
+              <button id="set-theme-dark" type="button" aria-pressed="true">Dark</button>
+              <button id="set-theme-light" type="button" aria-pressed="false">Light</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name">Editor text size</span>
+              <span class="setting-row__hint" id="set-font-value">15 px</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Editor text size">
+              <button id="set-font-dec" type="button" aria-label="Smaller text">A−</button>
+              <button id="set-font-inc" type="button" aria-label="Larger text">A+</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Command Palette -->
+    <!-- Command palette -->
     <div id="cmd-palette" class="cmd-palette hidden">
       <div class="cmd-palette-backdrop"></div>
       <div class="cmd-palette-box">
         <div class="cmd-input-wrap">
-          <svg class="cmd-input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M11 11L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
-          <input id="cmd-input" class="cmd-input" placeholder="Type a command..." autocomplete="off" spellcheck="false" />
+          <svg class="cmd-input-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="m9.5 9.5 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input id="cmd-input" class="cmd-input" placeholder="Type a command" autocomplete="off" spellcheck="false" aria-label="Command" />
         </div>
         <div class="cmd-results" id="cmd-results"></div>
       </div>
@@ -530,8 +372,50 @@
 
   </div>
 
+  <!-- ═══ FIRST LAUNCH: CHOOSE YOUR ENVIRONMENT ═══ -->
+  <div id="theme-picker" class="theme-picker hidden" role="dialog" aria-modal="true" aria-labelledby="tp-heading">
+    <h1 id="tp-heading" class="sr-only">Choose your environment</h1>
+    <section class="tp-half tp-half--play" aria-labelledby="tp-play">
+      <div class="tp-top">
+        <svg width="36" height="31" viewBox="0 0 210 180" aria-hidden="true">
+          <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/><rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
+          <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/><rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
+          <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
+        </svg>
+        <span class="tp-kicker">Choose your environment</span>
+      </div>
+      <h2 id="tp-play" class="tp-title">Playground</h2>
+      <p class="tp-lead">Bright tiles, a pixel buddy that reacts to every run, and pixel effects. Made for learning and for class.</p>
+      <div class="tp-preview tp-preview--play" aria-hidden="true">
+        <div class="tpp-col"><span class="tpp-tile"></span><span class="tpp-tile tpp-tile--red"></span></div>
+        <div class="tpp-editor"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="tpp-col"><span class="tpp-tile tpp-tile--lime"></span><span class="tpp-tile tpp-tile--lilac"></span></div>
+      </div>
+      <ul class="tp-points">
+        <li>Your output in a big tile, next to your code</li>
+        <li>Theta the pixel buddy cheers clean runs</li>
+        <li>Easy to read on a classroom projector</li>
+      </ul>
+      <button class="tp-pick tp-pick--play" type="button" data-pick="playground">Use Playground</button>
+    </section>
+    <section class="tp-half tp-half--pro" aria-labelledby="tp-pro">
+      <div class="tp-top tp-top--end"><span class="tp-kicker">Switch any time in Settings</span></div>
+      <h2 id="tp-pro" class="tp-title">Pro</h2>
+      <p class="tp-lead">Quiet graphite, dense and keyboard-first. Made for data and ML work.</p>
+      <div class="tp-preview tp-preview--pro" aria-hidden="true">
+        <span class="tppr-rail"></span>
+        <div class="tppr-main"><div class="tppr-code"><span></span><span></span><span></span><span></span></div><span class="tppr-panel"></span></div>
+      </div>
+      <ul class="tp-points">
+        <li>Command bar, icon rail and status bar</li>
+        <li>Output in a bottom panel, like a pro IDE</li>
+        <li>Pixel effects off by default</li>
+      </ul>
+      <button class="tp-pick tp-pick--pro" type="button" data-pick="pro">Use Pro</button>
+    </section>
+  </div>
 
-  <!-- Classroom Panel (full-screen overlay, hidden by default) -->
+  <!-- Classroom (full-screen, hidden by default) -->
   <div id="classroom-panel" class="classroom-panel hidden"></div>
 
   <script type="module" src="/src/main.js"></script>

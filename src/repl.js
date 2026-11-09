@@ -10,22 +10,8 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
+import { xtermTheme, XTERM_FONT } from './core/terminal-theme.js';
 
-// ── Theme (matches the main terminal) ───────────────────────────
-const REPL_THEME = {
-  background:  '#111111',
-  foreground:  '#EAEAE8',
-  cursor:      '#FF2D00',
-  cursorAccent:'#111111',
-  selectionBackground: 'rgba(255, 45, 0, 0.3)',
-  black:   '#111111', red:     '#FF5A3C', green:   '#A8E6A3',
-  yellow:  '#FFD580', blue:    '#82AAFF', magenta: '#C792EA',
-  cyan:    '#89DDFF', white:   '#EAEAE8',
-  brightBlack:  '#555555', brightRed:    '#FF8A70',
-  brightGreen:  '#C3E88D', brightYellow: '#FFE0B2',
-  brightBlue:   '#B0C4FF', brightMagenta:'#D6ACFF',
-  brightCyan:   '#B2EBF2', brightWhite:  '#FFFFFF',
-};
 
 export class ReplManager {
   constructor() {
@@ -59,10 +45,10 @@ export class ReplManager {
     if (this.term) return;
 
     this.term = new Terminal({
-      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+      fontFamily: XTERM_FONT,
       fontSize: 14,
       lineHeight: 1.4,
-      theme: REPL_THEME,
+      theme: xtermTheme(),
       cursorBlink: true,
       cursorStyle: 'bar',
       scrollback: 5000,
@@ -124,9 +110,9 @@ export class ReplManager {
     if (!api) return;
 
     this.term.reset();
-    this.term.writeln('\x1b[38;2;102;102;100m╭─ THETA172 Python REPL ─────────────────────╮\x1b[0m');
-    this.term.writeln('\x1b[38;2;102;102;100m│  Interactive Python — type and press Enter  │\x1b[0m');
-    this.term.writeln('\x1b[38;2;102;102;100m╰────────────────────────────────────────────╯\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m╭─ THETA172 Python REPL ─────────────────────╮\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m│  Interactive Python — type and press Enter  │\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m╰────────────────────────────────────────────╯\x1b[0m');
     this.term.writeln('');
 
     // Local input buffer (python -i with pipes doesn't echo)
@@ -149,7 +135,7 @@ export class ReplManager {
     // Process exited
     api.onReplExit((code) => {
       if (!this.destroyed) {
-        this.term.writeln(`\r\n\x1b[38;2;102;102;100m[REPL exited with code ${code}]\x1b[0m`);
+        this.term.writeln(`\r\n\x1b[38;2;143;143;143m[REPL exited with code ${code}]\x1b[0m`);
         setTimeout(() => {
           if (!this.destroyed) {
             this.currentLine = '';
@@ -271,9 +257,9 @@ export class ReplManager {
     if (!this.worker) return;
 
     this.term.reset();
-    this.term.writeln('\x1b[38;2;102;102;100m╭─ THETA172 Python REPL (Pyodide) ───────────╮\x1b[0m');
-    this.term.writeln('\x1b[38;2;102;102;100m│  Interactive Python — type and press Enter  │\x1b[0m');
-    this.term.writeln('\x1b[38;2;102;102;100m╰────────────────────────────────────────────╯\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m╭─ THETA172 Python REPL (Pyodide) ───────────╮\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m│  Interactive Python — type and press Enter  │\x1b[0m');
+    this.term.writeln('\x1b[38;2;143;143;143m╰────────────────────────────────────────────╯\x1b[0m');
     this.term.writeln('');
 
     // Reset state
@@ -484,7 +470,7 @@ export class ReplManager {
     const lines = code.split('\n');
     lines.forEach((line, i) => {
       const prompt = i === 0 ? '>>> ' : '... ';
-      this.term.writeln(`\x1b[38;2;80;80;78m${prompt}${line}\x1b[0m`);
+      this.term.writeln(`\x1b[38;2;143;143;143m${prompt}${line}\x1b[0m`);
     });
     this.term.writeln('');
 
@@ -546,6 +532,11 @@ export class ReplManager {
   }
 
   /** Fit the terminal to its container */
+  /** Recolour for the active app theme (Playground / Pro). */
+  setTheme(theme) {
+    if (this.term) this.term.options.theme = theme;
+  }
+
   fit() {
     try { this.fitAddon?.fit(); } catch (_) {}
   }

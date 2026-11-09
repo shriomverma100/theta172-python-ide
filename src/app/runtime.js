@@ -10,7 +10,11 @@ import { $ } from '../core/dom.js';
 import { isTeacherLive, isStudentConnected, streamStudentOutput } from '../classroom/classroom.js';
 import { state } from './state.js';
 import { saveCode } from './autosave.js';
+import { getActiveFileName } from './tabs.js';
+import { tidyTraceback, errorLineInUserCode } from '../core/traceback.js';
 import { switchPane } from './layout.js';
+import { setBootStep, setBootDetail, finishBoot, failBoot } from './boot.js';
+import { runSucceeded, runFailed } from '../fx/moments.js';
 
 const PYODIDE_LOAD_TIMEOUT_MS = 45_000;
 const RUN_LABELS = { idle: 'Ready', ready: 'Ready', running: 'Running', done: 'Done', error: 'Error' };
@@ -20,22 +24,52 @@ let execStart = 0;
 
 // ── Status UI ────────────────────────────────────────────────────
 
-export function setRunState(runState) {
+/**
+ * Show the run state everywhere: the status pill (Playground) / kernel chip
+ * (Pro), both Run buttons, and data-run-state on <html> (Theta the pixel
+ * buddy reacts to it). `detail` replaces the default label, e.g.
+ * "Done in 0.84s" or "NameError · line 8".
+ */
+export function setRunState(runState, detail) {
   const $status = $('run-status');
   const $statusText = $('run-status-text');
-  const $runBtn = $('btn-run');
-  const $runBtnText = $('run-btn-text');
-  const $play = document.querySelector('.run-icon-play');
-  const $stop = document.querySelector('.run-icon-stop');
-
   if ($status) $status.className = `run-status run-status--${runState}`;
-  if ($statusText) $statusText.textContent = RUN_LABELS[runState] || runState;
+  if ($statusText) $statusText.textContent = detail || RUN_LABELS[runState] || runState;
+  document.documentElement.dataset.runState = runState;
 
   const running = runState === 'running';
-  $runBtn?.classList.toggle('running', running);
-  if ($runBtnText) $runBtnText.textContent = running ? 'Stop' : 'Run';
-  $play?.classList.toggle('hidden', running);
-  $stop?.classList.toggle('hidden', !running);
+  document.querySelectorAll('[data-run-btn]').forEach((btn) => {
+    btn.classList.toggle('running', running);
+    const label = btn.querySelector('.run-label');
+    if (label) label.textContent = running ? 'Stop' : 'Run';
+    btn.querySelector('.run-icon-play')?.classList.toggle('hidden', running);
+    btn.querySelector('.run-icon-stop')?.classList.toggle('hidden', !running);
+  });
+}
+
+// ── Run history (Playground run rail) ───────────────────────────
+const MAX_RUNS = 8;
+const runs = [];
+let runCount = 0;
+
+function addRunHistory(entry) {
+  runCount += 1;
+  runs.push({ n: runCount, ...entry });
+  if (runs.length > MAX_RUNS) runs.shift();
+  const $list = $('run-history');
+  if (!$list) return;
+  $list.replaceChildren(...runs.map((r) => {
+    const li = document.createElement('li');
+    li.className = r.kind;
+    const n = document.createElement('span');
+    n.className = 'run-n';
+    n.textContent = `#${r.n}`;
+    const label = document.createElement('span');
+    label.textContent = r.label;
+    li.append(n, label);
+    return li;
+  }));
+  $list.lastElementChild?.scrollIntoView?.({ inline: 'end', block: 'nearest' });
 }
 
 function setRuntimeStatus(text) {
@@ -48,6 +82,8 @@ function setRuntimeInfo(version, kind) {
   const $type = $('runtime-type');
   if ($ver) $ver.textContent = version;
   if ($type) $type.textContent = kind;
+  const $rail = $('runbar-runtime');
+  if ($rail) $rail.textContent = `Python ${version} · ${kind}`;
 }
 
 function startExecTimer() {
@@ -83,26 +119,6 @@ function finishProgressBar() {
   setTimeout(() => { $bar.className = 'run-progress-bar'; }, 500);
 }
 
-/** Step the loading overlay's checklist while the runtime starts. */
-export function animateLoadingSteps() {
-  const steps = [$('lstep-1'), $('lstep-2'), $('lstep-3')];
-  steps.forEach((step, i) => {
-    setTimeout(() => {
-      if (i > 0) steps[i - 1]?.classList.replace('active', 'done');
-      step?.classList.add('active');
-    }, 400 + i * 700);
-  });
-}
-
-function dismissLoadingOverlay(delayMs) {
-  const $overlay = $('loading-overlay');
-  $('lstep-4')?.classList.add('active');
-  setTimeout(() => {
-    $overlay?.classList.add('fade-out');
-    setTimeout(() => $overlay?.classList.add('hidden'), 420);
-  }, delayMs);
-}
-
 function setPipStatus(text, kind, clearAfterMs) {
   const $pip = $('pip-status');
   if (!$pip) return;
@@ -116,6 +132,7 @@ function setPipStatus(text, kind, clearAfterMs) {
 // ── Output routing (terminal + classroom) ────────────────────────
 
 function forwardOutput(text, stream) {
+  if (stream === 'stderr') text = tidyTraceback(text, getActiveFileName() || 'main.py');
   if (stream === 'stderr') state.terminal?.writeError(text);
   else state.terminal?.writeOutput(text);
 
@@ -123,8 +140,14 @@ function forwardOutput(text, stream) {
   if (isStudentConnected()) streamStudentOutput(text, stream);
 
   if (stream === 'stderr') {
-    const match = text.match(/line\s+(\d+)/i);
-    if (match) highlightErrorLine(parseInt(match[1], 10));
+    const line = errorLineInUserCode(text, getActiveFileName() || 'main.py');
+    if (line) {
+      highlightErrorLine(line);
+      state.lastErrorLine = line;
+    }
+    // Remember the exception name for the status pill and run history
+    const names = [...text.matchAll(/^(\w+(?:Error|Exception|Interrupt|Exit))\b/gm)];
+    if (names.length) state.lastError = names[names.length - 1][1];
   }
 }
 
@@ -133,9 +156,19 @@ function finishRun({ durationMs, failed, message }) {
   state.terminal?.exitInputMode();
   if (durationMs !== undefined) state.terminal?.writeDoneSeparator(durationMs);
   finishProgressBar();
-  setRunState(failed ? 'error' : 'done');
+  const secs = durationMs !== undefined ? `${(durationMs / 1000).toFixed(2)}s` : '';
+  const errLabel = state.lastError || 'Error';
+  setRunState(
+    failed ? 'error' : 'done',
+    failed ? `${errLabel}${state.lastErrorLine ? ` · line ${state.lastErrorLine}` : ''}` : `Done in ${secs}`,
+  );
+  addRunHistory(failed ? { kind: 'fail', label: errLabel } : { kind: 'ok', label: secs });
   state.isRunning = false;
   if (message) showToast(message, failed ? 'error' : 'success', failed ? 2400 : 2000);
+
+  const $anchor = document.querySelector('.exec-time-wrap');
+  if (failed) runFailed($anchor);
+  else if (durationMs !== undefined) runSucceeded($anchor);
 }
 
 // ── Run / Stop ───────────────────────────────────────────────────
@@ -160,7 +193,9 @@ export function runCode() {
 
   saveCode();
   state.isRunning = true;
-  setRunState('running');
+  state.lastError = null;
+  state.lastErrorLine = null;
+  setRunState('running', `Running ${getActiveFileName() || 'main.py'}`);
   if (state.activePane !== 'terminal') switchPane('terminal');
 
   const $exec = $('exec-time');
@@ -178,8 +213,9 @@ export function stopCode() {
   const wasRunning = state.isRunning;
   if (state.useLocalPython) window.electronAPI.killPython();
   else state.workerManager?.kill(); // Pyodide reports back via onInterrupted
-  setRunState('idle');
+  setRunState('idle', 'Stopped');
   state.isRunning = false;
+  if (wasRunning) addRunHistory({ kind: 'stopped', label: 'stopped' });
 
   if (wasRunning && state.useLocalPython) {
     stopExecTimer();
@@ -208,6 +244,7 @@ export async function initRuntime() {
   };
 
   const api = window.electronAPI;
+  setBootStep(2);
   if (api?.detectPython) {
     try {
       const result = await api.detectPython();
@@ -217,7 +254,8 @@ export async function initRuntime() {
         setupLocalPython(api);
         setRuntimeStatus('Runtime ready (local)');
         setRuntimeInfo(result.version.replace('Python ', ''), 'Local · Native');
-        dismissLoadingOverlay(400);
+        setBootStep(3, `Found ${result.version}`);
+        finishBoot(400);
         setRunState('ready');
         showToast(`Local ${result.version} detected`, 'success', 2500);
         state.terminal?.focus();
@@ -228,6 +266,7 @@ export async function initRuntime() {
     }
   }
 
+  setBootStep(3, 'No local Python found, starting the built-in runtime');
   initPyodide();
   bindPipManager();
 }
@@ -287,11 +326,15 @@ function initPyodide() {
   const wm = new WorkerManager();
   state.workerManager = wm;
 
-  wm.onStatus = (text) => setRuntimeStatus(text);
+  wm.onStatus = (text) => {
+    setRuntimeStatus(text);
+    setBootDetail(text);
+  };
 
   const loadTimeout = setTimeout(() => {
     if (wm.isReady) return;
     setRuntimeStatus('Load timed out');
+    setBootDetail('The Python runtime is taking too long to download. Check the internet connection, then retry.');
     showToast('Python runtime is taking too long. Check your connection.', 'error', 5000);
     const retry = document.createElement('button');
     retry.type = 'button';
@@ -308,7 +351,7 @@ function initPyodide() {
 
   wm.onReady = () => {
     clearTimeout(loadTimeout);
-    dismissLoadingOverlay(600);
+    finishBoot(500);
     setRuntimeStatus('Runtime ready');
     setRuntimeInfo('3.11', 'Pyodide · WASM');
     setRunState('ready');
@@ -326,7 +369,7 @@ function initPyodide() {
   });
 
   wm.onError = (message, durationMs) => {
-    state.terminal?.writeError(`\n${message}\n`);
+    forwardOutput(`\n${message}\n`, 'stderr'); // same path as local runs: tidy, highlight, classroom
     finishRun({ durationMs, failed: true, message: 'Execution error' });
   };
 
@@ -355,7 +398,7 @@ function initPyodide() {
   wm.onLoadError = (msg) => {
     clearTimeout(loadTimeout);
     console.error('[THETA] Pyodide load error:', msg);
-    $('loading-overlay')?.classList.add('hidden');
+    failBoot();
     showToast(`Python runtime failed: ${msg}`, 'error', 6000);
     state.terminal?.writeError(`[runtime] ${msg}\n`);
   };

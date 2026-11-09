@@ -48,42 +48,50 @@ export function adjustFontSize(delta) {
   showToast(`Font size: ${state.fontSize}px`, 'info', 1400);
 }
 
-/** Drag the gutter between editor and terminal to resize them. */
+/**
+ * Drag the gutter to resize the output.
+ * Playground: the output tile is on the right, so drag left/right (--side-w).
+ * Pro: the output panel is at the bottom, so drag up/down (--panel-h).
+ */
 export function initGutter() {
   const $gutter = $('split-gutter');
-  const $editorPane = $('editor-pane');
   const $editorHost = $('monaco-container');
   const $termHost = $('terminal-container');
   const ideBody = document.querySelector('.ide-body');
-  if (!$gutter || !$editorPane || !ideBody) return;
+  if (!$gutter || !ideBody) return;
 
   let dragging = false;
-  let startX = 0;
-  let startW = 0;
   let frame = 0;
+  const isPro = () => document.documentElement.dataset.theme === 'pro';
 
   const relayout = () => {
     editorLayout();
     state.terminal?.fit();
+    state.replManager?.fit();
   };
 
   $gutter.addEventListener('mousedown', (e) => {
+    if (window.matchMedia('(max-width: 900px)').matches) return; // stacked layout
+    e.preventDefault();
     dragging = true;
-    startX = e.clientX;
-    startW = $editorPane.getBoundingClientRect().width;
     $gutter.classList.add('dragging');
-    document.body.style.cursor = 'col-resize';
+    document.body.style.cursor = isPro() ? 'row-resize' : 'col-resize';
     document.body.style.userSelect = 'none';
-    // Stop panes from stealing mouse events mid-drag
+    // Stop the editor and terminal from stealing mouse events mid-drag
     if ($editorHost) $editorHost.style.pointerEvents = 'none';
     if ($termHost) $termHost.style.pointerEvents = 'none';
   });
 
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
-    const total = ideBody.getBoundingClientRect().width;
-    const width = Math.max(MIN_PANE_PX, Math.min(startW + (e.clientX - startX), total - MIN_PANE_PX));
-    $editorPane.style.width = `${(width / total) * 100}%`;
+    const box = ideBody.getBoundingClientRect();
+    if (isPro()) {
+      const h = Math.max(120, Math.min(box.bottom - e.clientY, box.height - MIN_PANE_PX));
+      ideBody.style.setProperty('--panel-h', `${Math.round(h)}px`);
+    } else {
+      const w = Math.max(300, Math.min(box.right - 18 - e.clientX, box.width - MIN_PANE_PX - 60));
+      ideBody.style.setProperty('--side-w', `${Math.round(w)}px`);
+    }
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(relayout);
   });
