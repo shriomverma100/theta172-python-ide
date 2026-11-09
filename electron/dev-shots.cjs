@@ -71,7 +71,41 @@ const SCENES = [
   { name: '15-pro-classroom', js: `document.getElementById('close-settings').click(); document.getElementById('rail-classroom').click()`, wait: 1700 },
 ];
 
+// Phase 3 tour: THETA_SHOTS_SET=python
+const OPEN_PICKER = `document.querySelector('#runbar-runtime').offsetParent ? document.getElementById('runbar-runtime').click() : document.querySelector('.ide-statusbar [data-interpreter]').click()`;
+const ESC_PICKER = `document.querySelector('.quick-pick .cmd-input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`;
+// Waits for this run's fix bar (the status pill may still show the last error)
+const runImport = (mod) => `
+  window.__thetaTest.setCode('import ${mod}\\n\\nprint(${mod}.__name__)\\n');
+  await new Promise(r => setTimeout(r, 400));
+  document.getElementById('btn-run').click();
+  ${waitFor(`!document.getElementById('fix-bar').classList.contains('hidden') && document.getElementById('fix-bar-text').textContent.includes('${mod}')`)}`;
+const fixScene = (mod) => `(async () => { ${runImport(mod)} })()`;
+const PY_SCENES = [
+  { name: 'p01-picker', wait: 4500 },
+  { name: 'p02-play-ide', js: `document.querySelector('[data-pick="playground"]').click()`, wait: 1200 },
+  { name: 'p03-play-interpreters', js: OPEN_PICKER, wait: 700 },
+  { name: 'p04-play-packages', js: `${ESC_PICKER}; document.getElementById('pip-list-btn').click()`, wait: 1500 },
+  { name: 'p05-play-fixbar', js: `document.getElementById('pip-packages-close').click(); ${fixScene('cv2')}`, wait: 400 },
+  { name: 'p06-play-unknown', js: fixScene('helpers2'), wait: 400 },
+  {
+    name: 'p07-play-installed',
+    js: `(async () => {
+      ${runImport('yaml')}
+      await new Promise(r => setTimeout(r, 400));
+      document.getElementById('fix-bar-install').click();
+      ${waitFor("/Run again/.test(document.getElementById('fix-bar-install').textContent)")}
+    })()`,
+    wait: 400,
+  },
+  { name: 'p08-switching', js: `document.querySelector('.ide-topbar [data-theme-choice="pro"]').click()`, wait: 3000 },
+  { name: 'p09-pro-interpreters', js: OPEN_PICKER, wait: 700 },
+  { name: 'p10-pro-packages', js: `${ESC_PICKER}; document.getElementById('pip-list-btn').click()`, wait: 1500 },
+  { name: 'p11-pro-fixbar', js: `document.getElementById('pip-packages-close').click(); ${fixScene('sklearn')}`, wait: 400 },
+];
+
 function attachShots(win, dir) {
+  const scenes = process.env.THETA_SHOTS_SET === 'python' ? PY_SCENES : SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {
@@ -80,7 +114,7 @@ function attachShots(win, dir) {
   });
   win.webContents.once('did-finish-load', async () => {
     try {
-      for (const scene of SCENES) {
+      for (const scene of scenes) {
         if (scene.js) {
           try { await win.webContents.executeJavaScript(scene.js); }
           catch (err) { console.error(`shots failed in ${scene.name}: ${err.message}`); }

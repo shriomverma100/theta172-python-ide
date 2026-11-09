@@ -40,7 +40,7 @@ export class FxEngine {
     this.layer = null;
     this.items = new Map(); // id -> { canvas, onCovered, resolve }
     this.nextId = 1;
-    this.mainStats = { calls: 0, totalMs: 0, maxMs: 0, dropped: 0 };
+    this.mainStats = { calls: 0, totalMs: 0, maxMs: 0, dropped: 0, samples: [] };
     this._statsWaiters = [];
     this._listeners = new Set();
 
@@ -126,6 +126,7 @@ export class FxEngine {
     s.calls++;
     s.totalMs += ms;
     s.maxMs = Math.max(s.maxMs, ms);
+    if (s.samples.length < 64) s.samples.push(ms);
   }
 
   _send(id, effect, canvas, extra) {
@@ -245,8 +246,15 @@ export class FxEngine {
 
   /** Cost report: page time per effect start, worker time per drawn frame. */
   async stats() {
-    const main = { ...this.mainStats, avgMs: this.mainStats.calls ? this.mainStats.totalMs / this.mainStats.calls : 0 };
-    this.mainStats = { calls: 0, totalMs: 0, maxMs: 0, dropped: 0 };
+    const { samples, ...rest } = this.mainStats;
+    const sorted = [...samples].sort((x, y) => x - y);
+    const main = {
+      ...rest,
+      avgMs: rest.calls ? rest.totalMs / rest.calls : 0,
+      // The median ignores a one-off pause (garbage collection) that lands inside a call
+      medianMs: sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0,
+    };
+    this.mainStats = { calls: 0, totalMs: 0, maxMs: 0, dropped: 0, samples: [] };
     if (!this.worker) return { main, worker: null, workerStartMs: 0 };
     const worker = await new Promise((resolve) => {
       this._statsWaiters.push(resolve);
