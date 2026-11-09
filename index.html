@@ -230,7 +230,7 @@
 
         <div class="pip-bar" id="pip-bar">
           <label class="pip-bar__prefix" for="pip-input">pip install</label>
-          <input id="pip-input" class="pip-bar__input" placeholder="package name, e.g. numpy" autocomplete="off" spellcheck="false" />
+          <input id="pip-input" class="pip-bar__input" placeholder="package names, e.g. numpy pandas" autocomplete="off" spellcheck="false" />
           <button id="pip-install-btn" class="pip-bar__btn" type="button" title="Install package">Install</button>
           <button id="pip-list-btn" class="pip-bar__btn" type="button" title="Show installed packages">Packages</button>
           <span id="pip-status" class="pip-bar__status" role="status"></span>
@@ -238,12 +238,22 @@
 
         <div id="pip-packages-panel" class="pip-packages-panel hidden">
           <div class="pip-packages-header">
-            <span>Installed packages</span>
+            <span class="pip-packages-title">Installed <span id="pip-count" class="pip-count"></span></span>
+            <button id="pip-env" class="pip-env" type="button" title="Change Python">Python</button>
+            <input id="pip-filter" class="pip-filter" type="search" placeholder="Filter" aria-label="Filter installed packages" spellcheck="false" />
+            <button id="pip-check" class="pip-head-btn" type="button" title="Check installed packages for version conflicts">Check</button>
             <button id="pip-packages-close" class="pip-packages-close" type="button" aria-label="Close package list">&times;</button>
           </div>
           <div id="pip-packages-list" class="pip-packages-list">
             <span class="pip-packages-empty">No packages installed yet</span>
           </div>
+        </div>
+
+        <div id="fix-bar" class="fix-bar hidden" role="status" aria-live="polite">
+          <svg class="fix-bar__icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5 12 4v6l-5 2.5L2 10V4Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2 4l5 2.5L12 4M7 6.5v6" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+          <span id="fix-bar-text" class="fix-bar__text"></span>
+          <button id="fix-bar-install" class="fix-bar__btn" type="button">Install</button>
+          <button id="fix-bar-close" class="fix-bar__close" type="button" aria-label="Dismiss">&times;</button>
         </div>
 
         <div class="terminal-well">
@@ -273,14 +283,13 @@
       <ol id="run-history" class="run-history" aria-label="Run history">
         <li class="run-history__empty">Runs appear here</li>
       </ol>
-      <span class="runbar-runtime" id="runbar-runtime">Python</span>
+      <button class="runbar-runtime" id="runbar-runtime" type="button" data-interpreter>Python</button>
     </footer>
 
     <!-- ═══ Pro: status bar ═══ -->
     <footer class="ide-statusbar">
       <div class="statusbar__left">
-        <span class="status-item">Python <span id="python-version">3.11</span></span>
-        <span class="status-item"><span id="runtime-type">Pyodide · WASM</span></span>
+        <button class="status-btn status-interpreter" type="button" data-interpreter>Python <span id="python-version">3.12</span> <span class="status-sep" aria-hidden="true">·</span> <span id="runtime-type">…</span></button>
         <span class="status-item status-item--runtime"><span class="status-px" aria-hidden="true"></span><span id="pyodide-status">Loading runtime…</span></span>
       </div>
       <div class="statusbar__right">

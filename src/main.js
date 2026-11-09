@@ -36,6 +36,7 @@ import { fontsReady } from './styles/fonts.js';
 import { fx, startLoadingLoop, runSucceeded, runFailed, screenTransition } from './fx/moments.js';
 import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
+import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
 import {
   initClassroomPanel, openClassroomPanel, handleClassroomKeydown,
   broadcastCurrentCode, isTeacherLive, isStudentConnected, streamStudentCode,
@@ -120,6 +121,9 @@ const actions = {
   'toggle-sidebar': () => showSidebar(),
   'toggle-split': toggleSplitView,
   'open-shell': () => switchPane('shell'),
+  'select-interpreter': showInterpreterPicker,
+  'manage-packages': () => { switchPane('terminal'); state.pipManager?.toggle(true); },
+  'check-environment': checkEnvironment,
 };
 
 // ── Sidebar and split editor ─────────────────────────────────────
@@ -369,6 +373,7 @@ initTheme({
 });
 state.pipManager = new PipManager();
 state.pipManager.init(); // runtime.js binds it to the chosen runtime
+initFixBar();
 initAccessibility();
 
 initIDE().catch((err) => {

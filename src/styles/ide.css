@@ -460,3 +460,63 @@
   .gutter-handle { display: none; }
   .run-history { display: none; }
 }
+
+/* ── Python interpreter (status bar, run rail, picker) ── */
+.runbar-runtime { height: 30px; padding: 0 10px; border: var(--border-w) solid transparent; border-radius: var(--radius-pill); cursor: pointer; }
+.runbar-runtime:hover { color: var(--text); border-color: var(--line-strong); background: var(--surface-1); }
+.status-interpreter { display: inline-flex; align-items: center; gap: 5px; border-left: none; border-right: 1px solid var(--line); margin-left: -12px; padding: 0 12px; }
+.status-sep { color: var(--text-4); }
+.qp-separator { padding: 10px 12px 4px; font-size: var(--fs-xs); font-weight: 600; color: var(--text-3); letter-spacing: var(--label-track); }
+.qp-item { gap: 10px; }
+.qp-item--detail { height: auto; min-height: 50px; padding-top: 6px; padding-bottom: 6px; }
+.qp-check { flex: none; width: 14px; font-size: var(--fs-sm); font-weight: 700; color: var(--accent-text); text-align: center; }
+.qp-text { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+.qp-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.qp-line .cmd-result-name { flex: none; }
+.qp-desc { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qp-detail { font-family: var(--font-code); font-size: 11px; color: var(--text-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+
+/* ── Packages panel header ── */
+.pip-packages-header { gap: 8px; justify-content: flex-start; }
+.pip-packages-title { flex: none; }
+.pip-count { margin-left: 4px; font-family: var(--font-code); font-weight: 500; opacity: 0.75; }
+.pip-env { min-width: 0; max-width: 40%; height: 26px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-code); font-size: var(--fs-xs); border: var(--border-w) solid currentColor; border-radius: var(--radius-pill); }
+.pip-env:not(:disabled):hover { background: var(--surface-3); }
+.pip-env:disabled { border-style: dashed; cursor: default; }
+.pip-filter { flex: 1; min-width: 60px; height: 26px; padding: 0 10px; font-size: var(--fs-xs); color: inherit; background: transparent; border: 1px solid var(--line-soft); border-radius: 8px; outline: none; }
+.pip-filter:focus { border-color: var(--focus); }
+.pip-head-btn { flex: none; height: 26px; padding: 0 10px; font-size: var(--fs-xs); font-weight: 600; border: var(--border-w) solid currentColor; border-radius: 8px; }
+.pip-head-btn:hover { background: var(--surface-3); }
+.pip-packages-close { flex: none; }
+:root[data-theme="pro"] .pip-env,
+:root[data-theme="pro"] .pip-head-btn,
+:root[data-theme="pro"] .pip-packages-close,
+:root[data-theme="pro"] .pip-package-item__uninstall { border: 1px solid var(--line-strong); border-radius: 6px; font-weight: 500; }
+:root[data-theme="pro"] .pip-filter { border-color: var(--line-strong); border-radius: 6px; background: var(--bg); }
+
+/* ── Missing-module fix bar ── */
+.fix-bar { display: flex; align-items: center; gap: 10px; min-height: 40px; margin: 0 12px 10px; padding: 6px 6px 6px 14px; font-size: var(--fs-sm); color: var(--ink); background: var(--yellow); border: var(--border-w) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow-control); flex: none; animation: modalIn 180ms var(--ease-out); }
+.fix-bar--done { background: var(--lime); }
+.fix-bar__icon { flex: none; }
+.fix-bar__text { flex: 1; min-width: 0; line-height: 1.35; }
+.fix-bar__btn { flex: none; height: 30px; padding: 0 14px; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); background: #FFFFFF; border: var(--border-w) solid var(--ink); border-radius: var(--radius-pill); white-space: nowrap; }
+.fix-bar__btn:hover:not(:disabled) { background: var(--surface-3); }
+.fix-bar__btn:disabled { opacity: 0.7; cursor: progress; }
+.fix-bar__close { flex: none; width: 30px; height: 30px; font-size: 18px; line-height: 1; color: var(--ink); border-radius: 8px; }
+.fix-bar__close:hover { background: rgba(23, 20, 46, 0.1); }
+:root[data-theme="pro"] .fix-bar { margin: 0; padding: 4px 6px 4px 12px; min-height: 36px; color: var(--text); background: color-mix(in srgb, var(--warn-text) 16%, var(--surface-1)); border: none; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+:root[data-theme="pro"] .fix-bar--done { background: color-mix(in srgb, var(--ok-text) 16%, var(--surface-1)); }
+:root[data-theme="pro"] .fix-bar__icon { color: var(--warn-text); }
+:root[data-theme="pro"] .fix-bar__btn { height: 26px; font-weight: 500; color: var(--text); background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: 6px; }
+:root[data-theme="pro"] .fix-bar__close { color: var(--text-2); }
+
+/* Narrow output column (Playground): let the fix bar and package header wrap */
+.fix-bar { flex-wrap: wrap; row-gap: 6px; }
+.fix-bar__text { flex: 1 1 200px; }
+.pip-bar__input { min-width: 110px; }
+.pip-bar__status { flex: 0 1 auto; min-width: 0; }
+:root:not([data-theme="pro"]) .pip-packages-header { flex-wrap: wrap; height: auto; min-height: 38px; padding: 6px 8px 6px 14px; row-gap: 6px; }
+:root:not([data-theme="pro"]) .pip-env { max-width: none; flex: 0 1 auto; }
+:root:not([data-theme="pro"]) .pip-packages-close { order: 1; margin-left: auto; }
+:root:not([data-theme="pro"]) .pip-filter { order: 2; flex: 1 1 140px; }
+:root:not([data-theme="pro"]) #pip-check { order: 3; }

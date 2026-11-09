@@ -1,20 +1,24 @@
 /**
- * THETA. — Pip Manager
- * Handles package installation UI, validation, and installed packages list.
+ * THETA. — Packages panel.
+ *
+ * Desktop: installs into, lists and removes packages from the selected
+ * interpreter (see app/interpreter.js), and can check for conflicts.
+ * Browser (Pyodide): installs with micropip; the list shows this session's
+ * installs.
  */
 
 import { showToast } from './toast.js';
 import { isValidPackageSpec } from './core/package-spec.js';
+import {
+  installPackages, uninstallPackage, checkEnvironment, showInterpreterPicker, getInterpreter, onInterpreterChange,
+} from './app/interpreter.js';
 
 export class PipManager {
   constructor() {
-    this.installedPackages = []; // { name, version }
-    this.$input = null;
-    this.$status = null;
-    this.$listBtn = null;
-    this.$panel = null;
-    this.$panelClose = null;
-    this.$installBtn = null;
+    this.sessionPackages = []; // Pyodide: { name, version }
+    this.packages = [];        // what the list shows
+    this.loading = false;
+    this.filter = '';
 
     // External references (set by main app)
     this.terminal = null;
@@ -24,54 +28,91 @@ export class PipManager {
 
   init() {
     const $ = (id) => document.getElementById(id);
-
     this.$input = $('pip-input');
-    this.$status = $('pip-status');
-    this.$listBtn = $('pip-list-btn');
     this.$panel = $('pip-packages-panel');
-    this.$panelClose = $('pip-packages-close');
-    this.$installBtn = $('pip-install-btn');
+    this.$list = $('pip-packages-list');
+    this.$env = $('pip-env');
+    this.$filter = $('pip-filter');
 
-    // Enter key in input
     this.$input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         this.handleInstall();
       }
     });
-
-    // Install button
-    this.$installBtn?.addEventListener('click', () => this.handleInstall());
-
-    // List panel toggle
-    this.$listBtn?.addEventListener('click', () => {
-      this.$panel?.classList.toggle('hidden');
+    $('pip-install-btn')?.addEventListener('click', () => this.handleInstall());
+    $('pip-list-btn')?.addEventListener('click', () => this.toggle());
+    $('pip-packages-close')?.addEventListener('click', () => this.toggle(false));
+    $('pip-check')?.addEventListener('click', () => checkEnvironment());
+    this.$env?.addEventListener('click', () => showInterpreterPicker());
+    this.$filter?.addEventListener('input', () => {
+      this.filter = this.$filter.value.trim().toLowerCase();
+      this.renderList();
     });
-
-    this.$panelClose?.addEventListener('click', () => {
-      this.$panel?.classList.add('hidden');
+    onInterpreterChange(() => {
+      this.renderEnv();
+      if (this.isOpen) this.refreshList();
     });
   }
 
-  handleInstall() {
-    const pkg = this.$input?.value?.trim();
-    if (!pkg) return;
+  get isOpen() { return !!this.$panel && !this.$panel.classList.contains('hidden'); }
 
-    // Validate package name
-    if (!isValidPackageSpec(pkg)) {
+  toggle(force) {
+    const open = force ?? !this.isOpen;
+    this.$panel?.classList.toggle('hidden', !open);
+    if (open) {
+      this.renderEnv();
+      this.refreshList();
+    }
+  }
+
+  renderEnv() {
+    const local = this.useLocalPython;
+    document.getElementById('pip-check')?.classList.toggle('hidden', !local);
+    if (!this.$env) return;
+    const a = getInterpreter();
+    this.$env.disabled = !local;
+    this.$env.textContent = local ? (a ? a.label : 'Choose Python') : 'Browser Python (Pyodide)';
+    this.$env.title = local && a ? `${a.path}\nClick to change` : '';
+  }
+
+  async refreshList() {
+    if (!this.useLocalPython) {
+      this.packages = this.sessionPackages;
+      this.renderList();
+      return;
+    }
+    if (!getInterpreter()) {
+      this.packages = [];
+      this.renderList('Choose a Python first.');
+      return;
+    }
+    this.loading = true;
+    this.renderList();
+    try {
+      this.packages = await window.electronAPI.pyPackages();
+      this.loading = false;
+      this.renderList();
+    } catch (err) {
+      this.loading = false;
+      this.packages = [];
+      this.renderList(err.message);
+    }
+  }
+
+  async handleInstall() {
+    const specs = (this.$input?.value || '').trim().split(/[\s,]+/).filter(Boolean);
+    if (!specs.length) return;
+    if (!specs.every(isValidPackageSpec)) {
       showToast('Invalid package name', 'error', 2500);
       return;
     }
 
     if (this.useLocalPython) {
       this.$input.value = '';
-      if (this.$status) {
-        this.$status.textContent = `Installing ${pkg}...`;
-        this.$status.className = 'pip-bar__status installing';
-      }
-      this.terminal?.writeSystem(`\n[pip] Installing "${pkg}"...\n`);
-      window.electronAPI.pipInstall(pkg);
-      this.addPackage(pkg, 'local');
+      const ok = await installPackages(specs);
+      if (ok && this.isOpen) this.refreshList();
+      if (!ok) this.$input.value = specs.join(' ');
       return;
     }
 
@@ -79,49 +120,55 @@ export class PipManager {
       showToast('Python runtime not ready yet', 'error', 2000);
       return;
     }
-
     this.$input.value = '';
-    this.workerManager.installPackage(pkg);
-    this.addPackage(pkg, 'latest');
+    for (const spec of specs) await this.installInBrowser(spec);
   }
 
-  addPackage(name, version) {
-    const existing = this.installedPackages.findIndex(
-      p => p.name.toLowerCase() === name.toLowerCase()
-    );
-    if (existing >= 0) {
-      this.installedPackages[existing].version = version;
-    } else {
-      this.installedPackages.push({ name, version });
+  /** Pyodide: install one package with micropip. Resolves true on success. */
+  async installInBrowser(spec) {
+    if (!this.workerManager?.isReady) return false;
+    const ok = await this.workerManager.installPackage(spec);
+    if (ok) {
+      const name = spec.split(/[=<>!~[]/)[0];
+      const i = this.sessionPackages.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (i >= 0) this.sessionPackages[i].version = 'latest';
+      else this.sessionPackages.push({ name, version: 'latest' });
+      if (this.isOpen) this.refreshList();
     }
-    this.renderList();
+    return ok;
   }
 
-  removePackage(name) {
-    const idx = this.installedPackages.findIndex(
-      p => p.name.toLowerCase() === name.toLowerCase()
-    );
-    if (idx >= 0) {
-      this.installedPackages.splice(idx, 1);
-      this.renderList();
-      showToast(`Removed: ${name}`, 'info', 1800);
-    }
+  async remove(name) {
+    if (!window.confirm(`Remove ${name} from ${getInterpreter()?.label || 'this Python'}?`)) return;
+    const ok = await uninstallPackage(name);
+    showToast(ok ? `${name} removed` : `Could not remove ${name}. See the terminal.`, ok ? 'info' : 'error', 2200);
+    if (ok) this.refreshList();
   }
 
-  renderList() {
-    const $list = document.getElementById('pip-packages-list');
+  renderList(message) {
+    const $list = this.$list;
     if (!$list) return;
+    $list.textContent = '';
+    const note = (text) => {
+      const el = document.createElement('span');
+      el.className = 'pip-packages-empty';
+      el.textContent = text;
+      $list.appendChild(el);
+    };
+    if (message) return note(message);
+    if (this.loading && !this.packages.length) return note('Reading installed packages…');
 
-    if (this.installedPackages.length === 0) {
-      $list.innerHTML = '<span class="pip-packages-empty">No packages installed yet</span>';
-      return;
-    }
+    const shown = this.filter
+      ? this.packages.filter((p) => p.name.toLowerCase().includes(this.filter))
+      : this.packages;
+    const $count = document.getElementById('pip-count');
+    if ($count) $count.textContent = this.packages.length ? String(this.packages.length) : '';
+    if (!this.packages.length) return note(this.useLocalPython ? 'No packages installed yet.' : 'No packages installed in this session yet.');
+    if (!shown.length) return note(`No installed package matches "${this.filter}".`);
 
-    $list.innerHTML = '';
-    this.installedPackages.forEach(pkg => {
+    for (const pkg of shown) {
       const item = document.createElement('div');
       item.className = 'pip-package-item';
-
       const left = document.createElement('span');
       const nameSpan = document.createElement('span');
       nameSpan.className = 'pip-package-item__name';
@@ -129,33 +176,19 @@ export class PipManager {
       const verSpan = document.createElement('span');
       verSpan.className = 'pip-package-item__version';
       verSpan.textContent = pkg.version;
-      left.appendChild(nameSpan);
-      left.appendChild(verSpan);
-
-      const unBtn = document.createElement('button');
-      unBtn.className = 'pip-package-item__uninstall';
-      unBtn.textContent = 'remove';
-      unBtn.addEventListener('click', () => this.removePackage(pkg.name));
-
+      left.append(nameSpan, verSpan);
       item.appendChild(left);
-      item.appendChild(unBtn);
-      $list.appendChild(item);
-    });
-  }
 
-  setStatus(text, className = '') {
-    if (this.$status) {
-      this.$status.textContent = text;
-      this.$status.className = 'pip-bar__status' + (className ? ' ' + className : '');
-    }
-  }
-
-  clearStatus(delay = 4000) {
-    setTimeout(() => {
-      if (this.$status) {
-        this.$status.textContent = '';
-        this.$status.className = 'pip-bar__status';
+      if (this.useLocalPython && !/^(pip|setuptools|uv)$/i.test(pkg.name)) {
+        const unBtn = document.createElement('button');
+        unBtn.type = 'button';
+        unBtn.className = 'pip-package-item__uninstall';
+        unBtn.textContent = 'Remove';
+        unBtn.setAttribute('aria-label', `Remove ${pkg.name}`);
+        unBtn.addEventListener('click', () => this.remove(pkg.name));
+        item.appendChild(unBtn);
       }
-    }, delay);
+      $list.appendChild(item);
+    }
   }
 }

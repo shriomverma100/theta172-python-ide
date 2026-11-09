@@ -102,10 +102,12 @@ export class WorkerManager {
         break;
 
       case 'install-done':
+        this._settleInstall(msg.package, true);
         this.onInstallDone?.(msg.package);
         break;
 
       case 'install-error':
+        this._settleInstall(msg.package, false);
         this.onInstallError?.(msg.package, msg.message);
         break;
 
@@ -165,7 +167,20 @@ export class WorkerManager {
    * Install a package via micropip.
    */
   installPackage(name) {
-    if (!this.isReady) return;
+    if (!this.isReady) return Promise.resolve(false);
     this.worker.postMessage({ type: 'install', package: name });
+    return new Promise((resolve) => {
+      this._installs = this._installs || new Map();
+      const waiting = this._installs.get(name) || [];
+      waiting.push(resolve);
+      this._installs.set(name, waiting);
+    });
+  }
+
+  _settleInstall(name, ok) {
+    const waiting = this._installs?.get(name);
+    if (!waiting) return;
+    this._installs.delete(name);
+    waiting.forEach((resolve) => resolve(ok));
   }
 }

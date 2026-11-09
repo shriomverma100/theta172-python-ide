@@ -17,6 +17,7 @@ import { tidyTraceback, errorLineInUserCode } from '../core/traceback.js';
 import { switchPane } from './layout.js';
 import { setBootStep, setBootDetail, finishBoot, failBoot } from './boot.js';
 import { runSucceeded, runFailed } from '../fx/moments.js';
+import { initInterpreter, noteRunError, resetRunErrors, offerFixes } from './interpreter.js';
 
 const PYODIDE_LOAD_TIMEOUT_MS = 45_000;
 const RUN_LABELS = { idle: 'Ready', ready: 'Ready', running: 'Running', done: 'Done', error: 'Error' };
@@ -156,6 +157,7 @@ function forwardOutput(text, stream) {
     // Remember the exception name for the status pill and run history
     const names = [...text.matchAll(/^(\w+(?:Error|Exception|Interrupt|Exit))\b/gm)];
     if (names.length) state.lastError = names[names.length - 1][1];
+    noteRunError(text);
   }
 }
 
@@ -177,6 +179,7 @@ function finishRun({ durationMs, failed, message }) {
   const $anchor = document.querySelector('.exec-time-wrap');
   if (failed) runFailed($anchor);
   else if (durationMs !== undefined) runSucceeded($anchor);
+  offerFixes({ failed, rerun: runCode });
 }
 
 // ── Run / Stop ───────────────────────────────────────────────────
@@ -213,6 +216,7 @@ export async function runCode() {
   state.isRunning = true;
   state.lastError = null;
   state.lastErrorLine = null;
+  resetRunErrors();
   setRunState('running', `Running ${getActiveFileName() || 'main.py'}`);
   if (state.activePane !== 'terminal') switchPane('terminal');
 
@@ -263,23 +267,23 @@ export async function initRuntime() {
 
   const api = window.electronAPI;
   setBootStep(2);
-  if (api?.detectPython) {
+  if (api?.pyInit) {
     try {
-      const result = await api.detectPython();
-      if (result.found) {
+      // First start creates the default environment from the built-in Python
+      const active = await initInterpreter({ onStatus: (text) => setBootStep(2, text) });
+      if (active) {
         state.useLocalPython = true;
         bindPipManager();
         setupLocalPython(api);
-        setRuntimeStatus('Runtime ready (local)');
-        setRuntimeInfo(result.version.replace('Python ', ''), 'Local · Native');
-        setBootStep(3, `Found ${result.version}`);
+        setRuntimeStatus('Runtime ready');
+        setBootStep(3, `Using ${active.label}`);
         finishBoot(400);
         setRunState('ready');
-        showToast(`Local ${result.version} detected`, 'success', 2500);
         state.terminal?.focus();
         return;
       }
-    } catch (_) {
+    } catch (err) {
+      console.error('[THETA] Python setup failed:', err);
       // fall through to Pyodide
     }
   }
