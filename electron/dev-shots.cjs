@@ -104,8 +104,72 @@ const PY_SCENES = [
   { name: 'p11-pro-fixbar', js: `document.getElementById('pip-packages-close').click(); ${fixScene('sklearn')}`, wait: 400 },
 ];
 
+// Phase 4 tour: THETA_SHOTS_SET=lsp
+const LSP_CODE = 'import json\\nfrom src.helpers import add\\n\\n\\ndef greet(name: str) -> str:\\n    return "Hi " + name\\n\\n\\ntotal = add(40, 2)\\nprint(greet(total))\\nprint(undefined_name)\\njson.du';
+const LSP_SETUP = `(async () => {
+  const t = window.__thetaTest;
+  ${waitFor('window.__thetaTest.lspReady()')}
+  [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith('main.py'))?.click();
+  await new Promise(r => setTimeout(r, 600));
+  t.setCode('${LSP_CODE}');
+  ${waitFor('window.__thetaTest.problems().errors >= 2')}
+  await new Promise(r => setTimeout(r, 400));
+})()`;
+const COMPLETE = `(async () => {
+  window.__thetaTest.cursorTo('json.du', 7);
+  window.__thetaTest.complete();
+  ${waitFor("document.querySelector('.cm-tooltip-autocomplete li')")}
+})()`;
+const HOVER = `(async () => {
+  document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const view = document.querySelector('.cm-content');
+  const at = window.__thetaTest.coordsOf('greet(name', 2);
+  if (at) {
+    const opts = { bubbles: true, clientX: at.x, clientY: at.y };
+    view.dispatchEvent(new MouseEvent('mousemove', opts));
+    await new Promise(r => setTimeout(r, 60));
+    view.dispatchEvent(new MouseEvent('mousemove', opts));
+  }
+  ${waitFor("document.querySelector('.cm-tooltip-hover')")}
+})()`;
+const RENAME = `(async () => {
+  document.querySelector('.cm-content').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 5, clientY: 5 }));
+  window.__thetaTest.cursorTo('greet(total', 2);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+  ${waitFor("document.querySelector('.quick-pick .cmd-input')")}
+  const box = document.querySelector('.quick-pick .cmd-input');
+  box.value = 'welcome';
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+})()`;
+const LIBRARY = `(async () => {
+  document.querySelector('.quick-pick .cmd-input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await new Promise(r => setTimeout(r, 200));
+  window.__thetaTest.cursorTo('json.du', 1);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F12', bubbles: true }));
+  ${waitFor("/__init__/.test(window.__thetaTest.activeTab() || '')")}
+  await new Promise(r => setTimeout(r, 400));
+})()`;
+const TO_PRO = `(async () => {
+  [...document.querySelectorAll('.editor-tab')].find((t) => (t.title || '').endsWith('main.py'))?.click();
+  await new Promise(r => setTimeout(r, 400));
+  document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+})()`;
+const LSP_SCENES = [
+  { name: 'l01-picker', wait: 4500 },
+  { name: 'l02-play-diagnostics', js: `document.querySelector('[data-pick="playground"]').click(); ${LSP_SETUP}`, wait: 400 },
+  { name: 'l03-play-completion', js: COMPLETE, wait: 300 },
+  { name: 'l04-play-hover', js: HOVER, wait: 300 },
+  { name: 'l05-play-problems', js: `document.querySelector('.cm-content').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 5, clientY: 5 })); document.getElementById('tab-problems').click()`, wait: 500 },
+  { name: 'l06-play-rename', js: RENAME, wait: 400 },
+  { name: 'l07-play-library', js: LIBRARY, wait: 300 },
+  { name: 'l08-switching', js: TO_PRO, wait: 3000 },
+  { name: 'l09-pro-completion', js: COMPLETE, wait: 300 },
+  { name: 'l10-pro-hover', js: HOVER, wait: 300 },
+  { name: 'l11-pro-problems', js: `document.querySelector('.cm-content').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 5, clientY: 5 })); document.getElementById('tab-problems').click()`, wait: 500 },
+];
+
 function attachShots(win, dir) {
-  const scenes = process.env.THETA_SHOTS_SET === 'python' ? PY_SCENES : SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {
