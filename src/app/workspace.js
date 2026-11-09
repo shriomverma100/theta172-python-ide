@@ -26,6 +26,9 @@ const norm = (p) => (isWin() ? p.toLowerCase() : p);
 
 export function getWorkspaceRoot() { return ws.root; }
 export function onWorkspaceChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+const fileListeners = new Set();
+/** fn(paths) for files changed on disk inside the project (the language server listens). */
+export function onFilesChanged(fn) { fileListeners.add(fn); return () => fileListeners.delete(fn); }
 function emit() { listeners.forEach((fn) => fn({ root: ws.root, name: ws.name })); }
 
 /** True when `p` is inside the open folder. */
@@ -481,6 +484,7 @@ export function initWorkspace() {
   // Changes on disk (other programs, git, our own saves)
   let timer = null;
   api()?.onWsChanged?.(async (paths) => {
+    fileListeners.forEach((fn) => fn(paths || []));
     clearTimeout(timer);
     timer = setTimeout(async () => {
       await refreshTree();

@@ -24,6 +24,11 @@ const themeCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const tabSizeCompartment = new Compartment();
+// Language intelligence: the built-in helpers (browser) or the language server (desktop)
+const assistCompartment = new Compartment();
+// The language server plugin for the visible file (its URI changes with the tab)
+const lspCompartment = new Compartment();
+const readOnlyCompartment = new Compartment();
 
 /** Marks edits the app makes itself (opening a file, switching tabs), not the user. */
 const programmatic = Annotation.define();
@@ -31,7 +36,7 @@ const programmatic = Annotation.define();
 const splitSync = Annotation.define();
 
 // Current view settings, re-applied to every tab's state and to the split view
-const viewConfig = { fontSize: 15, wrap: false, tabSize: 4 };
+const viewConfig = { fontSize: 15, wrap: false, tabSize: 4, assist: 'basic' };
 
 function wrapExt() { return viewConfig.wrap ? EditorView.lineWrapping : []; }
 function tabSizeExt() { return [EditorState.tabSize.of(viewConfig.tabSize), indentUnit.of(' '.repeat(viewConfig.tabSize))]; }
@@ -43,6 +48,22 @@ function currentConfigEffects() {
     fontSizeCompartment.reconfigure(fontSizeTheme(viewConfig.fontSize)),
     wrapCompartment.reconfigure(wrapExt()),
     tabSizeCompartment.reconfigure(tabSizeExt()),
+    assistCompartment.reconfigure(assistExt()),
+  ];
+}
+
+/**
+ * basic: keyword/import completions and a bracket checker (browser runtime).
+ * lsp:   completions and diagnostics come from the language server; the
+ *        server's editor extensions arrive through lspCompartment.
+ */
+function assistExt() {
+  if (viewConfig.assist === 'lsp') {
+    return autocompletion({ activateOnTyping: true, maxRenderedOptions: 60, icons: true });
+  }
+  return [
+    autocompletion({ override: [pythonIntelliSense], activateOnTyping: true, maxRenderedOptions: 30 }),
+    pythonLinter,
   ];
 }
 
@@ -415,18 +436,15 @@ export async function createEditor(container) {
     indentOnInput(),
     bracketMatching(),
     closeBrackets(),
-    autocompletion({
-      override: [pythonIntelliSense],
-      activateOnTyping: true,
-      maxRenderedOptions: 30,
-    }),
+    assistCompartment.of(assistExt()),
+    lspCompartment.of([]),
+    readOnlyCompartment.of([]),
     rectangularSelection(),
     crosshairCursor(),
     highlightActiveLine(),
     highlightSelectionMatches(),
 
-    // Real-time linting
-    pythonLinter,
+    // Diagnostics gutter (from the bracket checker or the language server)
     lintGutter(),
 
     // Find & Replace
@@ -560,6 +578,26 @@ export function loadValue(code) {
     annotations: programmatic.of(true),
   });
   resetSplit();
+}
+
+/** Switch language intelligence between the built-in helpers and the language server. */
+export function setLanguageAssist(mode) {
+  viewConfig.assist = mode === 'lsp' ? 'lsp' : 'basic';
+  editorView?.dispatch({ effects: assistCompartment.reconfigure(assistExt()) });
+}
+
+/** The language server plugin for the visible document ([] for none). */
+export function setLspExtension(ext) {
+  if (!editorView) return;
+  if (lspCompartment.get(editorView.state) === ext) return;
+  editorView.dispatch({ effects: lspCompartment.reconfigure(ext) });
+}
+
+/** Library files (go to definition) open read-only. */
+export function setReadOnly(on) {
+  if (!editorView) return;
+  const ext = on ? EditorState.readOnly.of(true) : [];
+  editorView.dispatch({ effects: readOnlyCompartment.reconfigure(ext) });
 }
 
 /** Focus the editor */

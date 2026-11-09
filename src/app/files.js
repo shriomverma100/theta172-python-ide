@@ -7,9 +7,16 @@ import { getValue } from '../editor.js';
 import { showToast } from '../toast.js';
 import { $ } from '../core/dom.js';
 import {
-  addNewTab, getActiveFilePath, getActiveFileName,
+  addNewTab, getActiveFilePath, getActiveFileName, getActiveTab,
   markActiveTabSaved, updateActiveTab,
 } from './tabs.js';
+
+let beforeSave = null;
+/**
+ * fn(code, fileName) → Promise<string|null> runs before a save (format on
+ * save). Returning a string replaces the editor text and saves that.
+ */
+export function setBeforeSave(fn) { beforeSave = fn; }
 import { clearUnsavedDot } from './autosave.js';
 
 const OPENABLE = ['.py', '.pyw', '.txt'];
@@ -19,6 +26,13 @@ const OPENABLE = ['.py', '.pyw', '.txt'];
  * (or was downloaded), false when the user cancelled or it failed.
  */
 export async function saveToFile() {
+  if (getActiveTab()?.readOnly) {
+    showToast('Library files are read only', 'info', 2000);
+    return false;
+  }
+  if (beforeSave) {
+    try { await beforeSave(getValue(), getActiveFileName()); } catch (_) { /* save anyway */ }
+  }
   const code = getValue();
   if (!code.trim()) {
     showToast('Nothing to save — write some code first', 'info', 2000);

@@ -6,8 +6,12 @@
  * Phase 2: tabs open project files (one tab per file), follow renames and
  * moves in the explorer, close safely when unsaved, and report changes so
  * the session (open tabs) can be restored after a restart.
+ *
+ * Phase 4: tabs tell listeners before and after a tab is shown (the language
+ * client follows the visible file), library files open read-only, and
+ * background tabs can be edited (multi-file rename).
  */
-import { getValue, loadValue, getEditorState, setEditorState, focusEditor, gotoLine } from '../editor.js';
+import { getValue, loadValue, getEditorState, setEditorState, focusEditor, gotoLine, setReadOnly, getView } from '../editor.js';
 import { $ } from '../core/dom.js';
 import { state } from './state.js';
 
@@ -15,6 +19,7 @@ let tabs = [];
 let activeTabId = null;
 let tabCounter = 0;
 const changeListeners = new Set();
+const showListeners = new Set();
 
 const CLOSE_ICON = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true"><path d="M1 1L8 8M8 1L1 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
@@ -24,10 +29,29 @@ const samePath = (a, b) => !!a && !!b && (navigator.platform?.startsWith('Win') 
 
 const baseName = (p) => p.split(/[\\/]/).pop();
 
-function createTabData(name = 'untitled.py', code = '', filePath = null) {
+function createTabData(name = 'untitled.py', code = '', filePath = null, extra = {}) {
   const id = `tab-${tabCounter++}`;
-  return { id, name, code, filePath, unsaved: false, editorState: null };
+  return { id, name, code, filePath, unsaved: false, editorState: null, readOnly: false, libraryUri: null, ...extra };
 }
+
+/**
+ * fn({ phase: 'before' | 'after', tab }) runs around every change of the
+ * visible document ('before' with the tab being left, 'after' with the new one).
+ */
+export function onTabShow(fn) {
+  showListeners.add(fn);
+  return () => showListeners.delete(fn);
+}
+
+/** Show a tab's document in the editor, telling listeners before and after. */
+function display(tab, load) {
+  showListeners.forEach((fn) => fn({ phase: 'before', tab: null }));
+  load();
+  setReadOnly(!!tab.readOnly);
+  showListeners.forEach((fn) => fn({ phase: 'after', tab }));
+}
+
+export function getTabs() { return tabs.slice(); }
 
 /** Called after any change to the set of tabs, their files or saved state. */
 export function onTabsChanged(fn) {
@@ -65,8 +89,8 @@ export function getUnsavedPaths() {
 export function snapshotTabs() {
   storeActiveEditorState();
   return {
-    active: tabs.findIndex((t) => t.id === activeTabId),
-    tabs: tabs.map((t) => ({
+    active: tabs.filter((t) => !t.libraryUri).findIndex((t) => t.id === activeTabId),
+    tabs: tabs.filter((t) => !t.libraryUri).map((t) => ({
       name: t.name,
       filePath: t.filePath,
       unsaved: t.unsaved,
@@ -107,8 +131,10 @@ function storeActiveEditorState() {
 }
 
 function showTab(tab) {
-  if (tab.editorState) setEditorState(tab.editorState); // keeps undo history
-  else loadValue(tab.code);
+  display(tab, () => {
+    if (tab.editorState) setEditorState(tab.editorState); // keeps undo history
+    else loadValue(tab.code);
+  });
   setFileName(tab.name);
 }
 
@@ -135,6 +161,10 @@ export function renderTabs() {
     el.setAttribute('role', 'tab');
     el.setAttribute('aria-selected', String(tab.id === activeTabId));
     if (tab.filePath) el.title = tab.filePath;
+    if (tab.libraryUri) {
+      el.classList.add('editor-tab--readonly');
+      el.title = `${decodeURIComponent(tab.libraryUri.replace(/^file:\/\/\/?/, ''))}\nLibrary file (read only)`;
+    }
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'editor-tab__name';
@@ -183,14 +213,14 @@ export function switchTab(tabId) {
   emitChange();
 }
 
-export function addNewTab(name = null, code = '', filePath = null) {
+export function addNewTab(name = null, code = '', filePath = null, extra = {}) {
   storeActiveEditorState();
 
-  const tab = createTabData(name || `untitled-${tabs.length + 1}.py`, code, filePath);
+  const tab = createTabData(name || `untitled-${tabs.length + 1}.py`, code, filePath, extra);
   tabs.push(tab);
   activeTabId = tab.id;
 
-  loadValue(code);
+  display(tab, () => loadValue(code));
   setFileName(tab.name);
   renderTabs();
   focusEditor();
@@ -216,6 +246,55 @@ export function openFileTab(filePath, content, line) {
     }
   }
   if (line) gotoLine(line);
+}
+
+/**
+ * Show a library file (site-packages, type stubs) read-only, e.g. after
+ * "Go to Definition". One tab per file.
+ */
+export function openLibraryTab(uri, name, content) {
+  const existing = tabs.find((t) => t.libraryUri === uri);
+  if (existing) switchTab(existing.id);
+  else addNewTab(name, content, null, { readOnly: true, libraryUri: uri });
+  return getActiveTab();
+}
+
+/**
+ * Change the text of any tab. `makeChanges(doc)` returns CodeMirror change
+ * specs for that tab's current document. The active tab is edited in the
+ * editor (undoable); others are edited in their stored state.
+ * @returns {boolean} whether the tab was found and editable
+ */
+export function editTab(tabId, makeChanges) {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab || tab.readOnly) return false;
+  if (tab.id === activeTabId) {
+    const view = getView();
+    view.dispatch({ changes: makeChanges(view.state.doc), userEvent: 'input.rename' });
+    return true;
+  }
+  if (tab.editorState) {
+    tab.editorState = tab.editorState.update({ changes: makeChanges(tab.editorState.doc) }).state;
+    tab.code = tab.editorState.doc.toString();
+  } else {
+    // No stored state yet: apply the edits to the plain text
+    const view = getView();
+    const tmp = view.state.update({ changes: { from: 0, to: view.state.doc.length, insert: tab.code } }).state;
+    tab.code = tmp.update({ changes: makeChanges(tmp.doc) }).state.doc.toString();
+  }
+  tab.unsaved = true;
+  renderTabs();
+  emitChange();
+  return true;
+}
+
+/** Open a file in a tab without showing it (multi-file rename). */
+export function addBackgroundTab(name, code, filePath) {
+  const tab = createTabData(name, code, filePath);
+  tabs.push(tab);
+  renderTabs();
+  emitChange();
+  return tab;
 }
 
 /** Ask before closing a tab with unsaved changes. */
@@ -338,3 +417,6 @@ export function reloadTab(filePath, content) {
   tab.editorState = null;
   if (tab.id === activeTabId) loadValue(content);
 }
+
+/** True when the tab is the one shown in the editor. */
+export function isActiveTab(tabId) { return tabId === activeTabId; }

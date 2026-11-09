@@ -4,6 +4,8 @@
  *
  * openQuickPick({ title, items }) where each item is
  *   { label, description?, detail?, checked?, run() }  or  { separator: 'Title' }
+ * With `load(query)` the items come from a (debounced, async) search instead.
+ * openInputBox({ title, value }) asks for one line of text.
  */
 import { focusEditor } from '../editor.js';
 
@@ -13,7 +15,7 @@ export function isQuickPickOpen() { return !!open; }
 
 export function closeQuickPick() { open?.(); }
 
-export function openQuickPick({ title = 'Select', items = [] }) {
+export function openQuickPick({ title = 'Select', items = [], load = null, value = '', emptyText = 'Nothing matches' }) {
   closeQuickPick();
 
   const root = document.createElement('div');
@@ -50,7 +52,24 @@ export function openQuickPick({ title = 'Select', items = [] }) {
     item.run?.();
   };
 
+  let loadSeq = 0;
+  let loadTimer = null;
+  const runLoad = () => {
+    clearTimeout(loadTimer);
+    loadTimer = setTimeout(async () => {
+      const seq = ++loadSeq;
+      let found = [];
+      try { found = await load($input.value.trim()); } catch (_) { found = []; }
+      if (seq !== loadSeq || open !== close) return; // a newer search or closed
+      items = found;
+      shown = items;
+      selected = 0;
+      render();
+    }, 120);
+  };
+
   const filter = () => {
+    if (load) { shown = items; return; }
     const q = $input.value.trim().toLowerCase();
     shown = items.filter((it) => it.separator
       ? !q
@@ -66,7 +85,7 @@ export function openQuickPick({ title = 'Select', items = [] }) {
     if (!pickable.length) {
       const empty = document.createElement('div');
       empty.className = 'cmd-empty';
-      empty.textContent = 'Nothing matches';
+      empty.textContent = emptyText;
       $results.appendChild(empty);
       return;
     }
@@ -125,7 +144,10 @@ export function openQuickPick({ title = 'Select', items = [] }) {
     $results.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
   };
 
-  $input.addEventListener('input', () => { filter(); render(); });
+  $input.addEventListener('input', () => {
+    if (load) runLoad();
+    else { filter(); render(); }
+  });
   $input.addEventListener('keydown', (e) => {
     const pickable = shown.filter((it) => !it.separator);
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
@@ -141,8 +163,69 @@ export function openQuickPick({ title = 'Select', items = [] }) {
 
   document.body.appendChild(root);
   open = close;
+  $input.value = value;
   filter();
   render();
+  if (load) runLoad();
   setTimeout(() => $input.focus(), 30);
   return close;
+}
+
+
+/**
+ * Ask for one line of text in the palette's style.
+ * Resolves with the text, or null when cancelled.
+ * `validate(text)` returns an error message, or null when the text is fine.
+ */
+export function openInputBox({ title, value = '', validate = () => null }) {
+  closeQuickPick();
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.className = 'cmd-palette quick-pick';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-label', title);
+    root.innerHTML = `
+      <div class="cmd-palette-backdrop"></div>
+      <div class="cmd-palette-box">
+        <div class="cmd-input-wrap"><input class="cmd-input" autocomplete="off" spellcheck="false" /></div>
+        <div class="cmd-results"><div class="cmd-empty"></div></div>
+      </div>`;
+    const $input = root.querySelector('.cmd-input');
+    const $note = root.querySelector('.cmd-empty');
+    $input.value = value;
+    $input.setAttribute('aria-label', title);
+
+    const check = () => {
+      const err = validate($input.value);
+      $note.textContent = err || `${title}. Enter to confirm, Esc to cancel.`;
+      $note.classList.toggle('qp-error', !!err);
+      return err;
+    };
+    let closed = false;
+    const cancel = () => close(null);
+    const close = (result) => {
+      if (closed) return;
+      closed = true;
+      if (open === cancel) open = null;
+      root.remove();
+      focusEditor();
+      resolve(result);
+    };
+
+    $input.addEventListener('input', check);
+    $input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!check()) close($input.value);
+      }
+    });
+    root.querySelector('.cmd-palette-backdrop').addEventListener('click', () => close(null));
+
+    document.body.appendChild(root);
+    open = cancel; // closeQuickPick() cancels this box too
+    check();
+    setTimeout(() => { $input.focus(); $input.select(); }, 30);
+  });
 }
