@@ -26,6 +26,10 @@ const fileAccess = new FileAccess();
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
   app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'theta-smoke-')));
+  // Screenshot reviews at Windows scaling levels (125% = 1.25)
+  if (process.env.THETA_SCALE) app.commandLine.appendSwitch('force-device-scale-factor', process.env.THETA_SCALE);
+  // Simulate Windows 'Animation effects: off' (pixel effects must step aside)
+  if (process.env.THETA_REDUCED_MOTION === '1') app.commandLine.appendSwitch('force-prefers-reduced-motion');
 }
 
 // Enable SharedArrayBuffer (required for Pyodide Atomics)
@@ -55,8 +59,8 @@ function createWindow() {
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data:",
       "connect-src 'self' ws: wss: https://api.groq.com https://cdn.jsdelivr.net https://files.pythonhosted.org https://pypi.org",
       "img-src 'self' data: blob:",
       "worker-src 'self' blob:",
@@ -82,7 +86,7 @@ function createWindow() {
     frame:           isMac,  // macOS uses native traffic-light controls
     titleBarStyle:   isMac ? 'hiddenInset' : 'hidden',
     trafficLightPosition: isMac ? { x: 14, y: 14 } : undefined,
-    backgroundColor: '#EAEAE8',
+    backgroundColor: '#000000',
     show:            false,
     icon:            path.join(__dirname, '../public/favicon.svg'),
     webPreferences: {
@@ -105,7 +109,10 @@ function createWindow() {
     mainWindow.focus();
   });
 
-  if (process.env.THETA_SMOKE === '1') attachSmokeTest(mainWindow);
+  if (process.env.THETA_SMOKE === '1') {
+    if (process.env.THETA_SHOTS) require('./dev-shots.cjs').attachShots(mainWindow, process.env.THETA_SHOTS);
+    else attachSmokeTest(mainWindow);
+  }
 
   mainWindow.on('maximize',   () => mainWindow.webContents.send('window-maximized', true));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized', false));
@@ -216,6 +223,7 @@ function attachSmokeTest(win) {
 const SMOKE_PROBE = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const checks = {};
+  const runState = () => document.getElementById('run-status').className.replace('run-status run-status--', '');
   const info = {};
   checks.editor = !!document.querySelector('.cm-editor');
   checks.terminal = !!document.querySelector('.xterm');
@@ -229,13 +237,15 @@ const SMOKE_PROBE = `(async () => {
   await sleep(300);
 
   info.runtime = document.getElementById('runtime-type')?.textContent;
-  for (let i = 0; i < 40 && document.getElementById('run-status-text')?.textContent !== 'Ready'; i++) await sleep(250);
+  for (let i = 0; i < 40 && runState() !== 'ready'; i++) await sleep(250);
   document.getElementById('btn-run').click();
-  for (let i = 0; i < 40 && !/Done|Error/.test(document.getElementById('run-status-text')?.textContent); i++) await sleep(250);
+  for (let i = 0; i < 40 && !/done|error/.test(runState()); i++) await sleep(250);
   info.runStatus = document.getElementById('run-status-text')?.textContent;
   const out = window.__thetaTest?.terminalText() || '';
   checks.runPrinted42 = /^42$/m.test(out);
-  checks.runDone = info.runStatus === 'Done';
+  checks.runDone = runState() === 'done' && /^Done in /.test(info.runStatus);
+  checks.runInHistory = /ok/.test(document.querySelector('#run-history li')?.className || '');
+  checks.mascotHappy = document.documentElement.dataset.runState === 'done';
 
   // Right-click menu on the editor (was never attached before Phase 0)
   content.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }));
@@ -250,11 +260,11 @@ const SMOKE_PROBE = `(async () => {
   await sleep(300);
   document.getElementById('btn-run').click();
   await sleep(1500);
-  checks.longRunIsRunning = document.getElementById('run-status-text')?.textContent === 'Running';
+  checks.longRunIsRunning = runState() === 'running';
   document.getElementById('btn-run').click(); // acts as Stop while running
   await sleep(1500);
-  info.afterStop = document.getElementById('run-status-text')?.textContent;
-  checks.stopReturnsToReady = info.afterStop === 'Ready';
+  info.afterStop = runState();
+  checks.stopReturnsToReady = info.afterStop === 'idle';
   const t1 = document.getElementById('exec-time')?.textContent;
   await sleep(400);
   checks.timerStopped = document.getElementById('exec-time')?.textContent === t1;
@@ -268,6 +278,35 @@ const SMOKE_PROBE = `(async () => {
   checks.paletteOpens = !document.getElementById('cmd-palette').classList.contains('hidden');
   info.paletteItems = document.querySelectorAll('#cmd-results .cmd-result-item').length;
   checks.paletteHasItems = info.paletteItems > 10;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+  // Themes: a fresh profile shows the picker; both layouts work
+  const picker = document.getElementById('theme-picker');
+  checks.pickerOnFirstLaunch = !picker.classList.contains('hidden');
+  picker.querySelector('[data-pick="playground"]').click();
+  await sleep(500);
+  const shown = (sel) => getComputedStyle(document.querySelector(sel)).display !== 'none';
+  checks.playgroundLayout = document.documentElement.dataset.theme === 'playground'
+    && picker.classList.contains('hidden') && shown('.ide-runbar') && !shown('.ide-rail');
+  document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+  for (let i = 0; i < 20 && document.documentElement.dataset.theme !== 'pro'; i++) await sleep(100);
+  await sleep(300);
+  checks.proLayout = document.documentElement.dataset.theme === 'pro'
+    && shown('.ide-rail') && shown('.ide-statusbar') && !shown('.ide-runbar')
+    && getComputedStyle(document.querySelector('.ide-topbar .btn-run')).display !== 'none';
+  info.proEditorBg = getComputedStyle(document.querySelector('.cm-editor')).backgroundColor;
+  checks.proEditorColours = info.proEditorBg === 'rgb(14, 15, 17)';
+  checks.themeRemembered = localStorage.getItem('theta-theme') === 'pro';
+
+  // Start-up screen is gone and pixel effects stayed inside their frame budget
+  checks.bootScreenGone = document.getElementById('loading-overlay').classList.contains('hidden');
+  const fx = await window.__thetaTest?.fxStats?.();
+  info.fx = fx;
+  // Main thread: starting an effect must stay under 2 ms (nothing per frame).
+  // Worker: draws at 30 fps on its own thread; 5 ms per drawn frame keeps
+  // all pixel effects under ~15% of one CPU core.
+  checks.fxMainUnderBudget = !!fx && fx.main.maxMs < 2;
+  checks.fxWorkerKeepsUp = !!fx && (!fx.worker || fx.worker.frames === 0 || fx.worker.avgMs < 5);
 
   return { checks, info };
 })()`;
