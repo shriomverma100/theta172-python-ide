@@ -29,7 +29,8 @@
     "copyright": "Copyright © 2025 THETA172",
     "asar": true,
     "asarUnpack": [
-      "node_modules/ws/**/*"
+      "node_modules/ws/**/*",
+      "node_modules/node-pty/**/*"
     ],
     "directories": {
       "output": "release",
@@ -48,7 +49,10 @@
       "!.git/**/*",
       "!.github/**/*",
       "!.gitignore",
-      "!vite.config.js"
+      "!vite.config.js",
+      "!node_modules/node-pty/{deps,src,third_party,scripts,typings}/**/*",
+      "!node_modules/node-pty/prebuilds/darwin-*/**/*",
+      "!node_modules/node-pty/**/*.pdb"
     ],
     "extraMetadata": {
       "main": "electron/main.cjs"
@@ -173,6 +177,7 @@
   "dependencies": {
     "electron-updater": "^6.8.11",
     "highlight.js": "^11.11.1",
+    "node-pty": "1.1.0",
     "ws": "^8.21.0"
   }
 }

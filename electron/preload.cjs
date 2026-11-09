@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── Local Python ──
   detectPython:  ()       => ipcRenderer.invoke('python-detect'),
-  runPython:     (code)   => ipcRenderer.send('python-run', code),
+  runPython:     (code, opts) => ipcRenderer.send('python-run', code, opts),
   killPython:    ()       => ipcRenderer.send('python-kill'),
   pipInstall:    (pkg)    => ipcRenderer.send('pip-install', pkg),
   sendPythonInput: (text) => ipcRenderer.send('python-input', text),
@@ -43,6 +43,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFile:   (filePath, content)     => ipcRenderer.invoke('file-save', filePath, content),
   saveFileAs: (content, defaultName)  => ipcRenderer.invoke('file-save-as', content, defaultName),
   setTitle:   (title)                 => ipcRenderer.send('set-title', title),
+  readFile:   (filePath)              => ipcRenderer.invoke('file-read', filePath),
+
+  // ── Workspace (every path is checked in the main process) ──
+  wsOpenFolder: ()                    => ipcRenderer.invoke('ws-open-folder'),
+  wsReopen:     ()                    => ipcRenderer.invoke('ws-reopen'),
+  wsClose:      ()                    => ipcRenderer.invoke('ws-close'),
+  wsList:       (dir)                 => ipcRenderer.invoke('ws-list', dir),
+  wsRead:       (file)                => ipcRenderer.invoke('ws-read', file),
+  wsCreate:     (parent, name, type)  => ipcRenderer.invoke('ws-create', parent, name, type),
+  wsRename:     (p, name)             => ipcRenderer.invoke('ws-rename', p, name),
+  wsMove:       (p, dir)              => ipcRenderer.invoke('ws-move', p, dir),
+  wsDelete:     (p)                   => ipcRenderer.invoke('ws-delete', p),
+  wsSearch:     (q, opts)             => ipcRenderer.invoke('ws-search', q, opts),
+  wsReplace:    (q, rep, opts, skip)  => ipcRenderer.invoke('ws-replace', q, rep, opts, skip),
+  wsGit:        ()                    => ipcRenderer.invoke('ws-git'),
+  wsReveal:     (p)                   => ipcRenderer.invoke('ws-reveal', p),
+  onWsChanged:  (cb) => safeOn('ws-changed', (_, paths) => cb(paths)),
+
+  // ── System terminal (PowerShell / bash in a real pty) ──
+  shellStart:   (size)       => ipcRenderer.invoke('shell-start', size),
+  shellInput:   (data)       => ipcRenderer.send('shell-input', data),
+  shellResize:  (cols, rows) => ipcRenderer.send('shell-resize', cols, rows),
+  shellKill:    ()           => ipcRenderer.send('shell-kill'),
+  onShellData:  (cb) => safeOn('shell-data', (_, data) => cb(data)),
+  onShellExit:  (cb) => safeOn('shell-exit', (_, code) => cb(code)),
 
   // Python event listeners (each cleans up prior listener on the same channel)
   onPythonStdout:  (cb) => safeOn('python-stdout',        (_, data) => cb(data)),

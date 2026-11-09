@@ -2,7 +2,9 @@
  * THETA172 — Local Python runner (main process).
  *
  * Runs the editor's code with the system Python. Each run owns its own
- * process and temp file. Events from a run that has been replaced or
+ * process. Code from an unsaved tab goes to a temp file; a saved file in
+ * the open project runs in place from the project folder, so its imports
+ * of other project files work. Events from a run that has been replaced or
  * killed are ignored, so a late "close" from an old process can never
  * clear the new run's state or delete its script.
  */
@@ -40,8 +42,14 @@ class PythonRunner {
 
   /**
    * Start a run. `sender` must expose send(channel, ...args) and isDestroyed().
+   * @param {string} code
+   * @param {object} sender
+   * @param {object} [opts]
+   * @param {string} [opts.filePath]  run this saved project file in place
+   *                                  (the caller has checked it is inside the project)
+   * @param {string} [opts.cwd]       working directory (the project folder)
    */
-  run(code, sender) {
+  run(code, sender, opts = {}) {
     const send = (channel, ...args) => {
       if (sender && !sender.isDestroyed()) sender.send(channel, ...args);
     };
@@ -60,20 +68,30 @@ class PythonRunner {
     // Replace any active run. Its later events are ignored below.
     this._stopCurrent();
 
-    const file = path.join(this._tmpDir, `theta_run_${crypto.randomUUID()}.py`);
-    try {
-      this._fs.writeFileSync(file, code, 'utf8');
-    } catch (err) {
-      send('python-stderr', `Could not write temp script: ${err.message}\n`);
-      send('python-done', 1);
-      return;
+    const inPlace = typeof opts.filePath === 'string' && opts.filePath.length > 0;
+    const cwd = typeof opts.cwd === 'string' && opts.cwd ? opts.cwd : undefined;
+    let file = opts.filePath;
+    if (!inPlace) {
+      file = path.join(this._tmpDir, `theta_run_${crypto.randomUUID()}.py`);
+      try {
+        this._fs.writeFileSync(file, code, 'utf8');
+      } catch (err) {
+        send('python-stderr', `Could not write temp script: ${err.message}\n`);
+        send('python-done', 1);
+        return;
+      }
     }
+
+    const env = { ...this._env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' };
+    // An unsaved tab still imports project modules
+    if (cwd) env.PYTHONPATH = env.PYTHONPATH ? `${cwd}${path.delimiter}${env.PYTHONPATH}` : cwd;
 
     const proc = this._spawn(this.pythonPath, ['-u', file], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...this._env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
+      env,
+      ...(cwd ? { cwd } : {}),
     });
-    const run = { proc, file, sender };
+    const run = { proc, file, temp: !inPlace, sender };
     this.current = run;
     const isCurrent = () => this.current === run;
 
@@ -84,7 +102,7 @@ class PythonRunner {
     const finish = (exitCode) => {
       if (finished) return;
       finished = true;
-      this._removeFile(file);
+      if (run.temp) this._removeFile(file); // never delete the user's own file
       if (isCurrent()) {
         this.current = null;
         send('python-done', exitCode);

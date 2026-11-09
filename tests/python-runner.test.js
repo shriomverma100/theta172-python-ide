@@ -24,7 +24,7 @@ function setup() {
     writeFileSync: (f, c) => files.set(f, c),
     unlinkSync: (f) => files.delete(f),
   };
-  const spawn = () => { const p = fakeProcess(); procs.push(p); return p; };
+  const spawn = (cmd, args, opts) => { const p = fakeProcess(); p.args = args; p.opts = opts; procs.push(p); return p; };
   const sent = [];
   const sender = { send: (...a) => sent.push(a), isDestroyed: () => false };
   const runner = new PythonRunner({ spawn, fs, tmpDir: '/tmp', env: {} });
@@ -98,5 +98,31 @@ describe('PythonRunner', () => {
     t.runner.run('print(1)', t.sender);
     expect(t.procs).toHaveLength(0);
     expect(t.sent.filter(([c]) => c === 'python-done')).toHaveLength(2);
+  });
+
+  it('runs a saved project file in place from the project folder', () => {
+    t.runner.run('ignored', t.sender, { filePath: 'D:/proj/src/main.py', cwd: 'D:/proj' });
+    const p = t.procs[0];
+    expect(p.args).toEqual(['-u', 'D:/proj/src/main.py']);
+    expect(p.opts.cwd).toBe('D:/proj');
+    expect(p.opts.env.PYTHONPATH).toBe('D:/proj');
+    expect(t.files.size).toBe(0); // no temp file
+    p.emit('close', 0);
+    expect(t.sent).toContainEqual(['python-done', 0]);
+  });
+
+  it('never deletes the user file when a project run ends', () => {
+    t.files.set('D:/proj/main.py', 'user code');
+    t.runner.run('x', t.sender, { filePath: 'D:/proj/main.py', cwd: 'D:/proj' });
+    t.procs[0].emit('close', 0);
+    expect(t.files.get('D:/proj/main.py')).toBe('user code');
+  });
+
+  it('an unsaved tab still sees project modules through PYTHONPATH', () => {
+    t.runner.run('import helpers', t.sender, { cwd: 'D:/proj' });
+    const p = t.procs[0];
+    expect(p.args[1]).toMatch(/theta_run_/);
+    expect(p.opts.cwd).toBe('D:/proj');
+    expect(p.opts.env.PYTHONPATH).toBe('D:/proj');
   });
 });
