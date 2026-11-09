@@ -14,11 +14,14 @@ const path = require('path');
 class FileAccess {
   constructor(platform = process.platform) {
     this._caseInsensitive = platform === 'win32' || platform === 'darwin';
+    // Use the path rules of the target platform (so Windows paths normalise
+    // the same way whichever OS runs the tests)
+    this._path = platform === 'win32' ? path.win32 : path.posix;
     this._allowed = new Set();
   }
 
   _key(filePath) {
-    const resolved = path.resolve(filePath);
+    const resolved = this._path.resolve(filePath);
     return this._caseInsensitive ? resolved.toLowerCase() : resolved;
   }
 
