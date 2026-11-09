@@ -19,6 +19,7 @@ import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } 
 import { linter, lintGutter } from '@codemirror/lint';
 import { tags } from '@lezer/highlight';
 import { debugEditorExtension } from './debug-editor.js';
+import { gitGutterExtension } from './git-gutter.js';
 
 // ── Compartments for dynamic reconfiguration ──────────────────
 const themeCompartment = new Compartment();
@@ -385,6 +386,17 @@ function editorThemeExtensions() {
     : currentCodeTheme();
 }
 
+/**
+ * Extensions for a read-only code viewer (the diff view): same theme, font
+ * size and Python highlighting as the editor.
+ */
+export function viewerExtensions() {
+  return [
+    lineNumbers(), highlightSpecialChars(), python(), EditorState.readOnly.of(true), EditorView.editable.of(false),
+    editorThemeExtensions(), fontSizeTheme(viewConfig.fontSize), tabSizeExt(),
+  ];
+}
+
 // ── Starter Code ──────────────────────────────────────────────
 export const STARTER_CODE = `# Welcome to Python by THETA172
 # Press Ctrl+Enter to run  ·  Ctrl+Shift+P for commands
@@ -412,7 +424,18 @@ print(f"Fibonacci({count}): {nums}")
 // ── State ─────────────────────────────────────────────────────
 let currentTheme = 'dark'; // 'dark' (theme colours) or 'light' (projectors)
 let appTheme = document.documentElement.dataset.theme === 'pro' ? 'pro' : 'playground';
+/*
+ * Editor groups: views[0] is the left group, views[1] the right one (when
+ * open). editorView is always the focused group's view, so every function
+ * below acts on the group the user is working in.
+ */
+const views = [null, null];
+let activeGroup = 0;
 let editorView = null;
+let baseExtensions = [];
+const extraExtensions = []; // listeners added after creation (they go into every new state)
+let mirrorOn = false; // both groups show the same file: copy edits across
+const groupListeners = new Set();
 
 // ── Font size extension ───────────────────────────────────────
 function fontSizeTheme(size) {
@@ -428,6 +451,7 @@ export async function createEditor(container) {
     // Core (the breakpoint gutter sits left of the line numbers, as in VS Code)
     debugEditorExtension,
     lineNumbers(),
+    gitGutterExtension,
     highlightActiveLineGutter(),
     highlightSpecialChars(),
     history(),
@@ -505,28 +529,79 @@ export async function createEditor(container) {
     }),
   ];
 
-  editorView = new EditorView({
-    state: EditorState.create({
-      doc: STARTER_CODE,
-      extensions,
-    }),
+  baseExtensions = extensions;
+  views[0] = new EditorView({
+    state: EditorState.create({ doc: STARTER_CODE, extensions }),
     parent: container,
-    // Mirror edits into the split view (if open)
-    dispatchTransactions(trs, view) {
-      view.update(trs);
-      if (!splitView) return;
-      for (const tr of trs) {
-        if (!tr.changes.empty && !tr.annotation(splitSync)) {
-          splitView.dispatch({ changes: tr.changes, annotations: splitSync.of(true) });
-        }
-      }
-    },
+    dispatchTransactions: mirrorDispatch(0),
   });
+  followFocus(0);
+  editorView = views[0];
 
   // Resize on window resize
-  window.addEventListener('resize', () => editorView?.requestMeasure());
+  window.addEventListener('resize', () => views.forEach((v) => v?.requestMeasure()));
 
   return editorView;
+}
+
+/** Copy edits to the other group when it shows the same file. */
+function mirrorDispatch(g) {
+  return (trs, view) => {
+    view.update(trs);
+    const other = views[1 - g];
+    if (!mirrorOn || !other) return;
+    for (const tr of trs) {
+      if (!tr.changes.empty && !tr.annotation(splitSync)) {
+        // A load by the app stays a load in the other group too (not an unsaved edit)
+        const marks = [splitSync.of(true)];
+        if (tr.annotation(programmatic)) marks.push(programmatic.of(true));
+        other.dispatch({ changes: tr.changes, annotations: marks });
+      }
+    }
+  };
+}
+
+function followFocus(g) {
+  views[g].dom.addEventListener('focusin', () => setActiveGroup(g));
+}
+
+/** A new editor state with the editor's full configuration (a fresh tab: no shared undo history). */
+export function freshState(doc = '') {
+  return EditorState.create({ doc, extensions: [...baseExtensions, ...extraExtensions] });
+}
+
+/** Make group `g` the one every editor function acts on. */
+export function setActiveGroup(g) {
+  if (!views[g] || g === activeGroup && editorView === views[g]) return;
+  activeGroup = g;
+  editorView = views[g];
+  groupListeners.forEach((fn) => fn(g));
+}
+
+export const getActiveGroup = () => activeGroup;
+export const getGroupView = (g) => views[g];
+/** fn(group) when the focused group changes. */
+export function onActiveGroupChange(fn) { groupListeners.add(fn); return () => groupListeners.delete(fn); }
+
+/** Both groups show the same file: keep their text identical. */
+export function setMirror(on) { mirrorOn = !!on; }
+
+/** Open the right-hand group in `container` with `state`. */
+export function openGroupView(container, state) {
+  if (views[1]) return views[1];
+  views[1] = new EditorView({ state, parent: container, dispatchTransactions: mirrorDispatch(1) });
+  views[1].dispatch({ effects: currentConfigEffects() });
+  followFocus(1);
+  return views[1];
+}
+
+/** Close the right-hand group (its file stays open in its tab). */
+export function closeGroupView() {
+  if (!views[1]) return;
+  mirrorOn = false;
+  if (activeGroup === 1) setActiveGroup(0);
+  views[1].destroy();
+  views[1] = null;
 }
 
 /**
@@ -554,7 +629,6 @@ export function setEditorState(stateOrDoc) {
   // current theme and settings (they may have changed since it was stored)
   editorView.setState(stateOrDoc);
   editorView.dispatch({ effects: currentConfigEffects() });
-  resetSplit();
 }
 
 // ── Editor API (compatible interface) ─────────────────────────
@@ -579,7 +653,6 @@ export function loadValue(code) {
     changes: { from: 0, to: editorView.state.doc.length, insert: code },
     annotations: programmatic.of(true),
   });
-  resetSplit();
 }
 
 /** Switch language intelligence between the built-in helpers and the language server. */
@@ -602,6 +675,11 @@ export function setReadOnly(on) {
   editorView.dispatch({ effects: readOnlyCompartment.reconfigure(ext) });
 }
 
+/** Replace a specific view's text as a load by the app (a file changed on disk). */
+export function loadIntoView(view, code) {
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code }, annotations: programmatic.of(true) });
+}
+
 /** Focus the editor */
 export function focusEditor() {
   editorView?.focus();
@@ -610,67 +688,19 @@ export function focusEditor() {
 /** Update font size (both halves of the split editor) */
 export function setFontSize(size) {
   viewConfig.fontSize = size;
-  for (const v of [editorView, splitView]) v?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)) });
+  for (const v of views) v?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)) });
 }
 
 /** Soft-wrap long lines on or off. */
 export function setWordWrap(on) {
   viewConfig.wrap = !!on;
-  for (const v of [editorView, splitView]) v?.dispatch({ effects: wrapCompartment.reconfigure(wrapExt()) });
+  for (const v of views) v?.dispatch({ effects: wrapCompartment.reconfigure(wrapExt()) });
 }
 
 /** Spaces per indent level (2 or 4). */
 export function setTabSize(n) {
   viewConfig.tabSize = n === 2 ? 2 : 4;
-  for (const v of [editorView, splitView]) v?.dispatch({ effects: tabSizeCompartment.reconfigure(tabSizeExt()) });
-}
-
-// ── Split editor: a second view of the same file ──────────────
-let splitView = null;
-
-function splitState() {
-  return EditorState.create({
-    doc: editorView.state.doc,
-    extensions: [
-      lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
-      indentOnInput(), bracketMatching(), closeBrackets(), highlightActiveLine(), highlightSelectionMatches(),
-      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
-      python(),
-      themeCompartment.of(editorThemeExtensions()),
-      fontSizeCompartment.of(fontSizeTheme(viewConfig.fontSize)),
-      wrapCompartment.of(wrapExt()),
-      tabSizeCompartment.of(tabSizeExt()),
-    ],
-  });
-}
-
-function resetSplit() {
-  if (splitView && editorView) splitView.setState(splitState());
-}
-
-export function isSplit() { return !!splitView; }
-
-/** Open or close the split view next to the editor. Returns true when open. */
-export function toggleSplit(container) {
-  if (splitView) {
-    splitView.destroy();
-    splitView = null;
-    return false;
-  }
-  if (!editorView || !container) return false;
-  splitView = new EditorView({
-    state: splitState(),
-    parent: container,
-    dispatchTransactions(trs, view) {
-      view.update(trs);
-      for (const tr of trs) {
-        if (!tr.changes.empty && !tr.annotation(splitSync)) {
-          editorView.dispatch({ changes: tr.changes, annotations: splitSync.of(true) });
-        }
-      }
-    },
-  });
-  return true;
+  for (const v of views) v?.dispatch({ effects: tabSizeCompartment.reconfigure(tabSizeExt()) });
 }
 
 /** Get cursor position */
@@ -697,35 +727,29 @@ export function getCharCount() {
  * (loading a file or switching tabs) rather than the user.
  */
 export function onContentChange(callback) {
-  if (!editorView) return;
-  editorView.dispatch({
-    effects: StateEffect.appendConfig.of(
-      EditorView.updateListener.of((update) => {
-        if (!update.docChanged) return;
-        const byApp = update.transactions.every((tr) => !tr.docChanged || tr.annotation(programmatic));
-        callback(update, { programmatic: byApp });
-      })
-    ),
-  });
+  addListener(EditorView.updateListener.of((update) => {
+    if (!update.docChanged) return;
+    const byApp = update.transactions.every((tr) => !tr.docChanged || tr.annotation(programmatic));
+    callback(update, { programmatic: byApp });
+  }));
+}
+
+/** Add an extension to every open group now and to every state made later. */
+function addListener(ext) {
+  extraExtensions.push(ext);
+  for (const v of views) v?.dispatch({ effects: StateEffect.appendConfig.of(ext) });
 }
 
 /** Register callback for cursor changes (post-creation) */
 export function onCursorChange(callback) {
-  if (!editorView) return;
-  editorView.dispatch({
-    effects: StateEffect.appendConfig.of(
-      EditorView.updateListener.of((update) => {
-        if (update.selectionSet || update.docChanged) {
-          callback(getCursorPosition());
-        }
-      })
-    ),
-  });
+  addListener(EditorView.updateListener.of((update) => {
+    if ((update.selectionSet || update.docChanged) && update.view === editorView) callback(getCursorPosition());
+  }));
 }
 
 /** Layout / measure (equivalent to Monaco's layout()) */
 export function layout() {
-  editorView?.requestMeasure();
+  views.forEach((v) => v?.requestMeasure());
 }
 
 /** Get the raw EditorView instance */
@@ -747,14 +771,14 @@ export function toggleEditorTheme() {
   if (!editorView) return currentTheme;
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-  for (const v of [editorView, splitView]) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of views) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
   return currentTheme;
 }
 
 /** Switch the code colours to the Playground or Pro palette. */
 export function setAppTheme(name) {
   appTheme = name === 'pro' ? 'pro' : 'playground';
-  for (const v of [editorView, splitView]) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of views) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
 }
 
 export function getEditorTheme() {

@@ -80,7 +80,12 @@ function registerDebugIpc({ ipcMain, spawn, getWindow, getWorkspace, getPython, 
     return { program, temp: !inProject };
   });
 
-  ipcMain.handle('debug-request', (_e, command, args) => session.request(String(command), args && typeof args === 'object' ? args : {}));
+  // A request still in flight when the program ends gets an empty answer (not an error in the log)
+  ipcMain.handle('debug-request', (_e, command, args) => session.request(String(command), args && typeof args === 'object' ? args : {})
+    .catch((err) => {
+      if (/debugger (stopped|is not running)/i.test(err.message)) return {};
+      throw err;
+    }));
 
   ipcMain.handle('debug-set-breakpoints', (_e, file, lines) => {
     if (!session.running) return null;

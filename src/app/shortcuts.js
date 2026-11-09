@@ -46,6 +46,11 @@ export const DEFAULT_SHORTCUTS = {
   'step-out':          { ctrl: false, shift: true,  alt: false, key: 'F11' },
   'toggle-breakpoint': { ctrl: false, shift: false, alt: false, key: 'F9' },
   'study-mode':        { ctrl: true,  shift: true,  alt: false, key: 'l' },
+  'source-control':    { ctrl: true,  shift: true,  alt: false, key: 'g' },
+  // Editor groups (Phase 7)
+  'move-editor-right': { ctrl: true,  shift: false, alt: true,  key: 'ArrowRight' },
+  'move-editor-left':  { ctrl: true,  shift: false, alt: true,  key: 'ArrowLeft' },
+  'focus-other-group': { ctrl: true,  shift: false, alt: false, key: 'k' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -86,6 +91,10 @@ export const SHORTCUT_LABELS = {
   'step-out':          'Step Out',
   'toggle-breakpoint': 'Toggle Breakpoint',
   'study-mode':        'Study Mode',
+  'source-control':    'Source Control (Git)',
+  'move-editor-right': 'Move Editor to the Right Group',
+  'move-editor-left':  'Move Editor to the Left Group',
+  'focus-other-group': 'Focus the Other Editor Group',
 };
 
 const KEY_NAMES = {

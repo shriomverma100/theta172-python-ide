@@ -14,7 +14,7 @@ import {
 import { EditorView } from '@codemirror/view';
 import { setDiagnostics } from '@codemirror/lint';
 import { Text } from '@codemirror/state';
-import { getView, setLanguageAssist, setLspExtension } from '../editor.js';
+import { getView, getGroupView, setLanguageAssist, setLspExtension } from '../editor.js';
 import { showToast } from '../toast.js';
 import { $ } from '../core/dom.js';
 import { pathToUri, uriToPath, uriKey, sameUri, untitledUri } from '../core/uri.js';
@@ -136,7 +136,9 @@ class TabWorkspace extends Workspace {
 
   closeFile(uri, view) {
     const file = this.getFile(uri);
-    if (file && file.view === view) file.view = null;
+    if (!file || file.view !== view) return;
+    // The other editor group may still show this file
+    file.view = [getGroupView(0), getGroupView(1)].find((v) => v && v !== view && LSPPlugin.get(v) && sameUri(LSPPlugin.get(v).uri, uri)) || null;
   }
 
   /** The tab closed: close the document on the server. */
@@ -174,12 +176,13 @@ function toCodeMirror(plugin, items, doc) {
 
 /** Show stored diagnostics for the document in the editor (if it is visible). */
 function applyDiagnostics(uri) {
-  const view = getView();
-  const plugin = view && LSPPlugin.get(view);
-  if (!plugin || !sameUri(plugin.uri, uri)) return;
   const entry = diagnostics.get(uriKey(uri));
-  const doc = plugin.syncedDoc;
-  view.dispatch(setDiagnostics(view.state, entry ? toCodeMirror(plugin, entry.items, doc) : []));
+  // Every editor group showing the file
+  for (const view of [getGroupView(0), getGroupView(1)]) {
+    const plugin = view && LSPPlugin.get(view);
+    if (!plugin || !sameUri(plugin.uri, uri)) continue;
+    view.dispatch(setDiagnostics(view.state, entry ? toCodeMirror(plugin, entry.items, plugin.syncedDoc) : []));
+  }
 }
 
 function onPublishDiagnostics(_client, params) {

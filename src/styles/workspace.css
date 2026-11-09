@@ -220,3 +220,37 @@
 .ws-project { justify-content: flex-start; }
 .ws-project__name { flex: 1; min-width: 0; }
 .ws-close { flex: none; width: 24px; height: 24px; }
+
+/* ── Editor groups (two files side by side) ── */
+.editor-group--2 { flex: 1; min-width: 0; display: flex; flex-direction: column; border-left: 2px solid var(--panel-line); }
+.editor-group--2.hidden { display: none; }
+.editor-group--2 .monaco-container { flex: 1; min-height: 0; }
+:root[data-theme="pro"] .editor-group--2 { border-left: 1px solid var(--line); }
+.group-head { display: flex; align-items: center; gap: 6px; min-height: 46px; padding: 6px 8px 4px 10px; flex: none; }
+:root[data-theme="pro"] .group-head { min-height: 36px; padding: 0 4px 0 0; border-bottom: 1px solid var(--line); background: var(--surface-1); }
+.editor-tabs--group { flex: 1; }
+:root[data-theme="pro"] .editor-tabs--group { align-self: stretch; }
+.group-close { flex: none; width: 28px; height: 28px; display: grid; place-items: center; color: var(--panel-text-2); border-radius: 8px; }
+.group-close:hover { color: var(--panel-text); background: var(--panel-2); }
+:root[data-theme="pro"] .group-close { width: 26px; height: 26px; color: var(--text-3); border-radius: 5px; }
+:root[data-theme="pro"] .group-close:hover { color: var(--text); background: var(--surface-3); }
+
+/* Which group you are typing in: a thin accent line on top; the other group's tabs quieten */
+#monaco-container.group-focused, .editor-group--2.group-focused { box-shadow: inset 0 2px 0 var(--lime); }
+:root[data-theme="pro"] #monaco-container.group-focused, :root[data-theme="pro"] .editor-group--2.group-focused { box-shadow: inset 0 1px 0 #4C8DFF; }
+.editor-tabs.group-dim .editor-tab.active { opacity: 0.6; }
+.editor-group--2:not(.group-focused) .editor-tab.active { opacity: 0.6; }
+
+/* Dragging a tab: drop it on the other strip, or on the right half to open a group there */
+.editor-tab[draggable="true"] { -webkit-user-drag: element; }
+.editor-tabs.drop-over { outline: 2px dashed var(--lime); outline-offset: -2px; border-radius: 12px; }
+:root[data-theme="pro"] .editor-tabs.drop-over { outline-color: #4C8DFF; border-radius: 0; }
+.group-drop-right { position: absolute; inset: 0 0 0 50%; z-index: 15; display: none; align-items: center; justify-content: center; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); background: color-mix(in srgb, var(--lime) 35%, transparent); border: 2px dashed var(--lime); border-radius: 14px; }
+:root[data-theme="pro"] .group-drop-right { color: var(--text); background: rgba(76, 141, 255, 0.14); border-color: #4C8DFF; border-radius: 0; }
+:root.dragging-tab .editor-panes:not(:has(#group-2:not(.hidden))) .group-drop-right { display: flex; }
+.group-drop-right.drop-over { background: color-mix(in srgb, var(--lime) 55%, transparent); }
+.group-drop-right span { pointer-events: none; }
+/* Narrow Playground sidebar: four view icons leave room for one file action */
+@container (max-width: 300px) {
+  :root[data-theme="playground"] #ws-new-folder { display: none; }
+}

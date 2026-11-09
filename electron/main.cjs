@@ -10,6 +10,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
+// Windows pauses rendering in windows it thinks are covered; test windows are often covered
+if (process.env.THETA_SMOKE === '1') app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
 const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
@@ -21,6 +23,7 @@ const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
 const { registerLspIpc } = require('./lsp-ipc.cjs');
 const { registerDebugIpc } = require('./debug-ipc.cjs');
 const { registerStudyWindow } = require('./study-window.cjs');
+const { registerGitIpc } = require('./git-ipc.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
@@ -103,6 +106,8 @@ function createWindow() {
       nodeIntegration:     false,
       sandbox:             false,
       webSecurity:         true,
+      // Test runs open behind other windows: keep animations and timers running there
+      backgroundThrottling: process.env.THETA_SMOKE !== '1',
     },
   });
 
@@ -117,6 +122,8 @@ function createWindow() {
     // the test window (an Enter on the theme picker would "choose" a theme)
     if (process.env.THETA_SMOKE === '1') {
       mainWindow.showInactive();
+      // and clicks pass through it to whatever is underneath
+      mainWindow.setIgnoreMouseEvents(true);
       return;
     }
     mainWindow.show();
@@ -217,6 +224,9 @@ function attachSmokeTest(win) {
     const details = args[0] && typeof args[0] === 'object' && 'message' in args[0] ? args[0] : null;
     const level = details ? details.level : args[1];
     const message = details ? details.message : args[2];
+    // "STEP …" lines from the probe are printed as they happen (to see where a run stops)
+    if (String(message).startsWith('STEP ')) { process.stdout.write(`${message}
+`); return; }
     if (level === 'error' || level === 3) errors.push(String(message));
   });
   win.webContents.on('render-process-gone', (_e, d) => errors.push(`renderer gone: ${d.reason}`));
@@ -240,6 +250,7 @@ const SMOKE_PROBE = `(async () => {
   const checks = {};
   const runState = () => document.getElementById('run-status').className.replace('run-status run-status--', '');
   const info = {};
+  console.log('STEP section start ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'start:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   checks.editor = !!document.querySelector('.cm-editor');
   checks.terminal = !!document.querySelector('.xterm');
@@ -263,6 +274,7 @@ const SMOKE_PROBE = `(async () => {
   checks.runInHistory = /ok/.test(document.querySelector('#run-history li')?.className || '');
   checks.mascotHappy = document.documentElement.dataset.runState === 'done';
 
+  console.log('STEP section ctx ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'ctx:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Right-click menu on the editor (was never attached before Phase 0)
   content.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }));
@@ -297,6 +309,7 @@ const SMOKE_PROBE = `(async () => {
   checks.paletteHasItems = info.paletteItems > 10;
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
+  console.log('STEP section p3 ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'p3:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Python engine (Phase 3): the default environment made from the built-in Python
   info.interpreter = document.getElementById('python-version')?.textContent + ' / ' + document.getElementById('runtime-type')?.textContent;
@@ -325,9 +338,11 @@ const SMOKE_PROBE = `(async () => {
   for (let i = 0; i < 40 && !/done|error/.test(runState()); i++) await sleep(250);
   await sleep(200);
   info.fixBar = document.getElementById('fix-bar-install')?.textContent;
+  info.cv2Run = { state: runState(), status: document.getElementById('run-status-text')?.textContent, code: window.__thetaTest.code(), out: (window.__thetaTest.terminalText() || '').trim().slice(-160) };
   checks.missingModuleFix = !document.getElementById('fix-bar').classList.contains('hidden') && /^Install opencv-python/.test(info.fixBar || '');
   document.getElementById('fix-bar-close').click();
 
+  console.log('STEP section p2 ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'p2:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Workspace (Phase 2): the sample project from scripts/smoke.cjs is open
   for (let i = 0; i < 30 && !document.querySelector('#ws-tree .ws-row'); i++) await sleep(100);
@@ -362,7 +377,35 @@ const SMOKE_PROBE = `(async () => {
   document.getElementById('btn-split').click();
   await sleep(250);
   checks.splitEditor = (document.querySelector('#monaco-split .cm-content')?.textContent || '').includes('IMPORT_OK');
-  document.getElementById('btn-split').click();
+
+  // Editor groups (Phase 7): the same file in both groups mirrors edits
+  const viewText = (sel) => document.querySelector(sel + ' .cm-content')?.textContent || '';
+  const original = window.__thetaTest.code();
+  window.__thetaTest.setCode(original + '# mirrored\\n');
+  await sleep(150);
+  checks.groupsMirror = viewText('#monaco-container').includes('# mirrored') && viewText('#monaco-split').includes('# mirrored');
+  window.__thetaTest.setCode(original);
+  // A different file in the right group (the focused one): left keeps main.py
+  const row = (name) => [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith(name));
+  row('src')?.click();
+  for (let i = 0; i < 30 && !row('helpers.py'); i++) await sleep(100);
+  row('helpers.py')?.click();
+  for (let i = 0; i < 30 && !viewText('#monaco-split').includes('def add'); i++) await sleep(100);
+  const activeIn = (sel) => document.querySelector(sel + ' .editor-tab.active .editor-tab__name')?.textContent || '';
+  info.groups = { left: activeIn('#editor-tabs'), right: activeIn('#editor-tabs-2') };
+  checks.groupsTwoFiles = info.groups.left.startsWith('main.py') && info.groups.right === 'helpers.py'
+    && viewText('#monaco-split').includes('def add') && viewText('#monaco-container').includes('IMPORT_OK');
+  // Ctrl+Alt+Left moves helpers.py to the left group (main.py stays on the right)
+  const names = (sel) => [...document.querySelectorAll(sel + ' .editor-tab__name')].map((e) => e.textContent);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', ctrlKey: true, altKey: true, bubbles: true }));
+  await sleep(300);
+  info.groupsAfterMove = { left: names('#editor-tabs'), right: names('#editor-tabs-2') };
+  checks.groupsMoveBack = info.groupsAfterMove.left.includes('helpers.py') && !info.groupsAfterMove.right.includes('helpers.py');
+  // Closing the right group keeps its files open on the left
+  document.getElementById('group-2-close').click();
+  await sleep(300);
+  checks.groupsClose = document.getElementById('group-2').classList.contains('hidden')
+    && names('#editor-tabs').includes('helpers.py') && names('#editor-tabs').some((n) => n.startsWith('main.py'));
 
   // Real system terminal
   document.getElementById('tab-shell').click();
@@ -371,12 +414,15 @@ const SMOKE_PROBE = `(async () => {
   checks.shellStarts = /PS |\\$ |> /.test(window.__thetaTest?.shellText() || '');
   document.getElementById('tab-terminal').click();
 
+  console.log('STEP section p4 ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'p4:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Language intelligence (Phase 4), on main.py of the sample project
   const t4 = window.__thetaTest;
   // The project's file (its tab title is the path), not the untitled starter tab of the same name
   const clickTab = async (name) => {
-    const all = [...document.querySelectorAll('.editor-tab')].filter((t) => (t.querySelector('.editor-tab__name')?.textContent || '') === name);
+    // Two tabs with one name are labelled "main.py · folder"
+    const label = (t) => t.querySelector('.editor-tab__name')?.textContent || '';
+    const all = [...document.querySelectorAll('.editor-tab')].filter((t) => label(t) === name || label(t).startsWith(name + ' · '));
     (all.find((t) => (t.title || '').includes('theta-smoke-project')) || all[0])?.click();
     await sleep(200);
   };
@@ -437,6 +483,7 @@ const SMOKE_PROBE = `(async () => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true, altKey: true, bubbles: true }));
   for (let i = 0; i < 50 && t4.code() !== 'x = 1\\nprint(x)\\n'; i++) await sleep(100);
   checks.formatWithRuff = t4.code() === 'x = 1\\nprint(x)\\n';
+  console.log('STEP section p5 ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'p5:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Debugger (Phase 5): an unsaved tab with input(), a breakpoint, stepping, evaluate
   const ds = () => t4.debugState();
@@ -480,8 +527,63 @@ const SMOKE_PROBE = `(async () => {
   for (let i = 0; i < 60 && ds().active; i++) await sleep(100);
   checks.debugStops = !ds().active;
 
+  console.log('STEP git start');
+  // Git (Phase 7): initialize the sample project, commit (asking for name and email once), diff, branch
+  document.getElementById('view-git').click();
+  for (let i = 0; i < 40 && !/Not a Git repository/.test(document.getElementById('git-state')?.textContent || ''); i++) await sleep(100);
+  checks.gitNotRepoState = /Not a Git repository/.test(document.getElementById('git-state').textContent);
+  document.querySelector('#git-state .git-primary')?.click();
+  for (let i = 0; i < 60 && !document.querySelector('#git-lists .git-file'); i++) await sleep(100);
+  info.gitChanges = [...document.querySelectorAll('#git-lists .git-file__name')].map((e) => e.textContent);
+  checks.gitInitShowsChanges = info.gitChanges.includes('main.py') && info.gitChanges.includes('helpers.py');
+  const fillBox = async (value) => {
+    for (let i = 0; i < 40 && !document.querySelector('.quick-pick .cmd-input'); i++) await sleep(100);
+    const box = document.querySelector('.quick-pick .cmd-input');
+    if (!box) return false;
+    box.value = value;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await sleep(150);
+    return true;
+  };
+  console.log('STEP git commit');
+  document.getElementById('git-message').value = 'First version';
+  document.getElementById('git-commit').click();
+  info.gitIdentityAsked = await fillBox('Smoke Test');
+  if (info.gitIdentityAsked) await fillBox('smoke@example.com');
+  // Done when the list says everything is committed (slow machines: up to 20 s)
+  for (let i = 0; i < 200 && !document.querySelector('#git-lists .git-clean'); i++) await sleep(100);
+  console.log('STEP git history');
+  document.getElementById('git-history-toggle').click();
+  for (let i = 0; i < 40 && !document.querySelector('#git-history-list .git-commit-row'); i++) await sleep(100);
+  info.gitHistory = [...document.querySelectorAll('#git-history-list .git-commit-row__subject')].map((e) => e.textContent);
+  checks.gitCommit = info.gitHistory[0] === 'First version';
+  console.log('STEP git gutter');
+  // main.py has unsaved edits from the checks above: the gutter marks them, the diff shows them after saving
+  await clickTab('main.py');
+  for (let i = 0; i < 40 && !document.querySelector('.cm-git-mark'); i++) await sleep(100);
+  checks.gitGutterMarks = !!document.querySelector('.cm-git-mark--modified, .cm-git-mark--added, .cm-git-mark--deleted');
+  console.log('STEP git save');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+  for (let i = 0; i < 60 && !document.querySelector('#git-lists .git-file'); i++) await sleep(100);
+  [...document.querySelectorAll('#git-lists .git-file__open')].find((b) => b.textContent.startsWith('main.py'))?.click();
+  for (let i = 0; i < 40 && !document.querySelector('#diff-body .cm-mergeView'); i++) await sleep(100);
+  checks.gitDiffView = !!document.querySelector('#diff-body .cm-mergeView') && !document.getElementById('diff-view').classList.contains('hidden');
+  console.log('STEP git diff close');
+  document.getElementById('diff-close').click();
+  await sleep(150);
+  document.getElementById('git-branch').click();
+  for (let i = 0; i < 30 && !document.querySelector('.quick-pick .qp-item'); i++) await sleep(100);
+  document.querySelector('.quick-pick .qp-item')?.click(); // "+ Create a new branch…"
+  await fillBox('feature-x');
+  for (let i = 0; i < 40 && document.getElementById('git-branch-name').textContent !== 'feature-x'; i++) await sleep(100);
+  console.log('STEP git branch done');
+  checks.gitNewBranch = document.getElementById('git-branch-name').textContent === 'feature-x';
+  document.getElementById('view-files').click();
+
   window.confirm = () => true; // closing the sample project discards these edits
 
+  console.log('STEP section close ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'close:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Close folder: the tree empties and the project's tabs close
   document.getElementById('ws-close').click();
@@ -490,7 +592,9 @@ const SMOKE_PROBE = `(async () => {
     && !document.getElementById('ws-empty').classList.contains('hidden')
     && ![...document.querySelectorAll('.editor-tab')].some((t) => (t.textContent || '').includes('main.py') && t.title.includes('theta-smoke-project'));
 
+  console.log('STEP section themes ' + Math.round(performance.now() / 1000) + 's');
   info.pickerTrail = (info.pickerTrail || '') + 'themes:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
+  console.log('STEP themes');
   // Themes: a fresh profile shows the picker; both layouts work
   const picker = document.getElementById('theme-picker');
   for (let i = 0; i < 50 && picker.classList.contains('hidden'); i++) await sleep(100);
@@ -966,6 +1070,7 @@ app.whenReady().then(() => {
     onLog: isDev ? (t) => process.stderr.write(`[debug] ${t}`) : null,
   });
   studyWindow = registerStudyWindow({ ipcMain, screen, getWindow: () => mainWindow });
+  registerGitIpc({ ipcMain, execFile, shell, getRoot: () => workspaceIpc?.workspace.root || null });
   Menu.setApplicationMenu(null);
   createWindow();
   if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);

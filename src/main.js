@@ -26,7 +26,7 @@
  * Pixel effects (pixelfx) live in src/fx/.
  */
 import {
-  createEditor, setAppTheme, layout as editorLayout, toggleSplit, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
+  createEditor, setAppTheme, layout as editorLayout, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
   onContentChange, onCursorChange, openFindReplace, getView,
 } from './editor.js';
 import { TerminalManager } from './terminal.js';
@@ -38,6 +38,7 @@ import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
 import { initSpotlight } from './app/spotlight.js';
+import { initGit, pickBranch, commit as gitCommit, sync as gitSync, refreshGitView } from './app/git.js';
 import { initStudy, toggleStudySheet, exitStudy, enterStudy, getStudyMode, toggleDrawer, showSuggestion } from './app/study.js';
 import {
   initDebugger, startDebugging, stopDebugging, restartDebugging, pauseDebugging, stepOver, stepInto, stepOut,
@@ -57,7 +58,10 @@ import { storageGet } from './core/storage.js';
 import { xtermTheme } from './core/terminal-theme.js';
 import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker } from './app/theme.js';
 import { state } from './app/state.js';
-import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged, getTabs, getActiveTab } from './app/tabs.js';
+import {
+  initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged, getTabs, getActiveTab,
+  splitEditor, closeRightGroup, isSplit, moveActiveTab, focusGroup, getFocusedGroup,
+} from './app/tabs.js';
 import { startCompletion } from '@codemirror/autocomplete';
 import { initWorkspace, openFolder, closeFolder, createItem, onWorkspaceChange, render as renderExplorer } from './app/workspace.js';
 import { initSearch, focusSearch, showSidebarView } from './app/search.js';
@@ -132,6 +136,9 @@ const actions = {
   'search-files': () => { showSidebar(true); focusSearch(); },
   'toggle-sidebar': () => (getStudyMode() ? toggleDrawer() : showSidebar()),
   'toggle-split': toggleSplitView,
+  'move-editor-right': () => { moveActiveTab('right'); relayout(); },
+  'move-editor-left': () => { moveActiveTab('left'); relayout(); },
+  'focus-other-group': () => { if (isSplit()) focusGroup(1 - getFocusedGroup()); },
   'open-shell': () => switchPane('shell'),
   'select-interpreter': showInterpreterPicker,
   'go-definition': goToDefinition,
@@ -151,6 +158,10 @@ const actions = {
   'step-out': stepOut,
   'toggle-breakpoint': toggleBreakpoint,
   'study-mode': toggleStudySheet,
+  'source-control': () => { showSidebar(true); showSidebarView('git'); refreshGitView(); },
+  'git-branch': pickBranch,
+  'git-commit': gitCommit,
+  'git-sync': gitSync,
   'study-exit': exitStudy,
   'manage-packages': () => { switchPane('terminal'); state.pipManager?.toggle(true); },
   'check-environment': checkEnvironment,
@@ -174,11 +185,10 @@ function showSidebar(force) {
   relayout();
 }
 
+/** Split: open the current file in a right-hand group too; again: close that group. */
 function toggleSplitView() {
-  const $split = $('monaco-split');
-  const open = toggleSplit($split);
-  $split?.classList.toggle('hidden', !open);
-  $('btn-split')?.setAttribute('aria-pressed', String(open));
+  if (isSplit()) closeRightGroup();
+  else splitEditor();
   relayout();
 }
 
@@ -199,6 +209,7 @@ function initButtons() {
   });
   $('rail-search')?.addEventListener('click', () => { showSidebar(true); focusSearch(); });
   $('rail-debug')?.addEventListener('click', () => { showSidebar(true); showSidebarView('debug'); });
+  $('rail-git')?.addEventListener('click', () => { showSidebar(true); showSidebarView('git'); refreshGitView(); });
   $('btn-split')?.addEventListener('click', toggleSplitView);
   $('rail-classroom')?.addEventListener('click', () => openClassroomPanel());
   $('rail-examples')?.addEventListener('click', openExamples);
@@ -449,6 +460,7 @@ state.pipManager.init(); // runtime.js binds it to the chosen runtime
 initFixBar();
 initDebugger();
 initSpotlight();
+initGit();
 initStudy();
 initAccessibility();
 

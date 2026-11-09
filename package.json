@@ -175,6 +175,7 @@
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/lint": "^6.9.6",
     "@codemirror/lsp-client": "6.3.0",
+    "@codemirror/merge": "6.12.3",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/theme-one-dark": "^6.1.3",

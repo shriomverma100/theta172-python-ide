@@ -147,8 +147,19 @@ export async function enterStudy(id, appSide = side) {
     refitSoon();
   };
   if (wasOn) apply();
-  else await screenTransition(apply);
+  else await coverThen(apply);
   focusEditor();
+}
+
+/**
+ * Run `fn` once pixel blinds cover the screen. If the effect can't play
+ * (hidden window, effects off, slow machine), `fn` still runs within 1 s.
+ */
+function coverThen(fn) {
+  let done = false;
+  const once = () => { if (!done) { done = true; fn(); } };
+  setTimeout(once, 1000);
+  return Promise.race([screenTransition(once), new Promise((r) => setTimeout(r, 1500))]);
 }
 
 export async function exitStudy() {
@@ -156,7 +167,7 @@ export async function exitStudy() {
   mode = null;
   closeStudySheet();
   quietSpotlight(1500);
-  await screenTransition(() => {
+  await coverThen(() => {
     delete document.documentElement.dataset.study;
     delete document.documentElement.dataset.drawer;
     applyWrap();
