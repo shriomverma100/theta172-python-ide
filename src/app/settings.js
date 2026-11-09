@@ -3,6 +3,7 @@
  * Pixel effects: on/off (saved), and forced off while Windows
  * "Animation effects" is off (prefers-reduced-motion).
  */
+import { setTypeChecking } from './lsp.js';
 import { getEditorTheme, setWordWrap, setTabSize } from '../editor.js';
 import { getPrefs, setPrefs } from './session.js';
 import { handleThemeToggle } from '../theme-manager.js';
@@ -37,7 +38,11 @@ function renderEditorPrefs() {
   $('set-restore')?.setAttribute('aria-checked', String(p.restore));
   $('set-tab-2')?.setAttribute('aria-pressed', String(p.tabSize === 2));
   $('set-tab-4')?.setAttribute('aria-pressed', String(p.tabSize !== 2));
+  $('set-fmt')?.setAttribute('aria-checked', String(!!p.formatOnSave));
+  for (const level of TYPE_CHECKING) $(`set-tc-${level}`)?.setAttribute('aria-pressed', String((p.typeChecking || 'standard') === level));
 }
+
+const TYPE_CHECKING = ['off', 'basic', 'standard', 'strict'];
 
 /** Apply saved editor preferences (called once at start-up). */
 export function applyEditorPrefs() {
@@ -97,6 +102,16 @@ export function initSettings() {
     setWordWrap(wrap);
     renderEditorPrefs();
   });
+  $('set-fmt')?.addEventListener('click', () => {
+    setPrefs({ formatOnSave: !getPrefs().formatOnSave });
+    renderEditorPrefs();
+  });
+  for (const level of TYPE_CHECKING) {
+    $(`set-tc-${level}`)?.addEventListener('click', async () => {
+      await setTypeChecking(level);
+      renderEditorPrefs();
+    });
+  }
   $('set-restore')?.addEventListener('click', () => {
     setPrefs({ restore: !getPrefs().restore });
     renderEditorPrefs();

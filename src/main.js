@@ -38,6 +38,10 @@ import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
 import {
+  initLanguageServer, goToDefinition, findReferences, renameSymbol, formatDocument, goToSymbolInFile,
+  goToSymbolInProject, restartLanguageServer, isLanguageServerReady, problemSummary,
+} from './app/lsp.js';
+import {
   initClassroomPanel, openClassroomPanel, handleClassroomKeydown,
   broadcastCurrentCode, isTeacherLive, isStudentConnected, streamStudentCode,
 } from './classroom/classroom.js';
@@ -47,7 +51,8 @@ import { storageGet } from './core/storage.js';
 import { xtermTheme } from './core/terminal-theme.js';
 import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker } from './app/theme.js';
 import { state } from './app/state.js';
-import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged } from './app/tabs.js';
+import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged, getTabs, getActiveTab } from './app/tabs.js';
+import { startCompletion } from '@codemirror/autocomplete';
 import { initWorkspace, openFolder, closeFolder, createItem, onWorkspaceChange, render as renderExplorer } from './app/workspace.js';
 import { initSearch, focusSearch, showSidebarView } from './app/search.js';
 import { initSession, restoreSession, saveSessionSoon } from './app/session.js';
@@ -122,6 +127,14 @@ const actions = {
   'toggle-split': toggleSplitView,
   'open-shell': () => switchPane('shell'),
   'select-interpreter': showInterpreterPicker,
+  'go-definition': goToDefinition,
+  'find-references': findReferences,
+  'rename-symbol': renameSymbol,
+  'format-document': () => formatDocument(),
+  'go-symbol': goToSymbolInFile,
+  'workspace-symbol': goToSymbolInProject,
+  'show-problems': () => switchPane('problems'),
+  'restart-language-server': restartLanguageServer,
   'manage-packages': () => { switchPane('terminal'); state.pipManager?.toggle(true); },
   'check-environment': checkEnvironment,
 };
@@ -304,6 +317,28 @@ async function initIDE() {
       },
       fxStats: () => fx.stats(),
       setCode: (code) => setValue(code),
+      // Language intelligence (Phase 4)
+      lspReady: () => isLanguageServerReady(),
+      problems: () => problemSummary(),
+      code: () => getView()?.state.doc.toString() ?? '',
+      cursorTo(text, offsetInText = 0) {
+        const view = getView();
+        const at = view.state.doc.toString().indexOf(text);
+        if (at < 0) return false;
+        view.dispatch({ selection: { anchor: at + offsetInText } });
+        view.focus();
+        return true;
+      },
+      complete: () => startCompletion(getView()),
+      /** Screen position of `text` (+ offset) in the editor, for hover tests. */
+      coordsOf(text, offsetInText = 0) {
+        const view = getView();
+        const at = view.state.doc.toString().indexOf(text);
+        const c = at < 0 ? null : view.coordsAtPos(at + offsetInText);
+        return c && { x: c.left + 2, y: (c.top + c.bottom) / 2 };
+      },
+      tabs: () => getTabs().map((t) => ({ name: t.name, unsaved: t.unsaved, readOnly: !!t.readOnly })),
+      activeTab: () => getActiveTab()?.name,
       shellText() {
         const buf = state.shell?.term?.buffer.active;
         if (!buf) return '';
@@ -344,6 +379,8 @@ async function initIDE() {
   }
 
   await initRuntime();
+  // Language intelligence needs local Python (desktop); it starts in the background
+  if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));
 }
 
 // Static UI that doesn't depend on the editor

@@ -217,6 +217,7 @@
             <button id="tab-terminal" class="pane-tab active" data-pane="terminal" type="button" role="tab" title="Program output">Output</button>
             <button id="tab-repl" class="pane-tab" data-pane="repl" type="button" role="tab" title="Interactive Python">REPL</button>
             <button id="tab-shell" class="pane-tab" data-pane="shell" type="button" role="tab" title="System terminal (PowerShell)">Shell</button>
+            <button id="tab-problems" class="pane-tab" data-pane="problems" type="button" role="tab" aria-label="Problems" title="Problems: errors and warnings in open files (Ctrl+Shift+M)"><svg class="pane-tab__icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5 13 12H1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="10.2" r=".9" fill="currentColor"/></svg><span class="pane-tab__label">Problems</span><span id="problems-count" class="problems-count"></span></button>
           </div>
           <span class="mascot" aria-hidden="true"><span class="mascot__px"></span></span>
           <div class="pane-header__actions">
@@ -260,6 +261,9 @@
           <div id="terminal-container" class="terminal-container"></div>
           <div id="repl-container" class="terminal-container hidden"></div>
           <div id="shell-container" class="terminal-container hidden"></div>
+          <div id="problems-container" class="problems hidden" role="region" aria-label="Problems">
+            <div id="problems-list" class="problems-list"><div class="problems-empty">Problems in your code appear here.</div></div>
+          </div>
         </div>
       </section>
 
@@ -290,6 +294,7 @@
     <footer class="ide-statusbar">
       <div class="statusbar__left">
         <button class="status-btn status-interpreter" type="button" data-interpreter>Python <span id="python-version">3.12</span> <span class="status-sep" aria-hidden="true">·</span> <span id="runtime-type">…</span></button>
+        <button id="status-problems" class="status-btn status-problems hidden" type="button" title="Problems (Ctrl+Shift+M)"><span class="sp-err" aria-hidden="true"></span><span data-errors>0</span><span class="sp-warn" aria-hidden="true"></span><span data-warnings>0</span></button>
         <span class="status-item status-item--runtime"><span class="status-px" aria-hidden="true"></span><span id="pyodide-status">Loading runtime…</span></span>
       </div>
       <div class="statusbar__right">
@@ -429,6 +434,25 @@
               <button id="set-tab-2" type="button" aria-pressed="false">2</button>
               <button id="set-tab-4" type="button" aria-pressed="true">4</button>
             </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name">Type checking</span>
+              <span class="setting-row__hint">How strictly the editor checks types. Basic suits learning; Strict suits large projects.</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Type checking">
+              <button id="set-tc-off" type="button" aria-pressed="false">Off</button>
+              <button id="set-tc-basic" type="button" aria-pressed="false">Basic</button>
+              <button id="set-tc-standard" type="button" aria-pressed="true">Standard</button>
+              <button id="set-tc-strict" type="button" aria-pressed="false">Strict</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name" id="set-fmt-label">Format on save</span>
+              <span class="setting-row__hint">Tidy Python files with Ruff each time you save (Shift+Alt+F any time).</span>
+            </div>
+            <button id="set-fmt" class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="set-fmt-label"></button>
           </div>
           <div class="setting-row">
             <div class="setting-row__text">

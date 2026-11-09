@@ -183,3 +183,57 @@
 .unsaved-btn--save:hover, .api-key-btn:not(.api-key-btn--ghost):hover { background: var(--red-hover); }
 .unsaved-dialog__graphic { border-radius: 2px; }
 .unsaved-dialog-overlay { background: color-mix(in srgb, var(--ink) 55%, transparent); }
+
+/* ── Language intelligence (Phase 4) ── */
+/* Hover and signature help: documentation from the language server */
+.cm-tooltip-hover, .cm-lsp-signature-tooltip { max-width: min(560px, 80vw); }
+.cm-tooltip-hover .cm-lsp-documentation { max-height: 320px; overflow: auto; padding: 6px 12px 8px; font-family: var(--font-ui); font-size: var(--fs-sm); line-height: 1.5; scrollbar-width: thin; }
+.cm-lsp-documentation pre, .cm-lsp-documentation code { font-family: var(--font-code); font-size: 12.5px; white-space: pre-wrap; }
+.cm-lsp-documentation pre { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: rgba(127, 127, 127, 0.12); }
+.cm-lsp-documentation hr { border: none; border-top: 1px solid rgba(127, 127, 127, 0.3); margin: 6px 0; }
+.cm-lsp-documentation a { color: inherit; text-decoration: underline; }
+.cm-lsp-signature-tooltip { padding: 6px 10px !important; font-size: var(--fs-sm); }
+.cm-lsp-active-parameter { color: var(--accent-text); }
+/* Unused names fade instead of being underlined; deprecated ones are struck through */
+.cm-lsp-unnecessary { opacity: 0.55; background: none !important; }
+.cm-lsp-deprecated { text-decoration: line-through; }
+.cm-lintRange-hint { background-image: none !important; }
+.cm-lsp-message { font-size: var(--fs-sm); }
+
+/* Read-only library tab (go to definition into site-packages) */
+.editor-tab--readonly .editor-tab__name { font-style: italic; opacity: 0.85; }
+.editor-tab--readonly .editor-tab__name::after { content: ' · read only'; font-size: 11px; opacity: 0.7; }
+
+/* Rename box errors */
+.qp-error { color: var(--accent-text) !important; }
+
+/* ── Problems pane ── */
+.problems { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; color: var(--panel-text); font-size: var(--fs-sm); }
+:root[data-theme="pro"] .problems { color: var(--text); }
+.problems-list { padding: 8px 6px 12px; }
+.problems-empty { padding: 14px 12px; opacity: 0.75; }
+.problems-file { display: flex; align-items: center; gap: 8px; padding: 8px 10px 4px; font-weight: 700; font-family: var(--font-code); font-size: var(--fs-xs); opacity: 0.9; }
+.problems-file__count { min-width: 18px; padding: 0 6px; border-radius: 999px; font-weight: 600; text-align: center; background: rgba(127, 127, 127, 0.25); }
+.problem { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 5px 10px; text-align: left; color: inherit; border-radius: 8px; }
+.problem:hover, .problem:focus-visible { background: rgba(127, 127, 127, 0.16); }
+.problem__icon { flex: none; width: 9px; height: 9px; border-radius: 50%; transform: translateY(1px); }
+.problem--error .problem__icon { background: #FF5A48; }
+.problem--warning .problem__icon { background: #F5B93E; border-radius: 2px; transform: translateY(1px) rotate(45deg) scale(0.85); }
+.problem--info .problem__icon { background: #6FB2FF; }
+.problem__msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.problem__where { flex: none; font-family: var(--font-code); font-size: 11.5px; opacity: 0.7; }
+.problems-count:empty { display: none; }
+.problems-count { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; font-size: 11px; line-height: 16px; text-align: center; border-radius: 999px; background: rgba(127, 127, 127, 0.3); }
+.problems-count.has-errors { background: var(--red); color: var(--on-red); }
+
+/* Status bar: errors and warnings */
+.status-problems { display: inline-flex; align-items: center; gap: 5px; }
+.status-problems .sp-err { width: 8px; height: 8px; border-radius: 50%; background: #FF5A48; }
+.status-problems .sp-warn { width: 7px; height: 7px; margin-left: 6px; background: #F5B93E; transform: rotate(45deg); }
+
+/* Problems rows wrap in narrow panels: the message keeps the full width, the rule and position go below */
+.problem { flex-wrap: wrap; row-gap: 1px; }
+.problem__msg { flex: 1 1 240px; }
+.problem__where { margin-left: auto; }
+.pane-tab { white-space: nowrap; }
+.problems-count { line-height: 15px; vertical-align: 1px; }

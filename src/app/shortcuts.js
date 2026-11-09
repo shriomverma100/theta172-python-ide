@@ -28,6 +28,14 @@ export const DEFAULT_SHORTCUTS = {
   'toggle-sidebar': { ctrl: true, shift: false, alt: false, key: 'b' },
   'toggle-split':   { ctrl: true, shift: false, alt: false, key: '\\' },
   'open-shell':     { ctrl: true, shift: false, alt: false, key: '`' },
+  // Language intelligence (Phase 4)
+  'go-definition':    { ctrl: false, shift: false, alt: false, key: 'F12' },
+  'find-references':  { ctrl: false, shift: true,  alt: false, key: 'F12' },
+  'rename-symbol':    { ctrl: false, shift: false, alt: false, key: 'F2' },
+  'format-document':  { ctrl: false, shift: true,  alt: true,  key: 'f' },
+  'go-symbol':        { ctrl: true,  shift: false, alt: false, key: 'r' },
+  'workspace-symbol': { ctrl: true,  shift: true,  alt: false, key: 'r' },
+  'show-problems':    { ctrl: true,  shift: true,  alt: false, key: 'm' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -52,6 +60,13 @@ export const SHORTCUT_LABELS = {
   'toggle-sidebar': 'Show / Hide Sidebar',
   'toggle-split':   'Split Editor',
   'open-shell':     'Open Terminal',
+  'go-definition':    'Go to Definition',
+  'find-references':  'Find All References',
+  'rename-symbol':    'Rename Symbol',
+  'format-document':  'Format Document',
+  'go-symbol':        'Go to Symbol in File',
+  'workspace-symbol': 'Go to Symbol in Project',
+  'show-problems':    'Show Problems',
 };
 
 const KEY_NAMES = {

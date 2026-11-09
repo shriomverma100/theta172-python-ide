@@ -520,3 +520,16 @@
 :root:not([data-theme="pro"]) .pip-packages-close { order: 1; margin-left: auto; }
 :root:not([data-theme="pro"]) .pip-filter { order: 2; flex: 1 1 140px; }
 :root:not([data-theme="pro"]) #pip-check { order: 3; }
+
+/* Four output tabs fit the Playground tile: when it is narrow the mascot
+   steps aside and Problems shows an icon with its count (Clear stays visible) */
+.ide-pane--terminal .pane-header { container-type: inline-size; }
+.pane-tab__icon { display: none; vertical-align: -2px; }
+@container (max-width: 470px) {
+  .ide-pane--terminal .mascot { display: none; }
+  :root:not([data-theme="pro"]) #tab-problems .pane-tab__label { display: none; }
+  :root:not([data-theme="pro"]) #tab-problems .pane-tab__icon { display: inline-block; }
+  :root[data-theme="playground"] .ide-pane--terminal .pane-header__tabs .pane-tab { padding: 0 8px; }
+  :root[data-theme="playground"] .ide-pane--terminal .pane-header__tabs { gap: 2px; }
+  :root[data-theme="playground"] .ide-pane--terminal .pane-header.pane-header { gap: 4px; padding-left: 10px; }
+}

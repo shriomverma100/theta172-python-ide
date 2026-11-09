@@ -15,11 +15,12 @@ export function switchPane(pane) {
   if (pane === state.activePane) return;
   state.activePane = pane;
 
-  for (const p of ['terminal', 'repl', 'shell']) {
+  for (const p of ['terminal', 'repl', 'shell', 'problems']) {
     $(`tab-${p}`)?.classList.toggle('active', pane === p);
     $(`${p}-container`)?.classList.toggle('hidden', pane !== p);
   }
 
+  if (pane === 'problems') return;
   if (pane === 'shell') {
     setTimeout(() => state.shell?.open(), 30);
     return;
@@ -40,6 +41,8 @@ export function initPaneTabs() {
   $('tab-terminal')?.addEventListener('click', () => switchPane('terminal'));
   $('tab-repl')?.addEventListener('click', () => switchPane('repl'));
   $('tab-shell')?.addEventListener('click', () => switchPane('shell'));
+  $('tab-problems')?.addEventListener('click', () => switchPane('problems'));
+  $('status-problems')?.addEventListener('click', () => switchPane('problems'));
 }
 
 /** Clear whichever output pane is visible. */
