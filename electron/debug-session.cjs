@@ -80,6 +80,7 @@ class DebugSession {
       windowsHide: true,
     });
     this.adapter = adapter;
+    adapter.stdin.on('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
     adapter.stdout.on('data', (chunk) => {
       if (this.adapter !== adapter) return;
       for (const raw of reader.push(chunk)) {
@@ -208,6 +209,7 @@ class DebugSession {
       return reply(false, undefined, err.message);
     }
     this.program = proc;
+    proc.stdin?.on('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
     proc.stdout.on('data', (d) => this.onOutput('stdout', d.toString()));
     proc.stderr.on('data', (d) => this.onOutput('stderr', d.toString()));
     proc.on('error', (err) => this.onOutput('stderr', `Could not start Python: ${err.message}\n`));

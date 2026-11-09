@@ -137,6 +137,7 @@ async function reveal(tabId, line) {
 
 /** Open the file of a stack frame and mark its line. */
 async function showFrame(frame) {
+  if (!session) return;
   const file = frame.source?.path;
   const line = frame.line;
   let tab = null;
@@ -156,6 +157,7 @@ async function showFrame(frame) {
       tab = null;
     }
   }
+  if (!session) return;
   setLocation(tab ? { tabId: tab.id, line } : null);
   if (tab) await reveal(tab.id, line);
 }
@@ -244,11 +246,13 @@ async function renderVariables() {
     $vars.innerHTML = `<p class="dbg-empty">${session ? 'Running… pause or hit a breakpoint to see variables.' : 'Variables appear when the program pauses.'}</p>`;
     return;
   }
+  const frameId = session.frameId;
   let scopes = [];
-  try { scopes = (await api().debugRequest('scopes', { frameId: session.frameId })).scopes || []; } catch (_) { /* resumed */ }
+  try { scopes = (await api().debugRequest('scopes', { frameId })).scopes || []; } catch (_) { /* resumed */ }
+  if (seq !== renderSeq || !session) return;
   const frag = document.createElement('div');
   for (const scope of scopes) {
-    const id = `${session.frameId}:${scope.name}`;
+    const id = `${frameId}:${scope.name}`;
     if (!expanded.has(`${id}!seen`)) { expanded.add(`${id}!seen`); if (!scope.expensive) expanded.add(id); }
     const head = document.createElement('button');
     head.type = 'button';
@@ -359,11 +363,12 @@ async function onStopped(body) {
   if (!session) return;
   session.paused = true;
   session.threadId = body.threadId ?? session.threadId;
+  let frames = [];
   try {
-    session.frames = (await api().debugRequest('stackTrace', { threadId: session.threadId, levels: 40 })).stackFrames || [];
-  } catch (_) {
-    session.frames = [];
-  }
+    frames = (await api().debugRequest('stackTrace', { threadId: session.threadId, levels: 40 })).stackFrames || [];
+  } catch (_) { /* resumed or ended */ }
+  if (!session) return; // ended while we waited
+  session.frames = frames;
   const top = session.frames[0];
   session.frameId = top?.id ?? null;
   const $exc = $('dbg-exception');
@@ -376,6 +381,7 @@ async function onStopped(body) {
       if ($exc) { $exc.textContent = text; $exc.classList.remove('hidden'); }
       why = `on ${info.exceptionId?.split('.').pop() || 'an exception'}`;
     } catch (_) { /* no details */ }
+    if (!session) return;
   }
   const file = top?.source?.path ? (session.temp && samePath(top.source.path, session.program) ? session.name : top.source.path.split(/[\\/]/).pop()) : '';
   setStatus(top ? `Paused ${why} · ${file}, line ${top.line}` : 'Paused');
@@ -383,6 +389,7 @@ async function onStopped(body) {
   renderControls();
   renderStack();
   if (top) await showFrame(top);
+  if (!session) return;
   renderVariables();
   renderWatch();
 }

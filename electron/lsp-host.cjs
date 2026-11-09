@@ -123,6 +123,7 @@ class LanguageServer {
     const reader = new MessageReader();
     const proc = this._spawn(this.command, this.args, { cwd, env: this.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     this.proc = proc;
+    proc.stdin.on('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
     proc.stdout.on('data', (chunk) => {
       if (this.proc !== proc) return;
       for (const msg of reader.push(chunk)) this._fromServer(msg);

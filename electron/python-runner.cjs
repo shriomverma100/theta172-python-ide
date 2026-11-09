@@ -93,6 +93,7 @@ class PythonRunner {
       env,
       ...(cwd ? { cwd } : {}),
     });
+    proc.stdin?.on?.('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
     const run = { proc, file, temp: !inPlace, sender };
     this.current = run;
     const isCurrent = () => this.current === run;

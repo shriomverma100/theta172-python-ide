@@ -104,6 +104,7 @@ function registerLspIpc({ ipcMain, spawn, getWindow, getRoot, getPython, ruffPat
       if (exit === 0) resolve({ ok: true, code: out });
       else resolve({ ok: false, error: (err || 'The formatter failed.').trim().split('\n').slice(-3).join('\n') });
     });
+    proc.stdin.on('error', () => {}); // a write after the process exited fails with EPIPE; the exit handler reports the end
     proc.stdin.end(code, 'utf8');
   }));
 
