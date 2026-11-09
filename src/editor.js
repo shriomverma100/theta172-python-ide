@@ -8,10 +8,10 @@ import { EditorView, keymap, lineNumbers, highlightActiveLineGutter,
          highlightSpecialChars, drawSelection, dropCursor,
          rectangularSelection, crosshairCursor,
          highlightActiveLine } from '@codemirror/view';
-import { EditorState, Compartment, StateEffect } from '@codemirror/state';
+import { EditorState, Compartment, StateEffect, Annotation } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, indentOnInput, bracketMatching,
-         foldGutter, foldKeymap,
+         foldGutter, foldKeymap, indentUnit,
          HighlightStyle } from '@codemirror/language';
 import { python } from '@codemirror/lang-python';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from '@codemirror/search';
@@ -22,6 +22,29 @@ import { tags } from '@lezer/highlight';
 // ── Compartments for dynamic reconfiguration ──────────────────
 const themeCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
+const wrapCompartment = new Compartment();
+const tabSizeCompartment = new Compartment();
+
+/** Marks edits the app makes itself (opening a file, switching tabs), not the user. */
+const programmatic = Annotation.define();
+/** Marks edits copied between the two halves of the split editor. */
+const splitSync = Annotation.define();
+
+// Current view settings, re-applied to every tab's state and to the split view
+const viewConfig = { fontSize: 15, wrap: false, tabSize: 4 };
+
+function wrapExt() { return viewConfig.wrap ? EditorView.lineWrapping : []; }
+function tabSizeExt() { return [EditorState.tabSize.of(viewConfig.tabSize), indentUnit.of(' '.repeat(viewConfig.tabSize))]; }
+
+/** Effects that bring any editor state up to the current theme and settings. */
+function currentConfigEffects() {
+  return [
+    themeCompartment.reconfigure(editorThemeExtensions()),
+    fontSizeCompartment.reconfigure(fontSizeTheme(viewConfig.fontSize)),
+    wrapCompartment.reconfigure(wrapExt()),
+    tabSizeCompartment.reconfigure(tabSizeExt()),
+  ];
+}
 
 // ── Python IntelliSense ───────────────────────────────────────
 
@@ -429,8 +452,10 @@ export async function createEditor(container) {
     // Theme (dynamic via compartment)
     themeCompartment.of(editorThemeExtensions()),
 
-    // Font size (dynamic via compartment)
+    // Font size, word wrap and tab size (dynamic via compartments)
     fontSizeCompartment.of(fontSizeTheme(15)),
+    wrapCompartment.of(wrapExt()),
+    tabSizeCompartment.of(tabSizeExt()),
 
     // Smooth scrolling
     EditorView.theme({
@@ -466,6 +491,16 @@ export async function createEditor(container) {
       extensions,
     }),
     parent: container,
+    // Mirror edits into the split view (if open)
+    dispatchTransactions(trs, view) {
+      view.update(trs);
+      if (!splitView) return;
+      for (const tr of trs) {
+        if (!tr.changes.empty && !tr.annotation(splitSync)) {
+          splitView.dispatch({ changes: tr.changes, annotations: splitSync.of(true) });
+        }
+      }
+    },
   });
 
   // Resize on window resize
@@ -495,8 +530,11 @@ export function setEditorState(stateOrDoc) {
     return;
   }
 
-  // Full EditorState — swap it in to preserve undo
+  // Full EditorState — swap it in to preserve undo, then bring it up to the
+  // current theme and settings (they may have changed since it was stored)
   editorView.setState(stateOrDoc);
+  editorView.dispatch({ effects: currentConfigEffects() });
+  resetSplit();
 }
 
 // ── Editor API (compatible interface) ─────────────────────────
@@ -506,7 +544,7 @@ export function getValue() {
   return editorView?.state.doc.toString() ?? '';
 }
 
-/** Set editor content */
+/** Set editor content as a user edit (examples, reset, AI fix): marks the tab unsaved. */
 export function setValue(code) {
   if (!editorView) return;
   editorView.dispatch({
@@ -514,17 +552,85 @@ export function setValue(code) {
   });
 }
 
+/** Load content the app opened itself (a file, a tab switch): not an unsaved edit. */
+export function loadValue(code) {
+  if (!editorView) return;
+  editorView.dispatch({
+    changes: { from: 0, to: editorView.state.doc.length, insert: code },
+    annotations: programmatic.of(true),
+  });
+  resetSplit();
+}
+
 /** Focus the editor */
 export function focusEditor() {
   editorView?.focus();
 }
 
-/** Update font size */
+/** Update font size (both halves of the split editor) */
 export function setFontSize(size) {
-  if (!editorView) return;
-  editorView.dispatch({
-    effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)),
+  viewConfig.fontSize = size;
+  for (const v of [editorView, splitView]) v?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)) });
+}
+
+/** Soft-wrap long lines on or off. */
+export function setWordWrap(on) {
+  viewConfig.wrap = !!on;
+  for (const v of [editorView, splitView]) v?.dispatch({ effects: wrapCompartment.reconfigure(wrapExt()) });
+}
+
+/** Spaces per indent level (2 or 4). */
+export function setTabSize(n) {
+  viewConfig.tabSize = n === 2 ? 2 : 4;
+  for (const v of [editorView, splitView]) v?.dispatch({ effects: tabSizeCompartment.reconfigure(tabSizeExt()) });
+}
+
+// ── Split editor: a second view of the same file ──────────────
+let splitView = null;
+
+function splitState() {
+  return EditorState.create({
+    doc: editorView.state.doc,
+    extensions: [
+      lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
+      indentOnInput(), bracketMatching(), closeBrackets(), highlightActiveLine(), highlightSelectionMatches(),
+      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+      python(),
+      themeCompartment.of(editorThemeExtensions()),
+      fontSizeCompartment.of(fontSizeTheme(viewConfig.fontSize)),
+      wrapCompartment.of(wrapExt()),
+      tabSizeCompartment.of(tabSizeExt()),
+    ],
   });
+}
+
+function resetSplit() {
+  if (splitView && editorView) splitView.setState(splitState());
+}
+
+export function isSplit() { return !!splitView; }
+
+/** Open or close the split view next to the editor. Returns true when open. */
+export function toggleSplit(container) {
+  if (splitView) {
+    splitView.destroy();
+    splitView = null;
+    return false;
+  }
+  if (!editorView || !container) return false;
+  splitView = new EditorView({
+    state: splitState(),
+    parent: container,
+    dispatchTransactions(trs, view) {
+      view.update(trs);
+      for (const tr of trs) {
+        if (!tr.changes.empty && !tr.annotation(splitSync)) {
+          editorView.dispatch({ changes: tr.changes, annotations: splitSync.of(true) });
+        }
+      }
+    },
+  });
+  return true;
 }
 
 /** Get cursor position */
@@ -545,13 +651,19 @@ export function getCharCount() {
   return editorView?.state.doc.length ?? 0;
 }
 
-/** Register callback for content changes (post-creation) */
+/**
+ * Register callback for content changes (post-creation).
+ * The second argument says whether the app made the change itself
+ * (loading a file or switching tabs) rather than the user.
+ */
 export function onContentChange(callback) {
   if (!editorView) return;
   editorView.dispatch({
     effects: StateEffect.appendConfig.of(
       EditorView.updateListener.of((update) => {
-        if (update.docChanged) callback(update);
+        if (!update.docChanged) return;
+        const byApp = update.transactions.every((tr) => !tr.docChanged || tr.annotation(programmatic));
+        callback(update, { programmatic: byApp });
       })
     ),
   });
@@ -595,14 +707,14 @@ export function toggleEditorTheme() {
   if (!editorView) return currentTheme;
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-  editorView.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of [editorView, splitView]) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
   return currentTheme;
 }
 
 /** Switch the code colours to the Playground or Pro palette. */
 export function setAppTheme(name) {
   appTheme = name === 'pro' ? 'pro' : 'playground';
-  editorView?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of [editorView, splitView]) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
 }
 
 export function getEditorTheme() {

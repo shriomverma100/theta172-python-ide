@@ -1,0 +1,222 @@
+/* ============================================
+   THETA172 — Workspace: sidebar (files + search),
+   file tree, project search, split editor.
+   Playground: a white sticker tile. Pro: a flat side bar.
+   ============================================ */
+
+/* ── Grid: add the sidebar column ── */
+.ide-body {
+  grid-template-columns: var(--files-w, 240px) minmax(0, 1fr) 16px var(--side-w, 400px);
+  grid-template-areas:
+    "files editor gutter output"
+    "files editor gutter class";
+}
+.sidebar { grid-area: files; }
+:root[data-theme="pro"] .ide-body {
+  grid-template-columns: 48px var(--files-w, 250px) minmax(0, 1fr);
+  grid-template-areas:
+    "rail files editor"
+    "rail files gutter"
+    "rail files output";
+}
+.ide-body.sidebar-hidden { --files-w: 0px; }
+.ide-body.sidebar-hidden .sidebar { display: none; }
+
+/* ── Sidebar shell ── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin-right: 14px;
+  overflow: hidden;
+  color: var(--text);
+  background: var(--surface-1);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-tile);
+  box-shadow: var(--shadow-tile);
+}
+:root[data-theme="pro"] .sidebar { margin: 0; border: none; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; background: var(--surface-1); }
+
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 10px 8px 12px; flex: none; }
+:root[data-theme="pro"] .sidebar-head { height: 36px; padding: 0 6px 0 4px; border-bottom: 1px solid var(--line); }
+.sidebar-views { display: flex; gap: 4px; }
+.sidebar-view {
+  height: 30px;
+  padding: 0 12px;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-3);
+  border-radius: 999px;
+}
+.sidebar-view:hover { color: var(--text); }
+.sidebar-view.active { color: #FFFFFF; background: var(--ink); }
+:root[data-theme="pro"] .sidebar-view { height: 36px; padding: 0 8px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 500; letter-spacing: var(--label-track); text-transform: uppercase; border-radius: 0; }
+:root[data-theme="pro"] .sidebar-view.active { color: var(--text); background: none; box-shadow: inset 0 -2px 0 var(--text); }
+
+.sidebar-actions { display: flex; gap: 2px; }
+.sb-btn { display: grid; place-items: center; width: 28px; height: 28px; color: var(--text-2); border-radius: 8px; }
+.sb-btn:hover { color: var(--text); background: var(--surface-3); }
+.sidebar.search-mode .sidebar-actions { display: none; }
+
+/* ── Files view ── */
+.files-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ws-project { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 14px 8px; flex: none; }
+:root[data-theme="pro"] .ws-project { padding: 8px 12px 6px; }
+.ws-project__name { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="pro"] .ws-project__name { font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 600; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-2); }
+.ws-git { flex: none; padding: 2px 8px; font-family: var(--font-code); font-size: 11px; color: var(--text-2); border: 1px solid var(--line-soft); border-radius: 999px; white-space: nowrap; }
+
+.ws-empty { display: flex; flex-direction: column; gap: 8px; padding: 6px 16px 16px; }
+.ws-empty__title { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 600; }
+.ws-empty__text { font-size: var(--fs-sm); color: var(--text-3); }
+.ws-open-btn {
+  align-self: flex-start;
+  height: 38px;
+  margin-top: 4px;
+  padding: 0 16px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--on-red);
+  background: var(--red);
+  border: var(--border-w) solid var(--line-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+}
+.ws-open-btn:hover { background: var(--red-hover); }
+:root[data-theme="pro"] .ws-open-btn { height: 30px; font-weight: 600; }
+
+/* ── File tree ── */
+.ws-tree { list-style: none; flex: 1; min-height: 0; overflow: auto; padding: 0 6px 10px; }
+.ws-tree ul { list-style: none; }
+.ws-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding-right: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  text-align: left;
+  border-radius: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+:root[data-theme="pro"] .ws-row { height: 24px; border-radius: 4px; font-size: 13px; }
+.ws-row:hover { background: var(--surface-3); }
+.ws-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ws-row.is-open { background: var(--surface-4); font-weight: 600; }
+:root[data-theme="playground"] .ws-row.is-open { color: #FFFFFF; background: var(--ink); }
+.ws-row.is-heavy { color: var(--text-3); }
+.ws-row.drop-target { background: var(--red-tint); box-shadow: inset 0 0 0 2px var(--red); }
+.ws-row__chev { width: 12px; flex: none; color: var(--text-3); transition: transform var(--t-fast); }
+.ws-row[aria-expanded="true"] .ws-row__chev { transform: rotate(90deg); }
+.ws-row__icon { width: 8px; height: 8px; flex: none; border-radius: 2px; background: var(--text-4); }
+.ws-row__icon.is-py { background: var(--red); }
+.ws-row__icon.is-data { background: #4FA3E0; }
+.ws-row__icon.is-nb { background: #F2A65A; }
+.ws-row__icon.is-dir { width: 12px; height: 10px; border-radius: 2px; background: transparent; border: 1.5px solid var(--text-3); }
+.ws-row__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ws-row__git { flex: none; width: 14px; font-family: var(--font-code); font-size: 11px; font-weight: 700; text-align: center; }
+.ws-row__git.M { color: var(--warn-text); }
+.ws-row__git.U, .ws-row__git.A { color: var(--ok-text); }
+.ws-row__git.D { color: var(--accent-text); }
+.ws-row__git.R { color: var(--focus); }
+:root[data-theme="playground"] .ws-row.is-open .ws-row__git { color: inherit; }
+.ws-rename {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-1);
+  border: 2px solid var(--focus);
+  border-radius: 6px;
+  outline: none;
+}
+
+/* ── Search view ── */
+.search-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 2px 10px 10px; }
+:root[data-theme="pro"] .search-view { padding-top: 10px; }
+.search-field { display: flex; align-items: center; gap: 6px; }
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface-1);
+  border: var(--border-w) solid var(--line-strong);
+  border-radius: 10px;
+  outline: none;
+}
+.search-input:focus { border-color: var(--focus); }
+.search-input::placeholder { color: var(--text-4); }
+:root[data-theme="pro"] .search-input { height: 28px; background: var(--bg); border-radius: 6px; }
+.search-toggles { display: flex; gap: 2px; }
+.search-toggle { width: 28px; height: 28px; font-family: var(--font-code); font-size: 12px; font-weight: 600; color: var(--text-2); border: 1px solid transparent; border-radius: 6px; }
+.search-toggle:hover { background: var(--surface-3); }
+.search-toggle[aria-pressed="true"] { color: var(--text); background: var(--surface-4); border-color: var(--line-strong); }
+.search-replace-btn { flex: none; height: 34px; padding: 0 10px; font-size: var(--fs-xs); font-weight: 700; color: var(--text); border: var(--border-w) solid var(--line-strong); border-radius: 10px; }
+.search-replace-btn:hover { background: var(--surface-3); }
+:root[data-theme="pro"] .search-replace-btn { height: 28px; font-weight: 500; border-radius: 6px; }
+.search-summary { min-height: 18px; font-size: var(--fs-xs); color: var(--text-3); }
+.search-results { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.sr-file { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 6px; font-size: var(--fs-sm); font-weight: 600; text-align: left; border-radius: 8px; }
+.sr-file:hover { background: var(--surface-3); }
+.sr-file__count { margin-left: auto; padding: 0 7px; font-size: 11px; color: var(--text-2); background: var(--surface-4); border-radius: 999px; }
+.sr-line { display: flex; gap: 8px; width: 100%; padding: 3px 6px 3px 18px; font-family: var(--font-code); font-size: 12px; color: var(--text-2); text-align: left; border-radius: 6px; white-space: nowrap; overflow: hidden; }
+.sr-line:hover { background: var(--surface-3); color: var(--text); }
+.sr-line__n { flex: none; min-width: 26px; color: var(--text-4); text-align: right; }
+.sr-line__text { overflow: hidden; text-overflow: ellipsis; }
+.sr-line mark { color: var(--ink); background: var(--yellow); border-radius: 2px; }
+
+/* ── Split editor ── */
+.editor-panes { flex: 1; min-height: 0; display: flex; }
+.editor-panes .monaco-container { flex: 1; min-width: 0; }
+.monaco-split { border-left: 2px solid var(--panel-line); }
+:root[data-theme="pro"] .monaco-split { border-left: 1px solid var(--line); }
+#btn-split[aria-pressed="true"] { color: var(--ink); background: var(--lime); border-color: var(--lime); }
+:root[data-theme="pro"] #btn-split[aria-pressed="true"] { color: var(--bg); background: var(--text); border-color: var(--text); }
+
+/* Narrow windows: stacked, no sidebar (this file loads after ide.css) */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .ide-body,
+  :root[data-theme="pro"] .ide-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.3fr) 12px minmax(0, 1fr) auto;
+    grid-template-areas: "editor" "gutter" "output" "class";
+  }
+}
+
+/* Playground at laptop widths: keep the tile headers from overflowing.
+   The tree refreshes itself when files change, so Refresh / Collapse are
+   only in Pro (and the right-click menu). */
+:root[data-theme="playground"] #ws-refresh,
+:root[data-theme="playground"] #ws-collapse { display: none; }
+:root[data-theme="playground"] .ide-pane--terminal .pane-tab { padding: 0 11px; }
+:root[data-theme="playground"] .ide-pane--terminal .exec-mark { display: none; }
+:root[data-theme="playground"] .ide-pane--terminal .pane-header { gap: 6px; padding-right: 10px; }
+:root[data-theme="playground"] .mascot { margin: 0 2px 0 auto; }
+@media (max-width: 1360px) {
+  :root[data-theme="playground"] .ide-body { --side-w: 370px; --files-w: 220px; }
+}
+:root[data-theme="playground"] .ide-pane--terminal .pane-tab { height: 32px; padding: 0 10px; font-size: 12px; }
+:root[data-theme="playground"] .ide-pane--terminal .exec-time { min-width: 40px; font-size: 12px; }
+:root[data-theme="playground"] .ide-pane--terminal #btn-clear { padding: 0 9px; }
+:root[data-theme="playground"] .sidebar-view { padding: 0 10px; }
+@media (max-width: 1360px) {
+  :root[data-theme="playground"] .ide-body { --side-w: 390px; --files-w: 230px; }
+}
+:root[data-theme="playground"] .sidebar-head { padding: 10px 8px 8px 10px; }
+
+/* Close folder (×) beside the project name */
+.ws-project { justify-content: flex-start; }
+.ws-project__name { flex: 1; min-width: 0; }
+.ws-close { flex: none; width: 24px; height: 24px; }

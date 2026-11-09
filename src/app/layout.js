@@ -15,10 +15,15 @@ export function switchPane(pane) {
   if (pane === state.activePane) return;
   state.activePane = pane;
 
-  $('tab-terminal')?.classList.toggle('active', pane === 'terminal');
-  $('tab-repl')?.classList.toggle('active', pane === 'repl');
-  $('terminal-container')?.classList.toggle('hidden', pane !== 'terminal');
-  $('repl-container')?.classList.toggle('hidden', pane !== 'repl');
+  for (const p of ['terminal', 'repl', 'shell']) {
+    $(`tab-${p}`)?.classList.toggle('active', pane === p);
+    $(`${p}-container`)?.classList.toggle('hidden', pane !== p);
+  }
+
+  if (pane === 'shell') {
+    setTimeout(() => state.shell?.open(), 30);
+    return;
+  }
 
   if (pane === 'repl') {
     const repl = state.replManager;
@@ -34,11 +39,13 @@ export function switchPane(pane) {
 export function initPaneTabs() {
   $('tab-terminal')?.addEventListener('click', () => switchPane('terminal'));
   $('tab-repl')?.addEventListener('click', () => switchPane('repl'));
+  $('tab-shell')?.addEventListener('click', () => switchPane('shell'));
 }
 
 /** Clear whichever output pane is visible. */
 export function clearOutput() {
   if (state.activePane === 'repl' && state.replManager?.term) state.replManager.term.clear();
+  else if (state.activePane === 'shell') state.shell?.clear();
   else state.terminal?.clear();
 }
 
@@ -68,6 +75,7 @@ export function initGutter() {
     editorLayout();
     state.terminal?.fit();
     state.replManager?.fit();
+    state.shell?.fit();
   };
 
   $gutter.addEventListener('mousedown', (e) => {

@@ -5,8 +5,19 @@
 // Local runs execute a temp copy (theta_run_<uuid>.py); show the tab's name instead.
 const TEMP_RUN_FILE = /File "[^"\n]*theta_run_[0-9a-f-]+\.py"/gi;
 
-export function tidyTraceback(text, fileName) {
-  return text.replace(TEMP_RUN_FILE, () => `File "${fileName}"`);
+/**
+ * @param {string} text      stderr from Python
+ * @param {string} fileName  shown instead of the runner's temp file
+ * @param {string} [root]    the project folder: its paths become relative
+ */
+export function tidyTraceback(text, fileName, root) {
+  let out = text.replace(TEMP_RUN_FILE, () => `File "${fileName}"`);
+  if (root) {
+    const escaped = root.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
+    const flags = root.includes('\\') ? 'gi' : 'g'; // Windows paths ignore case
+    out = out.replace(new RegExp(`File "${escaped}[\\\\/]`, flags), 'File "');
+  }
+  return out;
 }
 
 /**

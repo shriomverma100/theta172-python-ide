@@ -18,11 +18,15 @@
  *   boot.js          start-up screen
  *   settings.js      settings dialog, pixel effects switch
  *   theme.js         Playground / Pro themes and the first-launch picker
+ *   workspace.js     project folder: file tree, create/rename/move/delete, git
+ *   search.js        search and replace across the project
+ *   session.js       restore the folder and tabs after a restart
+ *   shell-terminal.js  the Shell tab (PowerShell in a real terminal)
  *
  * Pixel effects (pixelfx) live in src/fx/.
  */
 import {
-  createEditor, setAppTheme, layout as editorLayout, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
+  createEditor, setAppTheme, layout as editorLayout, toggleSplit, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
   onContentChange, onCursorChange, openFindReplace, getView,
 } from './editor.js';
 import { TerminalManager } from './terminal.js';
@@ -42,13 +46,17 @@ import { storageGet } from './core/storage.js';
 import { xtermTheme } from './core/terminal-theme.js';
 import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker } from './app/theme.js';
 import { state } from './app/state.js';
-import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved } from './app/tabs.js';
+import { initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged } from './app/tabs.js';
+import { initWorkspace, openFolder, closeFolder, createItem, onWorkspaceChange, render as renderExplorer } from './app/workspace.js';
+import { initSearch, focusSearch, showSidebarView } from './app/search.js';
+import { initSession, restoreSession, saveSessionSoon } from './app/session.js';
+import { ShellTerminal } from './app/shell-terminal.js';
 import { saveToFile, saveAsFile, openFile, initFileInputs } from './app/files.js';
 import { updateCodeStats, markUnsaved, scheduleAutoSave, saveCode } from './app/autosave.js';
 import { initRuntime, runCode, stopCode } from './app/runtime.js';
 import { startBoot, setBootStep } from './app/boot.js';
-import { initSettings, openSettings, closeSettings, toggleFx } from './app/settings.js';
-import { initPaneTabs, initGutter, clearOutput, adjustFontSize } from './app/layout.js';
+import { initSettings, openSettings, closeSettings, toggleFx, applyEditorPrefs } from './app/settings.js';
+import { initPaneTabs, initGutter, clearOutput, adjustFontSize, switchPane } from './app/layout.js';
 import { initShortcuts } from './app/shortcuts.js';
 import { initCommandPalette, toggleCommandPalette, openCommandPalette, isPaletteOpen, closeCommandPalette } from './app/commands.js';
 import { initModals, openExamples, openShortcuts, closeAllModals } from './app/modals.js';
@@ -105,7 +113,40 @@ const actions = {
   'cmd-palette': toggleCommandPalette,
   'examples': openExamples,
   'reset-code': () => { setValue(STARTER_CODE); showToast('Code reset to starter template', 'info'); },
+  'open-folder': openFolder,
+  'close-folder': closeFolder,
+  'new-file': () => createItem('file'),
+  'search-files': () => { showSidebar(true); focusSearch(); },
+  'toggle-sidebar': () => showSidebar(),
+  'toggle-split': toggleSplitView,
+  'open-shell': () => switchPane('shell'),
 };
+
+// ── Sidebar and split editor ─────────────────────────────────────
+function relayout() {
+  requestAnimationFrame(() => {
+    editorLayout();
+    state.terminal?.fit();
+    state.replManager?.fit();
+    state.shell?.fit();
+  });
+}
+
+/** Show or hide the project sidebar (Ctrl+B). Pass true to force it open. */
+function showSidebar(force) {
+  const body = document.querySelector('.ide-body');
+  const hidden = force === true ? false : !body.classList.contains('sidebar-hidden');
+  body.classList.toggle('sidebar-hidden', hidden);
+  relayout();
+}
+
+function toggleSplitView() {
+  const $split = $('monaco-split');
+  const open = toggleSplit($split);
+  $split?.classList.toggle('hidden', !open);
+  $('btn-split')?.setAttribute('aria-pressed', String(open));
+  relayout();
+}
 
 function handleEscape(e) {
   if (handleClassroomKeydown(e)) return;
@@ -116,7 +157,14 @@ function handleEscape(e) {
 
 function initButtons() {
   // Pro icon rail and the Playground class tile
-  $('rail-editor')?.addEventListener('click', focusEditor);
+  $('rail-files')?.addEventListener('click', () => {
+    const body = document.querySelector('.ide-body');
+    const onFiles = !$('files-view')?.classList.contains('hidden');
+    if (onFiles && !body.classList.contains('sidebar-hidden')) showSidebar(); // second click hides
+    else { showSidebar(true); showSidebarView('files'); }
+  });
+  $('rail-search')?.addEventListener('click', () => { showSidebar(true); focusSearch(); });
+  $('btn-split')?.addEventListener('click', toggleSplitView);
   $('rail-classroom')?.addEventListener('click', () => openClassroomPanel());
   $('rail-examples')?.addEventListener('click', openExamples);
   $('rail-keys')?.addEventListener('click', openShortcuts);
@@ -146,16 +194,29 @@ function initEditorEvents() {
 
   // Debounced so live classroom sessions don't flood on every keystroke
   let debounce = null;
-  onContentChange(() => {
+  // Edits made by the app itself (opening a file, switching tabs) are not unsaved changes
+  let userEdited = false;
+  onContentChange((_update, { programmatic }) => {
+    if (!programmatic) userEdited = true;
     clearTimeout(debounce);
     debounce = setTimeout(() => {
       if (isTeacherLive()) broadcastCurrentCode();
       if (isStudentConnected()) streamStudentCode();
       updateCodeStats();
-      markUnsaved();
-      markActiveTabUnsaved();
-      scheduleAutoSave();
+      if (userEdited) {
+        markUnsaved();
+        markActiveTabUnsaved();
+        scheduleAutoSave();
+      }
+      userEdited = false;
+      saveSessionSoon();
     }, 60);
+  });
+
+  // Keep the explorer's "open file" highlight and the window title in step
+  onTabsChanged(() => {
+    renderExplorer();
+    updateCodeStats();
   });
 }
 
@@ -194,12 +255,14 @@ async function initIDE() {
   state.editor = await createEditor($editorHost);
   setBootStep(1);
 
-  const savedCode = storageGet('theta-code');
+  applyEditorPrefs();
+  const savedCode = storageGet('theta-code'); // single-file autosave from older versions
   initTabs(savedCode || STARTER_CODE);
-  if (savedCode) {
-    setValue(savedCode);
-    showToast('Code restored from last session', 'save', 2000);
-  }
+  initWorkspace();
+  initSearch();
+  initSession();
+  if (await restoreSession()) showToast('Reopened your project and tabs', 'save', 2000);
+  else if (savedCode) showToast('Code restored from last session', 'save', 2000);
 
   initEditorEvents();
   updateCodeStats();
@@ -211,6 +274,7 @@ async function initIDE() {
 
   state.replManager = new ReplManager();
   state.replManager.init($('repl-container'));
+  state.shell = new ShellTerminal($('shell-container'));
 
   initPaneTabs();
   initGutter();
@@ -236,6 +300,13 @@ async function initIDE() {
       },
       fxStats: () => fx.stats(),
       setCode: (code) => setValue(code),
+      shellText() {
+        const buf = state.shell?.term?.buffer.active;
+        if (!buf) return '';
+        let text = '';
+        for (let i = 0; i < buf.length; i++) text += (buf.getLine(i)?.translateToString(true) ?? '') + '\n';
+        return text;
+      },
       // Plays each pixel moment alone and reports its cost per drawn frame
       async fxBench() {
         const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -258,9 +329,8 @@ async function initIDE() {
     };
   }
 
-  await initRuntime();
-
-  // First launch: choose Playground or Pro. Pro starts with pixel effects off.
+  // First launch: choose Playground or Pro straight away; Python keeps
+  // loading behind the picker. Pro starts with pixel effects off.
   if (!hasChosenTheme()) {
     showThemePicker({
       onChosen: (theme) => {
@@ -268,15 +338,19 @@ async function initIDE() {
       },
     });
   }
+
+  await initRuntime();
 }
 
 // Static UI that doesn't depend on the editor
 initWindowControls();
 initThemeControls(screenTransition);
+onWorkspaceChange(({ name }) => window.electronAPI?.setTitle?.(name ? `${name} — Python by THETA172` : 'Python by THETA172'));
 onThemeChange((theme) => {
   setAppTheme(theme);
   state.terminal?.setTheme(xtermTheme(theme));
   state.replManager?.setTheme(xtermTheme(theme));
+  state.shell?.setTheme(xtermTheme(theme));
   // The layout changes shape: let the editor and terminals re-measure
   requestAnimationFrame(() => {
     editorLayout();

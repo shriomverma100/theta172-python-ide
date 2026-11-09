@@ -10,7 +10,9 @@ import { $ } from '../core/dom.js';
 import { isTeacherLive, isStudentConnected, streamStudentOutput } from '../classroom/classroom.js';
 import { state } from './state.js';
 import { saveCode } from './autosave.js';
-import { getActiveFileName } from './tabs.js';
+import { getActiveFileName, getActiveTab } from './tabs.js';
+import { getWorkspaceRoot, isInWorkspace, relativePath } from './workspace.js';
+import { saveToFile } from './files.js';
 import { tidyTraceback, errorLineInUserCode } from '../core/traceback.js';
 import { switchPane } from './layout.js';
 import { setBootStep, setBootDetail, finishBoot, failBoot } from './boot.js';
@@ -131,8 +133,14 @@ function setPipStatus(text, kind, clearAfterMs) {
 
 // ── Output routing (terminal + classroom) ────────────────────────
 
+/** How the active file appears in tracebacks: its path in the project, or the tab name. */
+function activeFileId() {
+  const path = getActiveTab()?.filePath;
+  return path && isInWorkspace(path) ? relativePath(path) : getActiveFileName() || 'main.py';
+}
+
 function forwardOutput(text, stream) {
-  if (stream === 'stderr') text = tidyTraceback(text, getActiveFileName() || 'main.py');
+  if (stream === 'stderr') text = tidyTraceback(text, getActiveFileName() || 'main.py', getWorkspaceRoot());
   if (stream === 'stderr') state.terminal?.writeError(text);
   else state.terminal?.writeOutput(text);
 
@@ -140,7 +148,7 @@ function forwardOutput(text, stream) {
   if (isStudentConnected()) streamStudentOutput(text, stream);
 
   if (stream === 'stderr') {
-    const line = errorLineInUserCode(text, getActiveFileName() || 'main.py');
+    const line = errorLineInUserCode(text, activeFileId());
     if (line) {
       highlightErrorLine(line);
       state.lastErrorLine = line;
@@ -173,7 +181,7 @@ function finishRun({ durationMs, failed, message }) {
 
 // ── Run / Stop ───────────────────────────────────────────────────
 
-export function runCode() {
+export async function runCode() {
   clearErrorHighlights();
   const ready = state.useLocalPython || state.workerManager?.isReady;
   if (!ready) {
@@ -185,10 +193,20 @@ export function runCode() {
     return;
   }
 
-  const code = getValue();
+  let code = getValue();
   if (!code.trim()) {
     showToast('Nothing to run — write some Python first', 'info', 2000);
     return;
+  }
+
+  // A file in the open project runs in place, so its imports see the other
+  // project files; save it first so they also see the latest text.
+  const tab = getActiveTab();
+  const projectFile = !!(state.useLocalPython && tab?.filePath && isInWorkspace(tab.filePath));
+  if (projectFile && tab.unsaved) {
+    const saved = await saveToFile();
+    if (!saved) return;
+    code = getValue();
   }
 
   saveCode();
@@ -205,7 +223,7 @@ export function runCode() {
   startProgressBar();
   startExecTimer();
 
-  if (state.useLocalPython) window.electronAPI.runPython(code);
+  if (state.useLocalPython) window.electronAPI.runPython(code, projectFile ? { filePath: tab.filePath } : {});
   else state.workerManager.run(code);
 }
 

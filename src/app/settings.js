@@ -3,7 +3,8 @@
  * Pixel effects: on/off (saved), and forced off while Windows
  * "Animation effects" is off (prefers-reduced-motion).
  */
-import { getEditorTheme } from '../editor.js';
+import { getEditorTheme, setWordWrap, setTabSize } from '../editor.js';
+import { getPrefs, setPrefs } from './session.js';
 import { handleThemeToggle } from '../theme-manager.js';
 import { showToast } from '../toast.js';
 import { $ } from '../core/dom.js';
@@ -30,6 +31,21 @@ function renderTheme() {
   $('set-theme-light')?.setAttribute('aria-pressed', String(!dark));
 }
 
+function renderEditorPrefs() {
+  const p = getPrefs();
+  $('set-wrap')?.setAttribute('aria-checked', String(p.wrap));
+  $('set-restore')?.setAttribute('aria-checked', String(p.restore));
+  $('set-tab-2')?.setAttribute('aria-pressed', String(p.tabSize === 2));
+  $('set-tab-4')?.setAttribute('aria-pressed', String(p.tabSize !== 2));
+}
+
+/** Apply saved editor preferences (called once at start-up). */
+export function applyEditorPrefs() {
+  const p = getPrefs();
+  setWordWrap(p.wrap);
+  setTabSize(p.tabSize);
+}
+
 function renderFont() {
   const $v = $('set-font-value');
   if ($v) $v.textContent = `${state.fontSize} px`;
@@ -48,6 +64,7 @@ export function openSettings() {
   renderFx();
   renderTheme();
   renderFont();
+  renderEditorPrefs();
   $('settings-modal')?.classList.remove('hidden');
   $('set-fx')?.focus();
 }
@@ -74,5 +91,22 @@ export function initSettings() {
   $('set-theme-dark')?.addEventListener('click', () => setTheme('dark'));
   $('set-theme-light')?.addEventListener('click', () => setTheme('light'));
   $('set-font-dec')?.addEventListener('click', () => { adjustFontSize(-1); renderFont(); });
+  $('set-wrap')?.addEventListener('click', () => {
+    const wrap = !getPrefs().wrap;
+    setPrefs({ wrap });
+    setWordWrap(wrap);
+    renderEditorPrefs();
+  });
+  $('set-restore')?.addEventListener('click', () => {
+    setPrefs({ restore: !getPrefs().restore });
+    renderEditorPrefs();
+  });
+  for (const n of [2, 4]) {
+    $(`set-tab-${n}`)?.addEventListener('click', () => {
+      setPrefs({ tabSize: n });
+      setTabSize(n);
+      renderEditorPrefs();
+    });
+  }
   $('set-font-inc')?.addEventListener('click', () => { adjustFontSize(1); renderFont(); });
 }

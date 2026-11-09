@@ -23,6 +23,11 @@ export const DEFAULT_SHORTCUTS = {
   'focus-terminal': { ctrl: true, shift: false, alt: false, key: '2' },
   'toggle-theme':   { ctrl: true, shift: false, alt: false, key: 't' },
   'cmd-palette':    { ctrl: true, shift: true,  alt: false, key: 'p' },
+  'open-folder':    { ctrl: true, shift: true,  alt: false, key: 'o' },
+  'search-files':   { ctrl: true, shift: true,  alt: false, key: 'f' },
+  'toggle-sidebar': { ctrl: true, shift: false, alt: false, key: 'b' },
+  'toggle-split':   { ctrl: true, shift: false, alt: false, key: '\\' },
+  'open-shell':     { ctrl: true, shift: false, alt: false, key: '`' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -42,6 +47,11 @@ export const SHORTCUT_LABELS = {
   'focus-terminal': 'Focus Terminal',
   'toggle-theme':   'Toggle Theme',
   'cmd-palette':    'Command Palette',
+  'open-folder':    'Open Folder',
+  'search-files':   'Search in Project',
+  'toggle-sidebar': 'Show / Hide Sidebar',
+  'toggle-split':   'Split Editor',
+  'open-shell':     'Open Terminal',
 };
 
 const KEY_NAMES = {
