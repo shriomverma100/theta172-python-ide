@@ -45,3 +45,23 @@ KeyError: 'age'`;
     expect(errorLineInUserCode('  File "/usr/lib/python3/json/decoder.py", line 355, in raw_decode', 'main.py')).toBeNull();
   });
 });
+
+describe('tracebacks inside a project', () => {
+  it('shows project paths relative to the project folder', () => {
+    const tb = String.raw`  File "D:\Projects\Dice Game\main.py", line 2, in <module>
+    from src.helpers import add
+  File "d:\projects\dice game\src\helpers.py", line 4, in add
+ZeroDivisionError: division by zero`;
+    const out = tidyTraceback(tb, 'main.py', String.raw`D:\Projects\Dice Game`);
+    expect(out).toContain('File "main.py", line 2');
+    expect(out).toContain(String.raw`File "src\helpers.py", line 4`); // Windows: case-insensitive
+    expect(out).not.toContain('Projects');
+  });
+
+  it('highlights the active project file by its relative path', () => {
+    const tb = String.raw`  File "main.py", line 2, in <module>
+  File "src\helpers.py", line 4, in add`;
+    expect(errorLineInUserCode(tb, String.raw`src\helpers.py`)).toBe(4);
+    expect(errorLineInUserCode(tb, 'main.py')).toBe(2);
+  });
+});
