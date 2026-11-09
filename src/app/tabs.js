@@ -288,6 +288,26 @@ export function editTab(tabId, makeChanges) {
   return true;
 }
 
+/**
+ * Apply a transaction spec without text changes (effects such as breakpoints)
+ * to any tab: the active one in the editor, others in their stored state.
+ */
+export function updateTabState(tabId, spec) {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab) return false;
+  if (tab.id === activeTabId) getView().dispatch(spec);
+  else if (tab.editorState) tab.editorState = tab.editorState.update(spec).state;
+  else return false;
+  return true;
+}
+
+/** The editor state of any tab (the live one for the active tab), or null. */
+export function getTabState(tabId) {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab) return null;
+  return tab.id === activeTabId ? getView()?.state ?? null : tab.editorState;
+}
+
 /** Open a file in a tab without showing it (multi-file rename). */
 export function addBackgroundTab(name, code, filePath) {
   const tab = createTabData(name, code, filePath);

@@ -18,6 +18,7 @@ import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { linter, lintGutter } from '@codemirror/lint';
 import { tags } from '@lezer/highlight';
+import { debugEditorExtension } from './debug-editor.js';
 
 // ── Compartments for dynamic reconfiguration ──────────────────
 const themeCompartment = new Compartment();
@@ -424,7 +425,8 @@ function fontSizeTheme(size) {
 // ── Create Editor ─────────────────────────────────────────────
 export async function createEditor(container) {
   const extensions = [
-    // Core
+    // Core (the breakpoint gutter sits left of the line numbers, as in VS Code)
+    debugEditorExtension,
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),

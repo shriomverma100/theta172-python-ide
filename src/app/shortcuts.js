@@ -36,6 +36,15 @@ export const DEFAULT_SHORTCUTS = {
   'go-symbol':        { ctrl: true,  shift: false, alt: false, key: 'r' },
   'workspace-symbol': { ctrl: true,  shift: true,  alt: false, key: 'r' },
   'show-problems':    { ctrl: true,  shift: true,  alt: false, key: 'm' },
+  // Debugger (Phase 5)
+  'debug-start':       { ctrl: false, shift: false, alt: false, key: 'F5' },
+  'debug-stop':        { ctrl: false, shift: true,  alt: false, key: 'F5' },
+  'debug-restart':     { ctrl: true,  shift: true,  alt: false, key: 'F5' },
+  'debug-pause':       { ctrl: false, shift: false, alt: false, key: 'F6' },
+  'step-over':         { ctrl: false, shift: false, alt: false, key: 'F10' },
+  'step-into':         { ctrl: false, shift: false, alt: false, key: 'F11' },
+  'step-out':          { ctrl: false, shift: true,  alt: false, key: 'F11' },
+  'toggle-breakpoint': { ctrl: false, shift: false, alt: false, key: 'F9' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -67,6 +76,14 @@ export const SHORTCUT_LABELS = {
   'go-symbol':        'Go to Symbol in File',
   'workspace-symbol': 'Go to Symbol in Project',
   'show-problems':    'Show Problems',
+  'debug-start':       'Start Debugging / Continue',
+  'debug-stop':        'Stop Debugging',
+  'debug-restart':     'Restart Debugging',
+  'debug-pause':       'Pause',
+  'step-over':         'Step Over',
+  'step-into':         'Step Into',
+  'step-out':          'Step Out',
+  'toggle-breakpoint': 'Toggle Breakpoint',
 };
 
 const KEY_NAMES = {

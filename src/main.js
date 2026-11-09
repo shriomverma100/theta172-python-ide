@@ -38,6 +38,10 @@ import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
 import {
+  initDebugger, startDebugging, stopDebugging, restartDebugging, pauseDebugging, stepOver, stepInto, stepOut,
+  toggleBreakpoint, isDebugging,
+} from './app/debugger.js';
+import {
   initLanguageServer, goToDefinition, findReferences, renameSymbol, formatDocument, goToSymbolInFile,
   goToSymbolInProject, restartLanguageServer, isLanguageServerReady, problemSummary,
 } from './app/lsp.js';
@@ -73,7 +77,8 @@ import { initAccessibility } from './app/a11y.js';
 
 // ── Global error reporting ───────────────────────────────────────
 window.onerror = (message, source, line, col, error) => {
-  console.error(`[THETA] Uncaught error: ${message} (${source}:${line}:${col})`, error);
+  // The stack goes into the text too: logs and the smoke test only keep the message
+  console.error(`[THETA] Uncaught error: ${message} (${source}:${line}:${col}) ${error?.stack || ''}`, error);
   try { showToast(`Error: ${message}`, 'error', 4000); } catch (_) { /* toast itself failed */ }
   return true;
 };
@@ -135,6 +140,14 @@ const actions = {
   'workspace-symbol': goToSymbolInProject,
   'show-problems': () => switchPane('problems'),
   'restart-language-server': restartLanguageServer,
+  'debug-start': startDebugging,
+  'debug-stop': stopDebugging,
+  'debug-restart': restartDebugging,
+  'debug-pause': pauseDebugging,
+  'step-over': stepOver,
+  'step-into': stepInto,
+  'step-out': stepOut,
+  'toggle-breakpoint': toggleBreakpoint,
   'manage-packages': () => { switchPane('terminal'); state.pipManager?.toggle(true); },
   'check-environment': checkEnvironment,
 };
@@ -181,6 +194,7 @@ function initButtons() {
     else { showSidebar(true); showSidebarView('files'); }
   });
   $('rail-search')?.addEventListener('click', () => { showSidebar(true); focusSearch(); });
+  $('rail-debug')?.addEventListener('click', () => { showSidebar(true); showSidebarView('debug'); });
   $('btn-split')?.addEventListener('click', toggleSplitView);
   $('rail-classroom')?.addEventListener('click', () => openClassroomPanel());
   $('rail-examples')?.addEventListener('click', openExamples);
@@ -330,6 +344,21 @@ async function initIDE() {
         return true;
       },
       complete: () => startCompletion(getView()),
+      // Debugger (Phase 5)
+      toggleBreakpointLine(n) {
+        const view = getView();
+        view.dispatch({ selection: { anchor: view.state.doc.line(n).from } });
+        toggleBreakpoint();
+      },
+      submitInput: (text) => state.terminal?.onInputSubmit?.(text),
+      debugState: () => ({
+        active: isDebugging(),
+        status: document.getElementById('dbg-status-text')?.textContent || '',
+        pausedLine: (() => {
+          const el = document.querySelector('.cm-debug-paused-line');
+          return el ? getView().state.doc.lineAt(getView().posAtDOM(el)).number : null;
+        })(),
+      }),
       /** Screen position of `text` (+ offset) in the editor, for hover tests. */
       coordsOf(text, offsetInText = 0) {
         const view = getView();
@@ -411,6 +440,7 @@ initTheme({
 state.pipManager = new PipManager();
 state.pipManager.init(); // runtime.js binds it to the chosen runtime
 initFixBar();
+initDebugger();
 initAccessibility();
 
 initIDE().catch((err) => {

@@ -127,22 +127,27 @@ export function focusSearch() {
   $in?.select();
 }
 
+/** Show one sidebar view: 'files', 'search' or 'debug'. */
 export function showSidebarView(view) {
-  const search = view === 'search';
-  $('files-view')?.classList.toggle('hidden', search);
-  $('search-view')?.classList.toggle('hidden', !search);
-  $('sidebar')?.classList.toggle('search-mode', search);
-  $('view-files')?.classList.toggle('active', !search);
-  $('view-search')?.classList.toggle('active', search);
-  $('view-files')?.setAttribute('aria-selected', String(!search));
-  $('view-search')?.setAttribute('aria-selected', String(search));
-  $('rail-files')?.classList.toggle('is-active', !search);
-  $('rail-search')?.classList.toggle('is-active', search);
+  for (const v of ['files', 'search', 'debug']) {
+    const on = v === view;
+    $(`${v}-view`)?.classList.toggle('hidden', !on);
+    $(`view-${v}`)?.classList.toggle('active', on);
+    $(`view-${v}`)?.setAttribute('aria-selected', String(on));
+    $(`rail-${v}`)?.classList.toggle('is-active', on);
+  }
+  // File actions (new file / folder) only belong to the Files view
+  $('sidebar')?.classList.toggle('search-mode', view !== 'files');
+}
+
+export function currentSidebarView() {
+  return ['search', 'debug'].find((v) => !$(`${v}-view`)?.classList.contains('hidden')) || 'files';
 }
 
 export function initSearch() {
   $('view-files')?.addEventListener('click', () => showSidebarView('files'));
   $('view-search')?.addEventListener('click', focusSearch);
+  $('view-debug')?.addEventListener('click', () => showSidebarView('debug'));
   $('search-input')?.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(runSearch, 280); });
   $('search-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(timer); runSearch(); } });
   $('replace-all')?.addEventListener('click', replaceAll);

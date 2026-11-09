@@ -185,6 +185,8 @@ function finishRun({ durationMs, failed, message }) {
 // ── Run / Stop ───────────────────────────────────────────────────
 
 export async function runCode() {
+  // While debugging, Run acts as Stop for the debug session
+  if (state.debugging) { state.stopDebug?.(); return; }
   clearErrorHighlights();
   const ready = state.useLocalPython || state.workerManager?.isReady;
   if (!ready) {
@@ -232,6 +234,7 @@ export async function runCode() {
 }
 
 export function stopCode() {
+  if (state.debugging) { state.stopDebug?.(); return; }
   const wasRunning = state.isRunning;
   if (state.useLocalPython) window.electronAPI.killPython();
   else state.workerManager?.kill(); // Pyodide reports back via onInterrupted
