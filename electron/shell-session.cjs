@@ -40,7 +40,7 @@ class ShellSession {
    * Start (or restart) the shell.
    * @returns {{ ok: true, shell: string } | { ok: false, error: string }}
    */
-  start(sender, { cols = 80, rows = 24, cwd } = {}) {
+  start(sender, { cols = 80, rows = 24, cwd, env = process.env } = {}) {
     this.kill();
     let pty;
     try {
@@ -57,7 +57,7 @@ class ShellSession {
         cols: clamp(cols, 10, 500),
         rows: clamp(rows, 2, 200),
         cwd: dir,
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8', TERM_PROGRAM: 'theta172' },
+        env: { ...env, PYTHONIOENCODING: 'utf-8', TERM_PROGRAM: 'theta172' },
       });
     } catch (err) {
       return { ok: false, error: `Could not start ${shell.file}: ${err.message}` };

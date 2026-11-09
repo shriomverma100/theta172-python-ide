@@ -32,8 +32,10 @@ class PythonRunner {
     this.current = null;
   }
 
-  setPython(cmd) {
+  /** @param {string|null} cmd  @param {object} [env] environment for runs (an activated venv) */
+  setPython(cmd, env) {
     this.pythonPath = cmd;
+    this._runEnv = env || null;
   }
 
   get isRunning() {
@@ -60,7 +62,7 @@ class PythonRunner {
       return;
     }
     if (!this.pythonPath) {
-      send('python-stderr', 'Python not found on system.\n');
+      send('python-stderr', 'No Python selected. Click the Python version in the status bar to choose one.\n');
       send('python-done', 1);
       return;
     }
@@ -82,7 +84,7 @@ class PythonRunner {
       }
     }
 
-    const env = { ...this._env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' };
+    const env = { ...(this._runEnv || this._env), PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' };
     // An unsaved tab still imports project modules
     if (cwd) env.PYTHONPATH = env.PYTHONPATH ? `${cwd}${path.delimiter}${env.PYTHONPATH}` : cwd;
 

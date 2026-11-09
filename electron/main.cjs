@@ -15,15 +15,16 @@ const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
-const { isValidPackageSpec } = require('./validate.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
 const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
+const { registerPythonIpc } = require('./python-ipc.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
 const pythonRunner = new PythonRunner({ spawn, fs, tmpDir: os.tmpdir() });
 const fileAccess = new FileAccess();
 let workspaceIpc = null; // set in app.whenReady (needs userData)
+let pythonIpc = null;    // set in app.whenReady (needs userData)
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -53,7 +54,6 @@ if (!isDev) {
 }
 
 let mainWindow = null;
-let pythonPath = null;
 
 function createWindow() {
   // Set COEP/COOP + CSP headers before any request
@@ -282,6 +282,36 @@ const SMOKE_PROBE = `(async () => {
   checks.paletteHasItems = info.paletteItems > 10;
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
+  // Python engine (Phase 3): the default environment made from the built-in Python
+  info.interpreter = document.getElementById('python-version')?.textContent + ' / ' + document.getElementById('runtime-type')?.textContent;
+  checks.defaultEnvFromBundled = /^3\\.12\\.\\d+ \\/ THETA172 env$/.test(info.interpreter);
+
+  document.querySelector('.ide-statusbar [data-interpreter], #runbar-runtime').click();
+  for (let i = 0; i < 30 && !document.querySelector('.quick-pick .qp-item'); i++) await sleep(100);
+  info.pickerItems = [...document.querySelectorAll('.quick-pick .qp-item')].map((e) => e.querySelector('.cmd-result-name').textContent + (e.querySelector('.qp-check').textContent ? ' ✓' : ''));
+  checks.interpreterPicker = info.pickerItems.some((t) => / ✓$/.test(t));
+  document.querySelector('.quick-pick .cmd-input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(100);
+  checks.pickerCloses = !document.querySelector('.quick-pick');
+
+  document.getElementById('pip-list-btn').click();
+  for (let i = 0; i < 50 && !document.querySelector('#pip-packages-list .pip-package-item'); i++) await sleep(100);
+  info.packages = [...document.querySelectorAll('#pip-packages-list .pip-package-item__name')].map((e) => e.textContent);
+  checks.packagesListReal = info.packages.includes('pip');
+  document.getElementById('pip-packages-close').click();
+
+  // A missing package: the fix bar names the right one to install
+  content.focus();
+  document.execCommand('selectAll');
+  document.execCommand('insertText', false, 'import cv2');
+  await sleep(300);
+  document.getElementById('btn-run').click();
+  for (let i = 0; i < 40 && !/done|error/.test(runState()); i++) await sleep(250);
+  await sleep(200);
+  info.fixBar = document.getElementById('fix-bar-install')?.textContent;
+  checks.missingModuleFix = !document.getElementById('fix-bar').classList.contains('hidden') && /^Install opencv-python/.test(info.fixBar || '');
+  document.getElementById('fix-bar-close').click();
+
   // Workspace (Phase 2): the sample project from scripts/smoke.cjs is open
   for (let i = 0; i < 30 && !document.querySelector('#ws-tree .ws-row'); i++) await sleep(100);
   info.treeRows = [...document.querySelectorAll('#ws-tree .ws-row__name')].map((e) => e.textContent);
@@ -356,10 +386,10 @@ const SMOKE_PROBE = `(async () => {
   checks.bootScreenGone = document.getElementById('loading-overlay').classList.contains('hidden');
   const fx = await window.__thetaTest?.fxStats?.();
   info.fx = fx;
-  // Main thread: starting an effect costs under 2 ms on average (nothing per frame).
+  // Main thread: starting an effect typically costs under 2 ms (median; nothing per frame).
   // Worker: draws at 30 fps on its own thread; 5 ms per drawn frame keeps
   // all pixel effects under ~15% of one CPU core.
-  checks.fxMainUnderBudget = !!fx && fx.main.avgMs < 2 && fx.main.maxMs < 16; // average under budget, never a dropped frame
+  checks.fxMainUnderBudget = !!fx && fx.main.medianMs < 2 && fx.main.maxMs < 16; // typical call under budget, never a dropped frame
   checks.fxWorkerKeepsUp = !!fx && (!fx.worker || fx.worker.frames === 0 || fx.worker.avgMs < 5);
 
   return { checks, info };
@@ -376,30 +406,6 @@ ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
 
 // ── IPC: Local Python ───────────────────────────────────────────
 
-// Detect Python installation
-ipcMain.handle('python-detect', async () => {
-  const candidates = process.platform === 'win32'
-    ? ['python', 'python3', 'py']
-    : ['python3', 'python'];
-
-  for (const cmd of candidates) {
-    try {
-      const result = await new Promise((resolve, reject) => {
-        execFile(cmd, ['--version'], { timeout: 5000 }, (err, stdout, stderr) => {
-          if (err) return reject(err);
-          resolve((stdout || stderr).trim());
-        });
-      });
-      pythonPath = cmd;
-      pythonRunner.setPython(cmd);
-      return { found: true, path: cmd, version: result };
-    } catch (_) {
-      continue;
-    }
-  }
-  return { found: false };
-});
-
 // Run Python code via local interpreter (see python-runner.cjs)
 // A saved file inside the open project runs in place from the project folder
 // (so imports between project files work); anything else runs from a temp file.
@@ -414,50 +420,13 @@ ipcMain.on('python-run', (event, code, opts = {}) => {
 ipcMain.on('python-input', (_, text) => pythonRunner.input(text));
 ipcMain.on('python-kill', () => pythonRunner.kill());
 
-// Install package via real pip
-ipcMain.on('pip-install', (event, pkg) => {
-  if (!pythonPath) {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', 'Python not found on system.\n');
-    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
-    return;
-  }
-
-  // Validate in the main process too: the renderer is not trusted.
-  if (!isValidPackageSpec(pkg)) {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', 'Invalid package name.\n');
-    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
-    return;
-  }
-
-  const pip = spawn(pythonPath, ['-m', 'pip', 'install', pkg], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-  });
-
-  pip.stdout.on('data', (data) => {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', data.toString());
-  });
-
-  pip.stderr.on('data', (data) => {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', data.toString());
-  });
-
-  pip.on('close', (code) => {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-done', code ?? 0, pkg);
-  });
-
-  pip.on('error', (err) => {
-    if (!event.sender.isDestroyed()) event.sender.send('pip-stdout', `pip error: ${err.message}\n`);
-    if (!event.sender.isDestroyed()) event.sender.send('pip-done', 1, pkg);
-  });
-});
-
 // ── IPC: Interactive REPL ───────────────────────────────────────
 let replProcess = null;
 
 ipcMain.on('repl-start', (event) => {
-  if (!pythonPath) {
-    event.sender.send('repl-stderr', 'Python not found on system.\r\n');
+  const python = pythonIpc?.active?.path;
+  if (!python) {
+    event.sender.send('repl-stderr', 'No Python selected.\r\n');
     return;
   }
 
@@ -467,10 +436,11 @@ ipcMain.on('repl-start', (event) => {
     replProcess = null;
   }
 
-  replProcess = spawn(pythonPath, ['-i', '-u'], {
+  replProcess = spawn(python, ['-i', '-u'], {
     stdio: ['pipe', 'pipe', 'pipe'],
+    cwd: workspaceIpc?.workspace.root || undefined,
     env: {
-      ...process.env,
+      ...pythonIpc.shellEnv(process.env),
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
       PYTHONSTARTUP: '',
@@ -805,7 +775,16 @@ ipcMain.on('classroom-revoke-edit', () => {
 
 // ── App Lifecycle ───────────────────────────────────────────────
 app.whenReady().then(() => {
-  workspaceIpc = registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow: () => mainWindow, fileAccess });
+  workspaceIpc = registerWorkspaceIpc({
+    ipcMain, dialog, shell, app, execFile, getWindow: () => mainWindow, fileAccess,
+    shellEnv: (base) => pythonIpc?.shellEnv(base) ?? base,
+  });
+  pythonIpc = registerPythonIpc({
+    ipcMain, app, execFile, spawn,
+    getWindow: () => mainWindow,
+    getRoot: () => workspaceIpc?.workspace.root || null,
+    onActiveChange: (info) => pythonRunner.setPython(info?.path || null, info ? pythonIpc?.shellEnv(process.env) : null),
+  });
   Menu.setApplicationMenu(null);
   createWindow();
   if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);

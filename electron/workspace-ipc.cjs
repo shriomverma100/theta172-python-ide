@@ -17,7 +17,7 @@ const { ShellSession } = require('./shell-session.cjs');
 
 const MAX_RECENT_FILES = 40;
 
-function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow, fileAccess }) {
+function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow, fileAccess, shellEnv = (base) => base }) {
   const workspace = new Workspace({ fs, trash: (p) => shell.trashItem(p), execFile });
   const terminal = new ShellSession();
   const stateFile = path.join(app.getPath('userData'), 'workspace.json');
@@ -131,7 +131,7 @@ function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow
   }));
 
   // ── System terminal ──
-  ipcMain.handle('shell-start', (event, size = {}) => terminal.start(event.sender, { cols: size.cols, rows: size.rows, cwd: workspace.root || undefined }));
+  ipcMain.handle('shell-start', (event, size = {}) => terminal.start(event.sender, { cols: size.cols, rows: size.rows, cwd: workspace.root || undefined, env: shellEnv(process.env) }));
   ipcMain.on('shell-input', (_e, data) => terminal.write(data));
   ipcMain.on('shell-resize', (_e, cols, rows) => terminal.resize(cols, rows));
   ipcMain.on('shell-kill', () => terminal.kill());

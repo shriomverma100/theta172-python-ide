@@ -36,6 +36,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runPython:     (code, opts) => ipcRenderer.send('python-run', code, opts),
   killPython:    ()       => ipcRenderer.send('python-kill'),
   pipInstall:    (pkg)    => ipcRenderer.send('pip-install', pkg),
+  pyInit:        ()       => ipcRenderer.invoke('py-init'),
+  pyList:        (rescan) => ipcRenderer.invoke('py-list', rescan),
+  pyActive:      ()       => ipcRenderer.invoke('py-active'),
+  pySelect:      (exe)    => ipcRenderer.invoke('py-select', exe),
+  pyCreateEnv:   ()       => ipcRenderer.invoke('py-create-env'),
+  pyInstall:     (specs)  => ipcRenderer.invoke('py-install', specs),
+  pyInstallRequirements: () => ipcRenderer.invoke('py-install-requirements'),
+  pyUninstall:   (name)   => ipcRenderer.invoke('py-uninstall', name),
+  pyPackages:    ()       => ipcRenderer.invoke('py-packages'),
+  pyCheck:       ()       => ipcRenderer.invoke('py-check'),
   sendPythonInput: (text) => ipcRenderer.send('python-input', text),
 
   // ── File System ──
@@ -75,6 +85,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPythonDone:    (cb) => safeOn('python-done',           (_, code) => cb(code)),
   onPythonInput:   (cb) => safeOn('python-input-request',  ()        => cb()),
   onPipStdout:     (cb) => safeOn('pip-stdout',            (_, data) => cb(data)),
+  onPyLog:         (cb) => safeOn('py-log',                (_, text) => cb(text)),
+  onPyStatus:      (cb) => safeOn('py-status',             (_, text) => cb(text)),
+  onPyChanged:     (cb) => safeOn('py-changed',            (_, st) => cb(st)),
   onPipDone:       (cb) => safeOn('pip-done',              (_, code, pkg) => cb(code, pkg)),
 
   // ── Interactive REPL ──
