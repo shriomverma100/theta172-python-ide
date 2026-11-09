@@ -397,6 +397,31 @@ export function viewerExtensions() {
   ];
 }
 
+/** Small code editors elsewhere (notebook cells) that follow the editor's look. */
+const cellViews = new Set();
+const styledViews = () => [...views, ...cellViews];
+
+/**
+ * Extensions that give a small Python editor (a notebook cell) the editor's
+ * theme, font size, wrapping, indentation and completions. Pass the view to
+ * trackCellView so later setting changes reach it too.
+ */
+export function cellEditorExtensions({ completions = true } = {}) {
+  return [
+    themeCompartment.of(editorThemeExtensions()),
+    fontSizeCompartment.of(fontSizeTheme(viewConfig.fontSize)),
+    wrapCompartment.of(wrapExt()),
+    tabSizeCompartment.of(tabSizeExt()),
+    completions ? autocompletion({ override: [pythonIntelliSense], activateOnTyping: true, maxRenderedOptions: 30 }) : [],
+  ];
+}
+
+/** Follow setting changes in a cell editor; returns a function that stops. */
+export function trackCellView(view) {
+  cellViews.add(view);
+  return () => cellViews.delete(view);
+}
+
 // ── Starter Code ──────────────────────────────────────────────
 export const STARTER_CODE = `# Welcome to Python by THETA172
 # Press Ctrl+Enter to run  ·  Ctrl+Shift+P for commands
@@ -688,19 +713,19 @@ export function focusEditor() {
 /** Update font size (both halves of the split editor) */
 export function setFontSize(size) {
   viewConfig.fontSize = size;
-  for (const v of views) v?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)) });
+  for (const v of styledViews()) v?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(size)) });
 }
 
 /** Soft-wrap long lines on or off. */
 export function setWordWrap(on) {
   viewConfig.wrap = !!on;
-  for (const v of views) v?.dispatch({ effects: wrapCompartment.reconfigure(wrapExt()) });
+  for (const v of styledViews()) v?.dispatch({ effects: wrapCompartment.reconfigure(wrapExt()) });
 }
 
 /** Spaces per indent level (2 or 4). */
 export function setTabSize(n) {
   viewConfig.tabSize = n === 2 ? 2 : 4;
-  for (const v of views) v?.dispatch({ effects: tabSizeCompartment.reconfigure(tabSizeExt()) });
+  for (const v of styledViews()) v?.dispatch({ effects: tabSizeCompartment.reconfigure(tabSizeExt()) });
 }
 
 /** Get cursor position */
@@ -771,14 +796,14 @@ export function toggleEditorTheme() {
   if (!editorView) return currentTheme;
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-  for (const v of views) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of styledViews()) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
   return currentTheme;
 }
 
 /** Switch the code colours to the Playground or Pro palette. */
 export function setAppTheme(name) {
   appTheme = name === 'pro' ? 'pro' : 'playground';
-  for (const v of views) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
+  for (const v of styledViews()) v?.dispatch({ effects: themeCompartment.reconfigure(editorThemeExtensions()) });
 }
 
 export function getEditorTheme() {

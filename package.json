@@ -32,7 +32,8 @@
     "asarUnpack": [
       "node_modules/ws/**/*",
       "node_modules/node-pty/**/*",
-      "node_modules/basedpyright/**/*"
+      "node_modules/basedpyright/**/*",
+      "electron/kernel/**/*"
     ],
     "directories": {
       "output": "release",

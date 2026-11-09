@@ -66,6 +66,8 @@ import { startCompletion } from '@codemirror/autocomplete';
 import { initWorkspace, openFolder, closeFolder, createItem, onWorkspaceChange, render as renderExplorer } from './app/workspace.js';
 import { initSearch, focusSearch, showSidebarView } from './app/search.js';
 import { initSession, restoreSession, saveSessionSoon } from './app/session.js';
+import { initNotebooks, newNotebook, activeNotebook } from './notebook/notebooks.js';
+import { toPythonScript } from './notebook/model.js';
 import { ShellTerminal } from './app/shell-terminal.js';
 import { saveToFile, saveAsFile, openFile, initFileInputs } from './app/files.js';
 import { updateCodeStats, markUnsaved, scheduleAutoSave, saveCode } from './app/autosave.js';
@@ -78,7 +80,7 @@ import { initCommandPalette, toggleCommandPalette, openCommandPalette, isPalette
 import { initModals, openExamples, openShortcuts, closeAllModals } from './app/modals.js';
 import { fixCode } from './app/ai-fix.js';
 import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js';
-import { initContextMenu } from './app/context-menu.js';
+import { initContextMenu, showMenu } from './app/context-menu.js';
 import { initAccessibility } from './app/a11y.js';
 
 // ── Global error reporting ───────────────────────────────────────
@@ -97,15 +99,25 @@ window.onunhandledrejection = (event) => {
 
 // ── Actions shared by buttons, shortcuts, palette and menus ──────
 function copyCode() {
-  navigator.clipboard.writeText(getValue())
-    .then(() => showToast('Code copied to clipboard', 'success', 2000))
+  // In a notebook: the selected cell
+  const nb = activeNotebook();
+  const text = nb ? nb.cell(nb.selected)?.source ?? '' : getValue();
+  navigator.clipboard.writeText(text)
+    .then(() => showToast(nb ? 'Cell copied to clipboard' : 'Code copied to clipboard', 'success', 2000))
     .catch(() => showToast('Failed to copy', 'error', 2000));
 }
 
 /** Persist locally, then write the file; resolves true when saved. */
 async function saveAll() {
-  saveCode();
+  if (!activeNotebook()) saveCode(); // the local copy is of the code editor
   return saveToFile();
+}
+
+/** Notebook commands act on the notebook in the focused group. */
+function withNotebook(fn) {
+  const nb = activeNotebook();
+  if (nb) fn(nb);
+  else showToast('Open a notebook (.ipynb) first', 'info', 2000);
 }
 
 const actions = {
@@ -117,6 +129,12 @@ const actions = {
   'save-as': saveAsFile,
   'open-file': openFile,
   'new-tab': () => addNewTab(null, '# New file\n'),
+  'new-notebook': newNotebook,
+  'nb-run-all': () => withNotebook((nb) => nb.runAll()),
+  'nb-run-above': () => withNotebook((nb) => nb.runUpTo()),
+  'nb-restart': () => withNotebook((nb) => nb.restart()),
+  'nb-clear': () => withNotebook((nb) => nb.clearOutputs()),
+  'nb-export-py': () => withNotebook((nb) => addNewTab(getActiveFileName().replace(/\.ipynb$/i, '.py'), toPythonScript(nb.nb))),
   'find-replace': openFindReplace,
   'fix-code': fixCode,
   'font-inc': () => adjustFontSize(1),
@@ -227,7 +245,15 @@ function initButtons() {
   $('btn-font-dec')?.addEventListener('click', () => adjustFontSize(-1));
   $('btn-palette')?.addEventListener('click', openCommandPalette);
   $('btn-classroom')?.addEventListener('click', () => openClassroomPanel());
-  $('btn-new-tab')?.addEventListener('click', () => addNewTab(null, '# New file\n'));
+  // "+" offers a Python file or a notebook (Ctrl+N still makes a Python file at once)
+  $('btn-new-tab')?.addEventListener('click', (e) => {
+    e.stopPropagation(); // the document click would close the menu straight away
+    const r = e.currentTarget.getBoundingClientRect();
+    showMenu([
+      { label: 'New Python file', shortcut: 'Ctrl+N', action: () => addNewTab(null, '# New file\n') },
+      { label: 'New notebook (.ipynb)', action: newNotebook },
+    ], r.left, r.bottom + 4);
+  });
 }
 
 // ── Editor change pipeline ───────────────────────────────────────
@@ -303,6 +329,7 @@ async function initIDE() {
 
   applyEditorPrefs();
   const savedCode = storageGet('theta-code'); // single-file autosave from older versions
+  initNotebooks(); // before any tab opens, so .ipynb files open as notebooks
   initTabs(savedCode || STARTER_CODE);
   initWorkspace();
   initSearch();
@@ -346,6 +373,7 @@ async function initIDE() {
       },
       fxStats: () => fx.stats(),
       setCode: (code) => setValue(code),
+      notebook: () => activeNotebook(),
       // Language intelligence (Phase 4)
       lspReady: () => isLanguageServerReady(),
       problems: () => problemSummary(),

@@ -173,6 +173,8 @@ const DBG_CODE = 'def average(scores):\\n    total = 0\\n    for s in scores:\\n
 const DBG_SETUP = `(async () => {
   const t = window.__thetaTest;
   document.getElementById('btn-new-tab').click();
+  await new Promise(r => setTimeout(r, 150));
+  [...document.querySelectorAll('#context-menu.visible .ctx-item')].find((i) => i.textContent.startsWith('New Python file'))?.click();
   await new Promise(r => setTimeout(r, 300));
   t.setCode('${DBG_CODE}');
   t.toggleBreakpointLine(4);
@@ -390,8 +392,79 @@ const GROUP_SCENES = [
   })()`, wait: 300 },
 ];
 
+// Notebooks tour (Phase 8): THETA_SHOTS_SET=notebook
+const NB_OPEN = `(async () => {
+  const row = (name) => [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith(name));
+  ${waitFor("row('notebooks')")}
+  row('notebooks')?.click();
+  ${waitFor("row('explore.ipynb')")}
+  row('explore.ipynb')?.click();
+  ${waitFor("document.querySelector('#monaco-container .nb')")}
+  await new Promise(r => setTimeout(r, 500));
+})()`;
+const NB_SCROLL = (where) => `document.querySelector('.nb-scroll').scrollTop = ${where};`;
+const NB_SCENES = [
+  { name: 'n01-picker', wait: 4500 },
+  { name: 'n02-play-notebook', js: `document.querySelector('[data-pick="playground"]').click(); ${NB_OPEN}`, wait: 300 },
+  { name: 'n03-play-ran', js: `(async () => {
+    document.querySelector('.nb .nb-btn--primary').click();
+    for (let i = 0; i < 300 && !document.querySelector('.nb-input__box'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 300));
+    ${NB_SCROLL(0)}
+  })()`, wait: 300 },
+  { name: 'n04-play-plot', js: `(async () => {
+    document.querySelector('.nb-cell[data-cell="plot"]')?.scrollIntoView({ block: 'center' });
+  })()`, wait: 400 },
+  { name: 'n05-play-input', js: `(async () => {
+    document.querySelector('.nb-input')?.scrollIntoView({ block: 'center' });
+    const box = document.querySelector('.nb-input__box');
+    if (box) { box.focus(); box.value = 'Kabir'; }
+  })()`, wait: 300 },
+  { name: 'n06-play-error', js: `(async () => {
+    const box = document.querySelector('.nb-input__box');
+    box?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    for (let i = 0; i < 100 && !document.querySelector('.nb-out--error'); i++) await new Promise(r => setTimeout(r, 100));
+    window.__thetaTest.notebook()?.runCell('oops');
+    for (let i = 0; i < 100 && !document.querySelector('.nb-cell[data-cell="oops"] .nb-out--error'); i++) await new Promise(r => setTimeout(r, 100));
+    document.querySelector('.nb-scroll').scrollTop = 1e6;
+  })()`, wait: 400 },
+  { name: 'n07-play-command-mode', js: `(async () => {
+    const nb = window.__thetaTest.notebook();
+    nb.selectAndShow('avg');
+    document.querySelector('.nb-cell[data-cell="avg"]').scrollIntoView({ block: 'start' });
+  })()`, wait: 400 },
+  { name: 'n07b-play-new-text', js: `(async () => {
+    [...document.querySelectorAll('.nb-bar .nb-btn')].find((b) => b.textContent === '+ Text').click();
+    await new Promise(r => setTimeout(r, 200));
+    const nb = window.__thetaTest.notebook();
+    const cell = nb.cell(nb.selected);
+    nb.cellViews.get(cell.id).editor.dispatch({ changes: { from: 0, insert: '## Notes\\nThe **lowest** score is below the average.' } });
+    nb.cellViews.get(cell.id).root.scrollIntoView({ block: 'center' });
+  })()`, wait: 400 },
+  { name: 'n07c-play-text-done', js: `(async () => {
+    document.querySelector('.nb-cell--selected .nb-cell__run--done')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.querySelector('.nb-cell--selected .nb-cell__run--done')?.click();
+  })()`, wait: 400 },
+  { name: 'n08-pro-notebook', js: `(async () => {
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    ${NB_SCROLL(0)}
+  })()`, wait: 300 },
+  { name: 'n09-pro-plot', js: `document.querySelector('.nb-cell[data-cell="plot"]')?.scrollIntoView({ block: 'center' });`, wait: 400 },
+  { name: 'n10-pro-edit-markdown', js: `(async () => {
+    window.__thetaTest.notebook().editMarkdown('intro');
+    ${NB_SCROLL(0)}
+  })()`, wait: 400 },
+  { name: 'n11-pro-palette', js: `(async () => {
+    document.getElementById('btn-palette').click();
+    await new Promise(r => setTimeout(r, 200));
+    const input = document.querySelector('#cmd-palette input, .cmd-palette input, #palette-input');
+    if (input) { input.value = 'notebook'; input.dispatchEvent(new Event('input', { bubbles: true })); }
+  })()`, wait: 400 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

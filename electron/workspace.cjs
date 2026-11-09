@@ -14,6 +14,7 @@ const path = require('path');
 /** Folders that are shown but never searched or expanded automatically. */
 const HEAVY_DIRS = new Set(['.git', 'node_modules', '__pycache__', '.venv', 'venv', 'env', '.mypy_cache', '.pytest_cache', '.ipynb_checkpoints', '.ruff_cache', 'dist', 'build']);
 const MAX_READ_BYTES = 5 * 1024 * 1024;
+const MAX_NOTEBOOK_BYTES = 40 * 1024 * 1024; // notebooks carry their plots
 const MAX_SEARCH_FILE_BYTES = 1024 * 1024;
 const MAX_SEARCH_MATCHES = 2000;
 const MAX_SEARCH_FILES = 5000;
@@ -113,7 +114,8 @@ class Workspace {
     const abs = this._inside(file);
     const st = await this._fsp.stat(abs);
     if (!st.isFile()) throw new WorkspaceError('Not a file.');
-    if (st.size > MAX_READ_BYTES) throw new WorkspaceError('File is larger than 5 MB.');
+    const notebook = /\.ipynb$/i.test(abs);
+    if (st.size > (notebook ? MAX_NOTEBOOK_BYTES : MAX_READ_BYTES)) throw new WorkspaceError(`File is larger than ${notebook ? 40 : 5} MB.`);
     const buf = await this._fsp.readFile(abs);
     if (buf.includes(0)) throw new WorkspaceError('This looks like a binary file.');
     return buf.toString('utf8');

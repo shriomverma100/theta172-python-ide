@@ -470,6 +470,10 @@ export async function startDebugging() {
     showToast('Open a Python file to debug', 'info', 2000);
     return;
   }
+  if (tab.kind === 'notebook') {
+    showToast('The debugger works on .py files. In a notebook, run cells one at a time to check each step.', 'info', 3200);
+    return;
+  }
   const inProject = !!(tab.filePath && isInWorkspace(tab.filePath));
   if (inProject && tab.unsaved) {
     if (!(await saveToFile())) return;

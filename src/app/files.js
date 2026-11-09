@@ -8,8 +8,14 @@ import { showToast } from '../toast.js';
 import { $ } from '../core/dom.js';
 import {
   addNewTab, getActiveFilePath, getActiveFileName, getActiveTab,
-  markActiveTabSaved, updateActiveTab,
+  markActiveTabSaved, updateActiveTab, tabText, isNotebookTab,
 } from './tabs.js';
+
+/** What Save writes for the active tab: the editor text, or a notebook's .ipynb. */
+function activeText() {
+  const tab = getActiveTab();
+  return isNotebookTab(tab) ? tabText(tab) : getValue();
+}
 
 let beforeSave = null;
 /**
@@ -19,7 +25,7 @@ let beforeSave = null;
 export function setBeforeSave(fn) { beforeSave = fn; }
 import { clearUnsavedDot } from './autosave.js';
 
-const OPENABLE = ['.py', '.pyw', '.txt'];
+const OPENABLE = ['.py', '.pyw', '.txt', '.ipynb'];
 
 /**
  * Save the active tab. Returns true when the content reached disk
@@ -30,11 +36,12 @@ export async function saveToFile() {
     showToast('Library files are read only', 'info', 2000);
     return false;
   }
-  if (beforeSave) {
+  const notebook = isNotebookTab(getActiveTab());
+  if (beforeSave && !notebook) {
     try { await beforeSave(getValue(), getActiveFileName()); } catch (_) { /* save anyway */ }
   }
-  const code = getValue();
-  if (!code.trim()) {
+  const code = activeText();
+  if (!notebook && !code.trim()) {
     showToast('Nothing to save — write some code first', 'info', 2000);
     return false;
   }
@@ -59,8 +66,8 @@ export async function saveToFile() {
   }
 
   // Browser fallback: download
-  const finalName = fileName.endsWith('.py') ? fileName : `${fileName}.py`;
-  const blob = new Blob([code], { type: 'text/x-python;charset=utf-8' });
+  const finalName = /\.(py|ipynb)$/.test(fileName) ? fileName : `${fileName}.py`;
+  const blob = new Blob([code], { type: finalName.endsWith('.ipynb') ? 'application/x-ipynb+json' : 'text/x-python;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -75,8 +82,8 @@ export async function saveToFile() {
 }
 
 export async function saveAsFile() {
-  const code = getValue();
-  if (!code.trim()) {
+  const code = activeText();
+  if (!isNotebookTab(getActiveTab()) && !code.trim()) {
     showToast('Nothing to save — write some code first', 'info', 2000);
     return false;
   }
@@ -144,7 +151,7 @@ export function initFileInputs(dropTarget) {
     if (OPENABLE.some((ext) => file.name.toLowerCase().endsWith(ext))) {
       readIntoNewTab(file, 'Dropped');
     } else {
-      showToast('Only .py, .pyw and .txt files are supported', 'info', 2000);
+      showToast('Only .py, .pyw, .txt and .ipynb files are supported', 'info', 2000);
     }
   });
 }

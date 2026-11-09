@@ -8,6 +8,27 @@ function hide() {
   menu?.classList.remove('visible');
 }
 
+/** The shared menu element (created on first use). */
+function ensureMenu() {
+  if (menu) return menu;
+  menu = document.createElement('div');
+  menu.className = 'theta-context-menu';
+  menu.id = 'context-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Actions');
+  document.body.appendChild(menu);
+  document.addEventListener('click', hide);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
+  window.addEventListener('blur', hide);
+  return menu;
+}
+
+/** Show a menu of { label, shortcut?, action } (or { type: 'separator' }) at x, y. */
+export function showMenu(items, x, y) {
+  ensureMenu();
+  show(items, x, y);
+}
+
 function show(items, x, y) {
   menu.innerHTML = '';
   for (const item of items) {
@@ -57,14 +78,9 @@ function show(items, x, y) {
  * @param {{ runCode: Function, openFindReplace: Function }} actions
  */
 export function initContextMenu(host, { runCode, openFindReplace }) {
-  if (!host || menu) return;
-
-  menu = document.createElement('div');
-  menu.className = 'theta-context-menu';
-  menu.id = 'context-menu';
-  menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', 'Editor actions');
-  document.body.appendChild(menu);
+  if (!host || host.dataset.ctxMenu) return;
+  host.dataset.ctxMenu = '1';
+  ensureMenu();
 
   const items = [
     { label: 'Cut', shortcut: 'Ctrl+X', action: () => document.execCommand('cut') },
@@ -90,8 +106,4 @@ export function initContextMenu(host, { runCode, openFindReplace }) {
     e.preventDefault();
     show(items, e.clientX, e.clientY);
   });
-
-  document.addEventListener('click', hide);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
-  window.addEventListener('blur', hide);
 }

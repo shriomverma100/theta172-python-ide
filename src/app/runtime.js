@@ -11,6 +11,7 @@ import { isTeacherLive, isStudentConnected, streamStudentOutput } from '../class
 import { state } from './state.js';
 import { saveCode } from './autosave.js';
 import { getActiveFileName, getActiveTab } from './tabs.js';
+import { runActiveNotebookCell, interruptActiveNotebook } from '../notebook/notebooks.js';
 import { getWorkspaceRoot, isInWorkspace, relativePath } from './workspace.js';
 import { saveToFile } from './files.js';
 import { tidyTraceback, errorLineInUserCode } from '../core/traceback.js';
@@ -187,6 +188,8 @@ function finishRun({ durationMs, failed, message }) {
 export async function runCode() {
   // While debugging, Run acts as Stop for the debug session
   if (state.debugging) { state.stopDebug?.(); return; }
+  // A notebook runs its selected cell in its own kernel
+  if (runActiveNotebookCell()) return;
   clearErrorHighlights();
   const ready = state.useLocalPython || state.workerManager?.isReady;
   if (!ready) {
@@ -235,6 +238,7 @@ export async function runCode() {
 
 export function stopCode() {
   if (state.debugging) { state.stopDebug?.(); return; }
+  if (!state.isRunning && interruptActiveNotebook()) return;
   const wasRunning = state.isRunning;
   if (state.useLocalPython) window.electronAPI.killPython();
   else state.workerManager?.kill(); // Pyodide reports back via onInterrupted

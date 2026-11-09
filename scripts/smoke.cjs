@@ -16,6 +16,17 @@ fs.mkdirSync(path.join(project, 'src'));
 fs.writeFileSync(path.join(project, 'src', '__init__.py'), '');
 fs.writeFileSync(path.join(project, 'src', 'helpers.py'), 'def add(a, b):\n    return a + b\n');
 fs.writeFileSync(path.join(project, 'main.py'), 'from src.helpers import add\nprint("IMPORT_OK", add(40, 2))\n');
+// A notebook: a heading and two code cells that share a variable
+fs.writeFileSync(path.join(project, 'analysis.ipynb'), JSON.stringify({
+  cells: [
+    { cell_type: 'markdown', id: 'm1', metadata: {}, source: ['# Smoke notebook\n', 'Runs **two** cells.'] },
+    { cell_type: 'code', id: 'c1', metadata: {}, execution_count: null, outputs: [], source: ['x = 6 * 7\n', 'print("NB_OK", x)\n', 'x'] },
+    { cell_type: 'code', id: 'c2', metadata: {}, execution_count: null, outputs: [], source: ['x + 1'] },
+  ],
+  metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
+  nbformat: 4,
+  nbformat_minor: 5,
+}, null, 1));
 
 // Tools like VS Code set ELECTRON_RUN_AS_NODE, which would start plain Node.
 // Git settings the test may write (name and email) go to a throwaway file,

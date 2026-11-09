@@ -24,6 +24,7 @@ const { registerLspIpc } = require('./lsp-ipc.cjs');
 const { registerDebugIpc } = require('./debug-ipc.cjs');
 const { registerStudyWindow } = require('./study-window.cjs');
 const { registerGitIpc } = require('./git-ipc.cjs');
+const { registerNotebookIpc } = require('./kernel.cjs');
 
 const classroomServer = new ClassroomServer();
 const classroomDiscovery = new ClassroomDiscovery();
@@ -34,6 +35,7 @@ let pythonIpc = null;    // set in app.whenReady (needs userData)
 let lspIpc = null;       // set in app.whenReady
 let debugIpc = null;     // set in app.whenReady
 let studyWindow = null;  // set in app.whenReady
+let notebookIpc = null;  // set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -298,8 +300,19 @@ const SMOKE_PROBE = `(async () => {
   await sleep(400);
   checks.timerStopped = document.getElementById('exec-time')?.textContent === t1;
 
+  // "+" opens a menu: a Python file or a notebook
+  window.__newPyTab = async () => {
+    document.getElementById('btn-new-tab').click();
+    await sleep(120);
+    [...document.querySelectorAll('#context-menu.visible .ctx-item')].find((i) => i.textContent.startsWith('New Python file'))?.click();
+    await sleep(200);
+  };
   document.getElementById('btn-new-tab').click();
-  await sleep(200);
+  await sleep(120);
+  info.newMenu = [...document.querySelectorAll('#context-menu.visible .ctx-item')].map((i) => i.textContent);
+  checks.newMenuOffersNotebook = info.newMenu.some((t) => t.startsWith('New notebook'));
+  document.body.click(); // close it
+  await window.__newPyTab();
   checks.newTab = document.querySelectorAll('.editor-tab').length === 2;
 
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, shiftKey: true, bubbles: true }));
@@ -407,6 +420,45 @@ const SMOKE_PROBE = `(async () => {
   checks.groupsClose = document.getElementById('group-2').classList.contains('hidden')
     && names('#editor-tabs').includes('helpers.py') && names('#editor-tabs').some((n) => n.startsWith('main.py'));
 
+  console.log('STEP section notebooks ' + Math.round(performance.now() / 1000) + 's');
+  // Notebooks (Phase 8): .ipynb opens as a notebook, cells run in a kernel, Save writes .ipynb
+  row('analysis.ipynb')?.click();
+  for (let i = 0; i < 30 && !document.querySelector('#monaco-container .nb'); i++) await sleep(100);
+  const nbEl = document.querySelector('#monaco-container .nb');
+  info.nbCells = nbEl ? nbEl.querySelectorAll('.nb-cell').length : 0;
+  checks.notebookOpens = !!nbEl && info.nbCells === 3 && !!nbEl.querySelector('.nb-cell--rendered h1');
+  nbEl?.querySelector('.nb-btn--primary')?.click(); // Run all
+  const nbCounts = () => [...(nbEl?.querySelectorAll('.nb-cell--code .nb-cell__count') || [])].map((e) => e.textContent);
+  for (let i = 0; i < 200 && nbCounts().join() !== '[1],[2]'; i++) await sleep(100);
+  info.nbCounts = nbCounts();
+  info.nbOut = [...(nbEl?.querySelectorAll('.nb-cell__outputs') || [])].map((e) => e.textContent.trim()).filter(Boolean);
+  checks.notebookRuns = info.nbCounts.join() === '[1],[2]' && info.nbOut.some((t) => t.includes('NB_OK 42')) && info.nbOut.includes('43');
+  // An error shows under its cell
+  const nbView = window.__thetaTest.notebook();
+  if (nbView) {
+    const errCell = nbView.insertAt(nbView.nb.cells.length, 'code', false);
+    nbView.cellViews.get(errCell.id).editor.dispatch({ changes: { from: 0, insert: '1/0' } });
+    nbView.runCell(errCell.id);
+  }
+  for (let i = 0; i < 50 && !nbEl?.querySelector('.nb-out--error'); i++) await sleep(100);
+  info.nbError = nbEl?.querySelector('.nb-out--error .nb-out__ename')?.textContent;
+  checks.notebookError = /^ZeroDivisionError/.test(info.nbError || '');
+  checks.notebookUnsaved = !!document.querySelector('.editor-tab.active .editor-tab__dot.unsaved');
+  // Ctrl+S writes standard .ipynb with the outputs
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+  for (let i = 0; i < 30 && document.querySelector('.editor-tab.active .editor-tab__dot.unsaved'); i++) await sleep(100);
+  const nbSaved = await window.electronAPI.wsRead(row('analysis.ipynb')?.dataset.path || '');
+  let savedNb = null;
+  try { savedNb = JSON.parse(nbSaved.value); } catch (_) { savedNb = null; }
+  info.nbSaved = savedNb ? savedNb.cells.map((c) => c.cell_type + ':' + (c.outputs || []).map((o) => o.output_type).join('+')) : String(nbSaved?.error);
+  checks.notebookSaves = !!savedNb && savedNb.nbformat === 4 && savedNb.cells.length === 4
+    && savedNb.cells[1].outputs.some((o) => o.output_type === 'stream' && o.text.join('').includes('NB_OK 42'))
+    && savedNb.cells[3].outputs[0]?.ename === 'ZeroDivisionError';
+  // Closing the tab removes the notebook (and stops its kernel)
+  document.querySelector('.editor-tab.active .editor-tab__close')?.click();
+  await sleep(250);
+  checks.notebookCloses = !document.querySelector('.nb');
+
   // Real system terminal
   document.getElementById('tab-shell').click();
   for (let i = 0; i < 60 && !/PS |\\$ |> /.test(window.__thetaTest?.shellText() || ''); i++) await sleep(100);
@@ -487,8 +539,7 @@ const SMOKE_PROBE = `(async () => {
   info.pickerTrail = (info.pickerTrail || '') + 'p5:' + (document.getElementById('theme-picker').classList.contains('hidden') ? 'H ' : 'V ');
   // Debugger (Phase 5): an unsaved tab with input(), a breakpoint, stepping, evaluate
   const ds = () => t4.debugState();
-  document.getElementById('btn-new-tab').click();
-  await sleep(200);
+  await window.__newPyTab();
   t4.setCode('name = input("Name? ")\\ntotal = 0\\nfor i in range(3):\\n    total += i\\nprint("hi", name, total)\\n');
   t4.toggleBreakpointLine(4);
   await sleep(100);
@@ -747,7 +798,8 @@ ipcMain.handle('file-open', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Open Python File',
     filters: [
-      { name: 'Python Files', extensions: ['py', 'pyw'] },
+      { name: 'Python Files', extensions: ['py', 'pyw', 'ipynb'] },
+      { name: 'Jupyter Notebooks', extensions: ['ipynb'] },
       { name: 'Text Files', extensions: ['txt'] },
       { name: 'All Files', extensions: ['*'] },
     ],
@@ -788,12 +840,11 @@ ipcMain.handle('file-save', async (_, filePath, content) => {
 // Save-As dialog → returns { filePath, fileName } or null
 ipcMain.handle('file-save-as', async (_, content, defaultName) => {
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: 'Save Python File',
+    title: /\.ipynb$/i.test(defaultName || '') ? 'Save Notebook' : 'Save Python File',
     defaultPath: defaultName || 'main.py',
-    filters: [
-      { name: 'Python Files', extensions: ['py'] },
-      { name: 'All Files', extensions: ['*'] },
-    ],
+    filters: /\.ipynb$/i.test(defaultName || '')
+      ? [{ name: 'Jupyter Notebooks', extensions: ['ipynb'] }, { name: 'All Files', extensions: ['*'] }]
+      : [{ name: 'Python Files', extensions: ['py'] }, { name: 'All Files', extensions: ['*'] }],
   });
 
   if (result.canceled || !result.filePath) return null;
@@ -1069,6 +1120,14 @@ app.whenReady().then(() => {
     debugpyDir: tools.debugpy,
     onLog: isDev ? (t) => process.stderr.write(`[debug] ${t}`) : null,
   });
+  notebookIpc = registerNotebookIpc({
+    ipcMain, spawn,
+    getWindow: () => mainWindow,
+    getPython: () => pythonIpc?.active?.path || null,
+    getEnv: () => pythonIpc.shellEnv(process.env),
+    getWorkspace: () => workspaceIpc?.workspace || null,
+    tmpDir: os.tmpdir(),
+  });
   studyWindow = registerStudyWindow({ ipcMain, screen, getWindow: () => mainWindow });
   registerGitIpc({ ipcMain, execFile, shell, getRoot: () => workspaceIpc?.workspace.root || null });
   Menu.setApplicationMenu(null);
@@ -1088,6 +1147,7 @@ app.on('before-quit', () => {
   workspaceIpc?.dispose();
   lspIpc?.dispose();
   debugIpc?.dispose();
+  notebookIpc?.dispose();
   pythonRunner.dispose();
   if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
   classroomServer.stop();

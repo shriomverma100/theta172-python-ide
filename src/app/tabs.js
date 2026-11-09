@@ -13,18 +13,25 @@
  * Phase 4: listeners hear before/after a tab is shown; library files open
  * read-only; background tabs can be edited (rename across files).
  * Phase 7: editor groups.
+ * Phase 8: notebook tabs (.ipynb) show a notebook instead of the code
+ * editor; the group's editor then holds an empty read-only document.
  */
 import {
   setEditorState, focusEditor, gotoLine, setReadOnly, freshState, loadIntoView,
   getGroupView, setActiveGroup, onActiveGroupChange, openGroupView, closeGroupView, setMirror,
 } from '../editor.js';
 import { $ } from '../core/dom.js';
+import { showToast } from '../toast.js';
 
 let tabs = [];
 let tabCounter = 0;
 /** groups[g] = { ids: tab ids in strip order, active: id shown in the group } */
 let groups = [{ ids: [], active: null }, { ids: [], active: null }];
 let focused = 0; // the group the user is working in
+/** The notebook tab mounted in each group (its view lives in the group's container). */
+const mounted = [null, null];
+/** Set by the notebook module: { matches, mount, unmount, focus, text, reload, dispose } */
+let notebookKind = null;
 const changeListeners = new Set();
 const showListeners = new Set();
 
@@ -39,11 +46,40 @@ const baseName = (p) => p.split(/[\\/]/).pop();
 const tabById = (id) => tabs.find((t) => t.id === id) || null;
 const rightOpen = () => !!getGroupView(1);
 const groupCount = () => (rightOpen() ? 2 : 1);
+const containerOf = (g) => $(g === 0 ? 'monaco-container' : 'monaco-split');
+const isNotebook = (tab) => tab?.kind === 'notebook';
 
 function createTabData(name = 'untitled.py', code = '', filePath = null, extra = {}) {
   const id = `tab-${tabCounter++}`;
-  return { id, name, code, filePath, unsaved: false, editorState: null, readOnly: false, libraryUri: null, ...extra };
+  const kind = !extra.libraryUri && notebookKind?.matches(name, code) ? 'notebook' : 'text';
+  return { id, name, code, filePath, unsaved: false, editorState: null, readOnly: false, libraryUri: null, kind, ...extra };
 }
+
+/** Notebooks register how their tabs are shown (see src/notebook/notebooks.js). */
+export function registerNotebookKind(kind) { notebookKind = kind; }
+
+/** Take a notebook out of group g's container. */
+function unmountGroup(g) {
+  const tab = mounted[g];
+  if (!tab) return;
+  mounted[g] = null;
+  notebookKind?.unmount(tab);
+  containerOf(g)?.classList.remove('nb-shown');
+}
+
+/** The tab's document is closing for good. */
+function disposeTab(tab) {
+  if (!isNotebook(tab)) return;
+  for (let g = 0; g < 2; g++) if (mounted[g] === tab) unmountGroup(g);
+  notebookKind?.dispose(tab);
+}
+
+/** The tab's text as saved to disk (a notebook's current .ipynb). */
+export function tabText(tab) {
+  return isNotebook(tab) ? notebookKind?.text(tab) ?? tab.code : tab.code;
+}
+
+export const isNotebookTab = isNotebook;
 
 /**
  * fn({ phase: 'before' | 'after', tab }) runs around every change of a
@@ -100,6 +136,7 @@ export function visibleTabs() {
 function storeGroup(g) {
   const tab = tabById(groups[g].active);
   const view = getGroupView(g);
+  if (isNotebook(tab)) return; // the editor only holds a blank page for it
   if (tab && view) {
     tab.code = view.state.doc.toString();
     tab.editorState = view.state;
@@ -116,10 +153,20 @@ function display(g, tab) {
   setMirror(false); // loading a document must not copy into the other group
   showListeners.forEach((fn) => fn({ phase: 'before', tab: null }));
   const other = 1 - g;
-  const sameInOther = other < groupCount() && groups[other].active === tab.id;
-  // Same file in the other group: start from its live state; otherwise this tab's own
-  setEditorState(sameInOther ? getGroupView(other).state : tab.editorState || freshState(tab.code));
-  setReadOnly(!!tab.readOnly);
+  if (mounted[g] && mounted[g] !== tab) unmountGroup(g);
+  if (isNotebook(tab)) {
+    if (mounted[other] === tab) unmountGroup(other); // moved here from the other group
+    setEditorState(freshState(''));
+    setReadOnly(true);
+    notebookKind.mount(tab, containerOf(g));
+    mounted[g] = tab;
+    containerOf(g)?.classList.add('nb-shown');
+  } else {
+    const sameInOther = other < groupCount() && groups[other].active === tab.id;
+    // Same file in the other group: start from its live state; otherwise this tab's own
+    setEditorState(sameInOther ? getGroupView(other).state : tab.editorState || freshState(tab.code));
+    setReadOnly(!!tab.readOnly);
+  }
   showListeners.forEach((fn) => fn({ phase: 'after', tab }));
   updateMirror();
   if (g === focused) setFileName(tab.name);
@@ -173,7 +220,7 @@ export function snapshotTabs() {
       name: t.name,
       filePath: t.filePath,
       unsaved: t.unsaved,
-      code: t.filePath && !t.unsaved ? undefined : t.code,
+      code: t.filePath && !t.unsaved ? undefined : tabText(t),
     })),
   };
 }
@@ -198,6 +245,8 @@ export function initTabs(initialCode) {
     emitChange();
   });
   initDropTargets();
+  // Clicking into a notebook (not an editor view) also moves focus to its group
+  [0, 1].forEach((g) => containerOf(g)?.addEventListener('focusin', () => { if (mounted[g]) setActiveGroup(g); }));
   $('group-2-close')?.addEventListener('click', () => closeRightGroup());
   renderTabs();
 }
@@ -206,6 +255,7 @@ export function initTabs(initialCode) {
 export function restoreTabs(list, activeIndex = 0) {
   if (!list.length) return;
   if (rightOpen()) closeRightGroup();
+  tabs.forEach(disposeTab);
   tabs = list.map((t) => ({ ...createTabData(t.name, t.code ?? '', t.filePath ?? null), unsaved: !!t.unsaved }));
   const active = tabs[Math.max(0, Math.min(activeIndex, tabs.length - 1))];
   groups[0] = { ids: tabs.map((t) => t.id), active: active.id };
@@ -329,7 +379,8 @@ function initDropTargets() {
 export function focusGroup(g) {
   if (g >= groupCount()) return;
   setActiveGroup(g);
-  getGroupView(g)?.focus();
+  if (mounted[g] && groups[g].active === mounted[g].id) notebookKind?.focus(mounted[g]);
+  else getGroupView(g)?.focus();
 }
 
 /**
@@ -343,6 +394,8 @@ export function switchTab(tabId, g) {
     const holding = groupHolding(tabId);
     g = holding >= 0 ? holding : focused;
   }
+  // A notebook is shown in one group at a time
+  if (isNotebook(tab) && groupCount() > 1 && groups[1 - g].active === tabId) g = 1 - g;
   if (!groups[g].ids.includes(tabId)) groups[g].ids.push(tabId);
   if (groups[g].active !== tabId) {
     storeGroup(g);
@@ -368,7 +421,8 @@ export function addNewTab(name = null, code = '', filePath = null, extra = {}) {
   groups[g].active = tab.id;
   display(g, tab);
   renderTabs();
-  focusEditor();
+  if (isNotebook(tab)) notebookKind.focus(tab);
+  else focusEditor();
   emitChange();
   return tab;
 }
@@ -437,6 +491,10 @@ export function splitEditor() {
   if (rightOpen()) { focusGroup(1); return; }
   const tab = getActiveTab();
   if (!tab) return;
+  if (isNotebook(tab)) {
+    showToast('A notebook shows in one group: drag its tab to the right edge to move it', 'info', 3000);
+    return;
+  }
   storeGroup(0);
   if (!openRightGroup(tab)) return;
   focused = 1;
@@ -454,6 +512,7 @@ export function closeRightGroup() {
   for (const id of groups[1].ids) if (!groups[0].ids.includes(id)) groups[0].ids.push(id);
   const keep = groups[1].active;
   groups[1] = { ids: [], active: null };
+  unmountGroup(1);
   closeGroupView();
   setMirror(false);
   $('group-2')?.classList.add('hidden');
@@ -525,7 +584,7 @@ export function moveActiveTab(direction) {
  */
 export function editTab(tabId, makeChanges) {
   const tab = tabById(tabId);
-  if (!tab || tab.readOnly) return false;
+  if (!tab || tab.readOnly || isNotebook(tab)) return false;
   const view = viewOf(tab);
   if (view) {
     view.dispatch({ changes: makeChanges(view.state.doc), userEvent: 'input.rename' });
@@ -547,7 +606,7 @@ export function editTab(tabId, makeChanges) {
  */
 export function updateTabState(tabId, spec) {
   const tab = tabById(tabId);
-  if (!tab) return false;
+  if (!tab || isNotebook(tab)) return false;
   const shown = groupsShowing(tabId);
   if (shown.length) for (const g of shown) getGroupView(g).dispatch(spec);
   else if (tab.editorState) tab.editorState = tab.editorState.update(spec).state;
@@ -558,7 +617,7 @@ export function updateTabState(tabId, spec) {
 /** The editor state of any tab (the live one when shown), or null. */
 export function getTabState(tabId) {
   const tab = tabById(tabId);
-  if (!tab) return null;
+  if (!tab || isNotebook(tab)) return null;
   return viewOf(tab)?.state ?? tab.editorState;
 }
 
@@ -577,7 +636,10 @@ export function closeTab(tabId, g = groupHolding(tabId)) {
   const group = groups[g];
   const idx = group.ids.indexOf(tabId);
   group.ids.splice(idx, 1);
-  if (!elsewhere) tabs = tabs.filter((t) => t !== tab);
+  if (!elsewhere) {
+    tabs = tabs.filter((t) => t !== tab);
+    disposeTab(tab);
+  }
 
   if (!group.ids.length) {
     if (g === 1) { group.active = null; closeRightGroup(); return; }
@@ -603,6 +665,17 @@ export function updateActiveTab(fields) {
 export function markActiveTabUnsaved() {
   const tab = getActiveTab();
   if (tab && !tab.unsaved) {
+    tab.unsaved = true;
+    renderTabs();
+  }
+  emitChange();
+}
+
+/** Any tab was edited (a notebook reports its own changes). */
+export function markTabUnsaved(tabId) {
+  const tab = tabById(tabId);
+  if (!tab) return;
+  if (!tab.unsaved) {
     tab.unsaved = true;
     renderTabs();
   }
@@ -673,6 +746,7 @@ export function closeTabsUnder(folder) {
   )) return false;
 
   const gone = new Set(closing.map((t) => t.id));
+  closing.forEach(disposeTab);
   tabs = tabs.filter((t) => !gone.has(t.id));
   if (rightOpen()) closeRightGroup();
   groups[0].ids = groups[0].ids.filter((id) => !gone.has(id));
@@ -694,6 +768,12 @@ export function closeTabsUnder(folder) {
 export function reloadTab(filePath, content) {
   const tab = findTabByPath(filePath);
   if (!tab || tab.unsaved) return;
+  if (isNotebook(tab)) {
+    if (tabText(tab) === content) return;
+    tab.code = content;
+    notebookKind?.reload(tab, content);
+    return;
+  }
   const view = viewOf(tab);
   // Our own save also fires a change event: nothing to do when the text is the same
   const current = view ? view.state.doc.toString() : tab.code;

@@ -560,6 +560,7 @@ async function connect() {
 /** Attach the visible tab's document to the language server. */
 function attach(tab) {
   if (!client || !tab) return;
+  if (tab.kind === 'notebook') { setLspExtension([]); return; } // cells are not one Python file
   setLspExtension(pluginFor(tabUri(tab)));
   applyDiagnostics(tabUri(tab));
 }

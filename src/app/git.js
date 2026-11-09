@@ -10,7 +10,7 @@ import { $ } from '../core/dom.js';
 import { showToast } from '../toast.js';
 import { getView, viewerExtensions } from '../editor.js';
 import { setBaselineEffect } from '../git-gutter.js';
-import { getActiveTab, onTabShow, onTabsChanged, findTabByPath, visibleTabs } from './tabs.js';
+import { getActiveTab, onTabShow, onTabsChanged, findTabByPath, visibleTabs, tabText } from './tabs.js';
 import { getWorkspaceRoot, onWorkspaceChange, onFilesChanged, openPath, isInWorkspace } from './workspace.js';
 import { openQuickPick, openInputBox } from './quick-pick.js';
 import { showSidebarView } from './search.js';
@@ -73,7 +73,7 @@ function updateBaselines() {
 
 async function updateBaseline(tab = getActiveTab(), view = getView()) {
   if (!view || !tab) return;
-  const rel = tab?.filePath ? relPath(tab.filePath) : null;
+  const rel = tab?.filePath && tab.kind !== 'notebook' ? relPath(tab.filePath) : null;
   let text = null;
   if (rel) {
     const entry = git.repo.files.find((f) => f.path === rel);
@@ -436,6 +436,7 @@ async function sideText(f, which) {
   if (which === 'index') return f.kind === 'untracked' ? '' : api().gitShow(f.path, '');
   // working tree: the open tab's text (with unsaved edits) or the file on disk
   const tab = findTabByPath(absPath(f.path));
+  if (tab?.kind === 'notebook') return tabText(tab);
   if (tab) return tab.id === getActiveTab()?.id ? getView().state.doc.toString() : tab.code;
   return api().gitReadWorking(f.path);
 }
