@@ -33,6 +33,9 @@
   <link rel="stylesheet" href="/src/styles/tests.css" />
   <link rel="stylesheet" href="/src/styles/plugins.css" />
   <link rel="stylesheet" href="/src/styles/relay-setup.css" />
+  <link rel="stylesheet" href="/src/styles/update.css" />
+  <link rel="stylesheet" href="/src/styles/welcome.css" />
+  <link rel="stylesheet" href="/src/styles/tour.css" />
   <link rel="stylesheet" href="/src/styles/targets.css" />
   <link rel="stylesheet" href="/src/styles/pro.css" />
   <link rel="stylesheet" href="/src/styles/theme-picker.css" />
@@ -393,7 +396,7 @@
       <!-- Playground: classroom tile -->
       <section class="class-tile" aria-label="Classroom">
         <span class="class-tile__live"><span class="class-tile__dot" aria-hidden="true"></span><span id="class-tile-status">Classroom</span></span>
-        <span class="class-tile__text" id="class-tile-text">Teach a class or join one on the same Wi-Fi or LAN.</span>
+        <span class="class-tile__text" id="class-tile-text">Teach a class or join one: on the same Wi-Fi, or from anywhere with an invite.</span>
         <button id="btn-class-tile" class="class-tile__btn" type="button">Open classroom</button>
       </section>
     </div>
@@ -586,6 +589,13 @@
               <span class="setting-row__hint">Tidy Python files with Ruff each time you save (Shift+Alt+F any time).</span>
             </div>
             <button id="set-fmt" class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="set-fmt-label"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__name" id="set-updates-label">Automatic updates</span>
+              <span class="setting-row__hint" id="set-updates-hint">Download new versions in the background and ask before installing. Help → Check for updates any time.</span>
+            </div>
+            <button id="set-updates" class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="set-updates-label"></button>
           </div>
           <div class="setting-row">
             <div class="setting-row__text">

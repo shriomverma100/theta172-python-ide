@@ -96,6 +96,9 @@ import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js'
 import { initContextMenu, showMenu } from './app/context-menu.js';
 import { initAccessibility } from './app/a11y.js';
 import { fillLogoSlots } from './core/tech-logos.js';
+import { initUpdates, checkForUpdates, showAbout, showWhatsNew, _simulateStatus, _openUpdateScreen, _closeUpdateScreen } from './app/update-ui.js';
+import { playWelcome } from './app/welcome.js';
+import { startTour, _tourShow } from './app/tour.js';
 
 // ── Global error reporting ───────────────────────────────────────
 window.onerror = (message, source, line, col, error) => {
@@ -134,7 +137,20 @@ function withNotebook(fn) {
   else showToast('Open a notebook (.ipynb) first', 'info', 2000);
 }
 
+/** The name from the welcome fills the classroom name boxes the first time. */
+function rememberName(name) {
+  if (!name) return;
+  for (const key of ['theta-classroom-student-name', 'theta-classroom-teacher-name']) {
+    try { if (!localStorage.getItem(key)) localStorage.setItem(key, name); } catch (_) { /* private mode */ }
+  }
+}
+
 const actions = {
+  'check-updates': () => checkForUpdates(),
+  'about': () => showAbout(),
+  'whats-new': () => showWhatsNew(),
+  'tour': () => startTour({ force: true }),
+  'welcome': () => playWelcome({ force: true, onName: rememberName }),
   'run': runCode,
   'stop': stopCode,
   'clear': clearOutput,
@@ -356,7 +372,7 @@ function initClassroom() {
       if ($status) $status.textContent = live ? 'Your class is live' : 'Classroom';
       if ($text) $text.textContent = live
         ? 'Students can see your code. Open the classroom to see theirs.'
-        : 'Teach a class or join one on the same Wi-Fi or LAN.';
+        : 'Teach a class or join one: on the same Wi-Fi, or from anywhere with an invite.';
     },
     editorGetters: {
       getCode: () => getValue() || '',
@@ -435,6 +451,11 @@ async function initIDE() {
       spotBench: (rounds) => benchSpot(rounds),
       view: () => getView(),
       action: (id) => actions[id]?.(),
+      // Updates (Phase 13): drive the update UI without a real release
+      updateSim: (st, extra) => _simulateStatus(st, extra),
+      updateScreen: (opts) => { _openUpdateScreen(opts); },
+      updateClose: () => _closeUpdateScreen(),
+      tourShow: (n) => _tourShow(n),
       // Language intelligence (Phase 4)
       lspReady: () => isLanguageServerReady(),
       problems: () => problemSummary(),
@@ -506,10 +527,15 @@ async function initIDE() {
 
   // First launch: choose Playground or Pro straight away; Python keeps
   // loading behind the picker. Pro starts with pixel effects off.
-  if (!hasChosenTheme()) {
+  if (new URLSearchParams(location.search).get('welcome') === '1') playWelcome({ force: true, onName: rememberName });
+  else if (!hasChosenTheme()) {
+    // The very first start: the welcome plays over the theme choice, then reveals it
+    if (!window.electronAPI?.isSmokeTest) playWelcome({ onName: rememberName });
     showThemePicker({
       onChosen: (theme) => {
         if (theme === 'pro' && storageGet('theta-fx') === null) fx.setUserEnabled(false);
+        // The startup guide, once, when the IDE first appears
+        if (!window.electronAPI?.isSmokeTest) setTimeout(() => startTour(), 1400);
       },
     });
   }
@@ -520,6 +546,7 @@ async function initIDE() {
   initTests();      // pytest: the Tests view and marks in the editor
   initTasks({ runFile: runCode, runTests: () => { showTests(); runAllTests(); } });
   initPlugins().catch((err) => console.error('[THETA] plugins', err)); // each in its own sandboxed worker
+  initUpdates({ saveAll }); // new versions: downloaded quietly, installed when the user says
   await initRuntime();
   // Language intelligence needs local Python (desktop); it starts in the background
   if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));

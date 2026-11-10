@@ -188,6 +188,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   classroomSendEvent:     (target, msg, key) => ipcRenderer.send('classroom-send-event', target, msg, key),
   onRelayStatus:          (cb)   => safeOn('classroom-relay-status', (_, info) => cb(info)),
   relaySetupCheck:        ()     => ipcRenderer.invoke('relay-setup-check'),
+  // Updates
+  updateInfo:             ()     => ipcRenderer.invoke('update-info'),
+  updateCheck:            ()     => ipcRenderer.invoke('update-check'),
+  updateSetAuto:          (on)   => ipcRenderer.invoke('update-set-auto', on),
+  updateInstall:          ()     => ipcRenderer.invoke('update-install'),
+  onUpdateStatus:         (cb)   => safeOn('update-status', (_, s) => cb(s)),
   relayOpenLink:          (key)  => ipcRenderer.invoke('relay-open-link', key),
   relayCfDeploy:          (opts) => ipcRenderer.invoke('relay-cf-deploy', opts),
   relayCfForget:          ()     => ipcRenderer.invoke('relay-cf-forget'),

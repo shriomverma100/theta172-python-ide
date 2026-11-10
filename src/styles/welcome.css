@@ -1,0 +1,227 @@
+/* ═══ THETA172 brand screens: the first start (welcome.js) ═══
+   The THETA172 site's look: one black sheet, the logo's red, a warm white,
+   Unbounded for display, Hanken Grotesk for text, Silkscreen for pixel
+   labels. Calm motion only: light, drawing lines and the logo landing. */
+
+.th, .upd {
+  --th-bg: #070505;
+  --th-raise: #0f0b0a;
+  --th-line: #261c1a;
+  --th-line-hi: #4d3632;
+  --th-fg: #f4ede9;
+  --th-dim: #a3948f;
+  --th-red: #f4473a;
+  --th-red-deep: #7d1a12;
+  --th-display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
+  --th-body: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
+  --th-pixel: 'Silkscreen', 'Lucida Console', ui-monospace, monospace;
+  --th-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+.th {
+  position: fixed; inset: 0; z-index: 10000; overflow: hidden;
+  background: var(--th-bg); color: var(--th-fg); font-family: var(--th-body);
+  -webkit-font-smoothing: antialiased;
+  transition: opacity 650ms ease;
+}
+.th.is-leaving { opacity: 0; }
+.bfx { position: absolute; left: 0; top: 0; display: block; image-rendering: pixelated; pointer-events: none; }
+.bfx--back { z-index: 0; }
+.bfx--front { z-index: 6; }
+.bfx--intro { z-index: 10; width: 100%; height: 100%; object-fit: cover; }
+.th-act { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; }
+.th [hidden] { display: none !important; }
+
+/* ── The mark (blocks drop in, the dots bob) ── */
+.th-mark { display: block; width: 100%; height: auto; overflow: visible; }
+.th-mark rect { fill: var(--th-red); }
+.th-mark .blk, .th-mark .lift { transform-box: fill-box; transform-origin: 50% 100%; }
+.th-mark .float { animation: thBob 3.4s ease-in-out infinite; }
+.th-mark .d1 .float { animation-delay: -.7s; }
+@keyframes thBob { 50% { transform: translateY(-3px); } }
+.th-mark:not(.go):not(.th-mark--still) .blk { opacity: 0; }
+.th-mark.go .blk { animation: thDrop .75s cubic-bezier(.25, 1.45, .4, 1) both; animation-delay: calc(var(--d) * 1ms); }
+@keyframes thDrop { from { opacity: 0; transform: translateY(-70px) scaleY(1.25); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
+
+/* ── Act 1: the protractor and θ ── */
+.th-intro { transition: opacity 450ms ease, filter 450ms ease; }
+.th-intro.is-out { opacity: 0; filter: blur(6px); }
+.th-hero {
+  position: absolute; left: 50%; top: 50%; display: grid; justify-items: center; gap: 12px;
+  transform: translate(-50%, -54%);
+  transition: transform 1.1s var(--th-ease), opacity .7s ease, filter .7s ease;
+}
+.th-dial { position: relative; width: min(56vh, 460px); aspect-ratio: 1; }
+.th-proto { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.th-markbox { position: absolute; left: 50%; top: 50%; width: 46%; transform: translate(-50%, -52%); }
+.th-proto .ring { fill: none; stroke: var(--th-line-hi); stroke-width: .5; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.1s var(--th-ease); }
+.th-proto .ring--dots { stroke-dasharray: 1 3; stroke-dashoffset: 0; opacity: 0; transition: opacity .8s ease .3s; }
+.th-proto .tick { stroke: var(--th-line-hi); stroke-width: .6; opacity: 0; transition: opacity .25s ease calc(var(--i, 0) * 22ms + 200ms); }
+.th-proto .tick.major { stroke: var(--th-dim); }
+.th-proto .tick.goal { stroke: var(--th-red); stroke-width: 1.1; transition-delay: 1s; }
+.th-proto .lbl { font-family: var(--th-pixel); font-size: 5.2px; fill: var(--th-dim); letter-spacing: .2px; opacity: 0; transition: opacity .5s ease .7s; }
+.th-proto .lbl.goal { fill: var(--th-red); }
+.th-proto .sweep { fill: none; stroke: var(--th-red); stroke-width: 1.2; opacity: .75; }
+.th-proto .needle { opacity: 0; transition: opacity .3s ease; }
+.th-proto .needle line { stroke: var(--th-fg); stroke-width: .6; }
+.th-proto .needle rect { fill: var(--th-fg); }
+.th.is-dial .th-proto .ring { stroke-dashoffset: 0; }
+.th.is-dial .th-proto :is(.ring--dots, .tick, .lbl) { opacity: 1; }
+.th.is-sweep .th-proto .needle { opacity: 1; }
+.th-hero.found .needle line { stroke: var(--th-red); }
+.th-hero.found .needle rect { fill: var(--th-red); }
+.th-readout {
+  margin: 0; display: flex; align-items: baseline; gap: 8px; font-family: var(--th-pixel); font-size: 15px; letter-spacing: .08em; color: var(--th-dim);
+  opacity: 0; transition: opacity .4s ease, color .3s ease;
+}
+.th.is-sweep .th-readout { opacity: 1; }
+.th-theta { font-family: 'Times New Roman', Georgia, serif; font-style: italic; font-size: 22px; letter-spacing: 0; }
+.th-deg { color: var(--th-fg); font-size: 18px; min-width: 4.6ch; font-variant-numeric: tabular-nums; }
+.th-hero.found .th-readout, .th-hero.found .th-deg { color: var(--th-red); }
+
+/* ── The wordmark, the divisions, the line ── */
+.th-brand {
+  position: absolute; left: 50%; top: 58%; width: min(780px, 86vw); display: grid; justify-items: center; gap: 22px; text-align: center;
+  transform: translateX(-50%); opacity: 0; pointer-events: none; transition: opacity .6s ease, filter .6s ease;
+}
+.th.is-brand .th-hero { transform: translate(-50%, -96%) scale(.6); }
+.th.is-brand .th-brand { opacity: 1; }
+.th-word { width: 100%; height: auto; overflow: visible; }
+.th-brand .th-word path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.th.is-brand .th-brand .th-word path { animation: thStroke .9s var(--th-ease) forwards; }
+.th.is-brand .th-brand .th-word g:nth-child(1) path:nth-child(2) { animation-delay: .08s; }
+.th.is-brand .th-brand .th-word g:nth-child(1) path:nth-child(3) { animation-delay: .16s; }
+.th.is-brand .th-brand .th-word g:nth-child(1) path:nth-child(4) { animation-delay: .24s; }
+.th.is-brand .th-brand .th-word g:nth-child(1) path:nth-child(5) { animation-delay: .32s; }
+.th.is-brand .th-brand .th-word g:nth-child(2) path:nth-child(1) { animation-delay: .44s; }
+.th.is-brand .th-brand .th-word g:nth-child(2) path:nth-child(2) { animation-delay: .52s; }
+.th.is-brand .th-brand .th-word g:nth-child(2) path:nth-child(3) { animation-delay: .6s; }
+@keyframes thStroke { to { stroke-dashoffset: 0; } }
+.th-divisions { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-family: var(--th-pixel); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--th-dim); }
+.th-divisions i { font-style: normal; color: var(--th-line-hi); }
+.th-divisions span, .th-divisions i { opacity: 0; }
+.th.is-brand .th-divisions span { animation: thRise .6s var(--th-ease) both; animation-delay: calc(.8s + var(--i) * 110ms); }
+.th.is-brand .th-divisions i { animation: thRise .6s var(--th-ease) both 1s; }
+.th-tag { margin: 0; font-family: var(--th-display); font-weight: 300; font-size: clamp(22px, 3.2vw, 36px); letter-spacing: -.01em; opacity: 0; }
+.th.is-brand .th-tag { animation: thRise 1s var(--th-ease) both 1.55s; }
+.th-sq { display: inline-block; width: .22em; height: .22em; margin-left: .12em; background: var(--th-red); vertical-align: .06em; }
+@keyframes thRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+/* ── … presents Python by THETA172 ── */
+.th.is-presents .th-hero, .th.is-presents .th-brand { opacity: 0; filter: blur(8px); }
+.th.is-presents .th-hero { transform: translate(-50%, -110%) scale(.5); }
+.th-presents { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; opacity: 0; pointer-events: none; }
+.th.is-presents .th-presents { opacity: 1; transition: opacity .3s ease .35s; }
+.th-eyebrow { margin: 0; font-family: var(--th-pixel); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--th-red); }
+.th-presents .th-eyebrow { opacity: 0; }
+.th.is-presents .th-presents .th-eyebrow { animation: thRise .7s var(--th-ease) both .4s; }
+.th-python { margin: 0; display: flex; font-family: var(--th-display); font-weight: 300; font-size: clamp(72px, 13vw, 168px); line-height: .95; letter-spacing: -.03em; }
+.th-python span { display: inline-block; opacity: 0; }
+.th.is-presents .th-python span { animation: thLetter .9s cubic-bezier(.2, 1.1, .3, 1) both; animation-delay: calc(.55s + var(--i) * 70ms); }
+@keyframes thLetter { from { opacity: 0; transform: translateY(.5em) rotate(4deg); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+.th-by { margin: 4px 0 0; display: flex; align-items: center; gap: 14px; font-family: var(--th-body); font-size: 18px; color: var(--th-dim); opacity: 0; }
+.th-word--small { width: min(300px, 48vw); }
+.th.is-presents .th-by { animation: thRise .8s var(--th-ease) both 1.2s; }
+.th-what { margin: 8px 0 0; font-size: 17px; color: var(--th-dim); opacity: 0; }
+.th.is-presents .th-what { animation: thRise .8s var(--th-ease) both 1.6s; }
+
+/* ── Act 2: your name ── */
+.th-name { align-content: center; justify-items: start; gap: 18px; width: min(620px, 86vw); margin: 0 auto; inset: 0; position: absolute; }
+.th-name.is-in > * { animation: thRise .8s var(--th-ease) both; }
+.th-name.is-in > :nth-child(2) { animation-delay: .05s; }
+.th-name.is-in > :nth-child(3) { animation-delay: .12s; }
+.th-name.is-in > :nth-child(4) { animation-delay: .2s; }
+.th-name.is-in > :nth-child(5) { animation-delay: .28s; }
+.th-name.is-in > :nth-child(6) { animation-delay: .36s; }
+.th-name.is-out, .th-hello.is-out { opacity: 0; transform: translateY(-12px); transition: opacity .4s ease, transform .4s ease; }
+.th-corner { position: fixed; left: 32px; top: 28px; width: 46px; }
+.th-ask { margin: 0; font-family: var(--th-display); font-weight: 300; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.1; letter-spacing: -.02em; }
+.th-input {
+  width: 100%; padding: 10px 0 12px; border: 0; border-bottom: 1px solid var(--th-line-hi); border-radius: 0; outline: none;
+  background: transparent; color: var(--th-fg); caret-color: var(--th-red);
+  font: 300 clamp(28px, 3.6vw, 42px)/1.2 var(--th-display); letter-spacing: -.01em;
+  transition: border-color .25s ease;
+}
+.th-input::placeholder { color: #3a2d2a; }
+.th-input:focus { border-bottom-color: var(--th-red); }
+.th-hint { margin: 0; font-size: 15px; color: var(--th-dim); }
+.th-actions { display: flex; gap: 12px; margin-top: 10px; }
+.th-btn {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 22px; cursor: pointer;
+  font: 600 15px/1 var(--th-body); border-radius: 4px; border: 1px solid var(--th-line-hi); background: transparent; color: var(--th-fg);
+  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.th-btn:hover { border-color: var(--th-dim); }
+.th-btn--go { background: var(--th-red); border-color: var(--th-red); color: #0b0505; }
+.th-btn--go:hover { background: #ff5a4b; border-color: #ff5a4b; }
+.th-btn--go span { transition: transform .2s ease; }
+.th-btn--go:hover span { transform: translateX(3px); }
+.th :focus-visible { outline: 2px solid var(--th-red); outline-offset: 3px; }
+
+/* ── Act 3: Namaste ── */
+.th-hello { align-content: center; justify-items: center; gap: 14px; text-align: center; }
+.th-namaste { margin: 0 0 6px; display: flex; flex-wrap: wrap; justify-content: center; font-family: var(--th-display); font-weight: 300; font-size: clamp(44px, 7vw, 96px); line-height: 1.05; letter-spacing: -.03em; max-width: 92vw; }
+.th-namaste span { display: inline-block; animation: thLetter .8s cubic-bezier(.2, 1.1, .3, 1) both; animation-delay: calc(.15s + var(--i) * 45ms); }
+.th-hello .th-eyebrow { animation: thRise .6s var(--th-ease) both; }
+.th-hello-sub { margin: 0; font-size: 18px; color: var(--th-dim); animation: thRise .8s var(--th-ease) both .9s; }
+.th-hello-sub b { color: var(--th-fg); font-weight: 600; }
+.th-hello-sub--2 { animation-delay: 1.15s; }
+
+.th-skip {
+  position: absolute; right: 24px; bottom: 22px; z-index: 12; min-height: 40px; padding: 0 16px; cursor: pointer;
+  font: 400 12px/1 var(--th-pixel); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--th-dim); background: transparent; border: 1px solid var(--th-line); border-radius: 4px;
+  animation: thRise .5s ease both 1.2s;
+}
+.th-skip:hover { color: var(--th-fg); border-color: var(--th-line-hi); }
+
+@media (max-height: 700px) { .th-dial { width: 50vh; } }
+
+/* Reduced motion: no flying and no drawing; the finished pictures fade */
+.th--still *, .th--still *::before { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; }
+.th--still .th-mark .float { animation: none !important; }
+
+/* ═══ Polish: light, depth and the 172° moment (no particles) ═══ */
+.th { opacity: 0; transition: opacity 900ms ease; }
+.th.is-on { opacity: 1; }
+.th.is-leaving { opacity: 0; transition-duration: 800ms; }
+/* A soft red light behind the mark that breathes, and a vignette for depth */
+.th::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(38vmax 30vmax at 50% 44%, rgba(244, 71, 58, .13), rgba(244, 71, 58, 0) 70%);
+  opacity: 0; transition: opacity 1.4s ease, transform 1.2s var(--th-ease);
+}
+.th.is-on::before { opacity: 1; animation: thBreathe 5s ease-in-out infinite 1s; }
+.th.is-brand::before { transform: translateY(-16vh) scale(.8); }
+.th.is-presents::before { transform: translateY(0) scale(1.25); opacity: .8; }
+@keyframes thBreathe { 50% { opacity: .65; } }
+.th::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, .55) 100%);
+}
+.th-act, .th-skip { z-index: 3; }
+
+/* The 172° moment: the mark lights and sends out a ring */
+.th-proto .goal-ping { fill: none; stroke: var(--th-red); stroke-width: .8; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.th-hero.found .goal-ping { animation: thPing 1.4s cubic-bezier(.2, .7, .3, 1) 2; }
+@keyframes thPing { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(4.2); } }
+.th-hero.found .tick.goal, .th-hero.found .lbl.goal { filter: drop-shadow(0 0 2px rgba(244, 71, 58, .9)); }
+.th-hero.found .th-markbox { animation: thGlow 1.6s ease both; }
+@keyframes thGlow { 40% { filter: drop-shadow(0 0 18px rgba(244, 71, 58, .55)); } }
+
+/* The mark lands softly */
+.th-mark.go .blk { animation-duration: .9s; }
+
+/* "Python" gets a red rule that draws itself */
+.th-rule { display: block; width: min(420px, 60vw); height: 2px; margin: 2px auto 4px; background: linear-gradient(90deg, transparent, var(--th-red) 18%, var(--th-red) 82%, transparent); transform: scaleX(0); }
+.th.is-presents .th-rule { animation: thRule 1.1s var(--th-ease) both 1.05s; }
+@keyframes thRule { to { transform: scaleX(1); } }
+
+/* Namaste: a slow ring of light behind the greeting */
+.th-hello::before {
+  content: ''; position: absolute; left: 50%; top: 46%; width: 40vmin; height: 40vmin; border-radius: 50%;
+  border: 1px solid rgba(244, 71, 58, .5); transform: translate(-50%, -50%) scale(.4); opacity: 0;
+  animation: thHalo 2.4s cubic-bezier(.2, .7, .3, 1) .3s both;
+}
+@keyframes thHalo { 0% { opacity: .8; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); } }
+.th-hello { position: absolute; }

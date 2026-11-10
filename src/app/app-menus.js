@@ -131,6 +131,12 @@ export const APP_MENUS = [
       { label: 'Explain the Last Error', action: 'explain-error' },
       { label: 'Explain Errors in Hindi / English', action: 'explain-language' },
       { label: 'My Progress', action: 'my-progress' },
+      sep,
+      { label: 'Check for Updates…', action: 'check-updates' },
+      { label: "What's New", action: 'whats-new' },
+      { label: 'Take the Tour', action: 'tour' },
+      { label: 'Replay the Welcome', action: 'welcome' },
+      { label: 'About Python by THETA172', action: 'about' },
     ],
   },
 ];

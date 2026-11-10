@@ -1,5 +1,9 @@
 name: Build & Release
 
+# `npm run release` (on main) pushes a tag like v1.2.0. This builds the
+# Windows installer and publishes it; every installed copy then finds the
+# update (latest.yml + .blockmap) and offers it.
+
 on:
   push:
     tags:
@@ -15,6 +19,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Every installed copy updates to what is published here, so only
+      # versions that are on main may be released.
+      - name: Release only from main
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -qE '^[[:space:]]*origin/main$'; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main. Merge into main, then run npm run release."
+            exit 1
+          fi
+          v=$(node -p "require('./package.json').version")
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::package.json says $v but the tag is $GITHUB_REF_NAME."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,9 +68,22 @@ jobs:
         continue-on-error: true
 
       # Never let electron-builder publish by itself (that caused 403s);
-      # the release step below uploads the files.
+      # the release step below uploads the files. Not code-signed yet.
       - name: Build Electron (Windows x64 NSIS + ZIP)
         run: npx electron-builder --win --x64 --publish never
+
+      # A name that never changes, so one link always downloads the newest installer:
+      # https://github.com/<owner>/<repo>/releases/latest/download/Python-by-THETA172-Setup.exe
+      - name: Stable installer name
+        shell: bash
+        run: cp release/Python-by-THETA172-Setup-*.exe release/Python-by-THETA172-Setup.exe
+
+      - name: Release notes
+        id: notes
+        shell: bash
+        run: |
+          f="release-notes/$GITHUB_REF_NAME.md"
+          if [ -f "$f" ]; then echo "path=$f" >> "$GITHUB_OUTPUT"; else echo "path=" >> "$GITHUB_OUTPUT"; fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -61,16 +96,20 @@ jobs:
             release/latest.yml
           retention-days: 30
 
-      # latest.yml + .blockmap are required for auto-updates (electron-updater)
+      # latest.yml + .blockmap are required for auto-updates (electron-updater).
+      # The notes become the "New update available" text in the app;
+      # a line "[critical]" makes it an update without "Later".
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release/Python-by-THETA172-Setup-*.exe
+            release/Python-by-THETA172-Setup.exe
             release/Python-by-THETA172-Setup-*.zip
             release/*.blockmap
             release/latest.yml
+          body_path: ${{ steps.notes.outputs.path }}
+          generate_release_notes: ${{ steps.notes.outputs.path == '' }}
           draft: false
           prerelease: false
-          generate_release_notes: true

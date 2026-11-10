@@ -995,8 +995,80 @@ const RELAY_SCENES = [
   ...relayTour('qg'),
 ];
 
+// Phase 13 tour: THETA_SHOTS_SET=p13 (welcome frames, update card, updating screen)
+const SIM_READY = `window.__thetaTest.updateSim({ state: 'ready', version: '1.2.0', percent: 100, notes: '- Faster start on school PCs\\n- Python cards while updating\\n- Fixes for the classroom relay' }, { version: '1.1.0' })`;
+const SIM_DOWNLOAD = `window.__thetaTest.updateSim({ state: 'downloading', version: '1.2.0', percent: 46, transferred: 38 * 1048576, total: 83 * 1048576, bytesPerSecond: 4.2 * 1048576 })`;
+const P13_SCENES = [
+  { name: 'u00-picker', wait: 4500, noShot: true },
+  { name: 'u01-dissolve', js: `void window.__thetaTest.action('welcome')`, wait: 450 },
+  { name: 'u02-blocks', wait: 100 },
+  { name: 'u02b-fps', noShot: true, bench: `new Promise((res) => { const d = []; let last = performance.now(); const f = (t) => { d.push(t - last); last = t; if (d.length < 150) requestAnimationFrame(f); else { d.sort((a, b) => a - b); res({ frames: d.length, medianMs: +d[75].toFixed(1), p95Ms: +d[142].toFixed(1), maxMs: +d[149].toFixed(1) }); } }; requestAnimationFrame(f); })`, wait: 0 },
+  { name: 'u03-dial', wait: 1000 },
+  { name: 'u04-theta-172', wait: 1700 },
+  { name: 'u05-wordmark', wait: 1700 },
+  { name: 'u06-tagline', wait: 900 },
+  { name: 'u07-presents', wait: 1900 },
+  { name: 'u08-name', wait: 2400 },
+  { name: 'u09-name-typed', js: `(() => { const i = document.getElementById('th-name-input'); i.value = 'Aarav'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`, wait: 300 },
+  { name: 'u10-namaste', js: `document.querySelector('.th-name .th-btn--go').click()`, wait: 1900 },
+  { name: 'u11-after', wait: 3200, noShot: true },
+  { name: 'u12-pro-card', js: `(async () => { document.querySelector('[data-pick="pro"]').click(); await new Promise(r => setTimeout(r, 1200)); ${SIM_READY}; })()`, wait: 600 },
+  { name: 'u13-pro-downloading', js: `(async () => { document.getElementById('update-card')?.remove(); window.__thetaTest.updateScreen({ manual: true }); ${SIM_DOWNLOAD}; })()`, wait: 2600 },
+  { name: 'u14-pro-tip-hindi', js: `(async () => { [...document.querySelectorAll('.upd-lang__btn')].find(b => b.textContent === 'हिंदी')?.click(); document.querySelector('.upd-tip__btn[aria-label="Next card"]')?.click(); })()`, wait: 700 },
+  { name: 'u15-pro-installing', js: `(async () => { [...document.querySelectorAll('.upd-lang__btn')].find(b => b.textContent === 'English')?.click(); window.__thetaTest.updateSim({ state: 'installing', version: '1.2.0' }); })()`, wait: 900 },
+  { name: 'u16-pro-whats-new', js: `(async () => { window.__thetaTest.updateClose(); window.__thetaTest.updateSim({ state: 'idle' }); window.__thetaTest.action('whats-new'); })()`, wait: 400 },
+  { name: 'u17-pro-about', js: `(async () => { document.getElementById('whats-new')?.remove(); window.__thetaTest.action('about'); })()`, wait: 400 },
+  { name: 'u18-pro-help-menu', js: `(async () => { document.getElementById('about-theta')?.remove(); [...document.querySelectorAll('.menubar__item')].find(b => b.textContent === 'Help')?.click(); })()`, wait: 400 },
+  { name: 't00-pro-tour-start', js: `(async () => { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await new Promise(r => setTimeout(r, 300)); void window.__thetaTest.action('tour'); })()`, wait: 700 },
+  { name: 't01-pro-tour', js: `window.__thetaTest.tourShow(1)`, wait: 600 },
+  { name: 't02-pro-tour', js: `window.__thetaTest.tourShow(2)`, wait: 600 },
+  { name: 't03-pro-tour', js: `window.__thetaTest.tourShow(3)`, wait: 600 },
+  { name: 't06-pro-tour', js: `window.__thetaTest.tourShow(6)`, wait: 600 },
+  { name: 't08-pro-tour', js: `window.__thetaTest.tourShow(8)`, wait: 600 },
+  { name: 't09-pro-tour', js: `window.__thetaTest.tourShow(9)`, wait: 600 },
+  { name: 't010-pro-tour', js: `window.__thetaTest.tourShow(10)`, wait: 600 },
+  { name: 't011-pro-tour', js: `window.__thetaTest.tourShow(11)`, wait: 600 },
+  { name: 't99-close', js: `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`, wait: 400, noShot: true },
+  { name: 'u19-play-card', js: `(async () => {
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.querySelector('.ide-topbar [data-theme-choice="playground"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    ${SIM_READY};
+  })()`, wait: 600 },
+  { name: 'tp0-play-tour', js: `(async () => { document.getElementById('update-card')?.remove(); void window.__thetaTest.action('tour'); await new Promise(r => setTimeout(r, 500)); window.__thetaTest.tourShow(2); })()`, wait: 700 },
+  { name: 'tp1-play-tour', js: `window.__thetaTest.tourShow(6)`, wait: 600 },
+  { name: 'tp2-play-tour', js: `window.__thetaTest.tourShow(8)`, wait: 600 },
+  { name: 'tp9-close', js: `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`, wait: 400, noShot: true },
+  { name: 'u20-play-settings', js: `(async () => { document.getElementById('update-card')?.remove(); document.getElementById('btn-settings').click(); await new Promise(r => setTimeout(r, 300)); document.getElementById('set-updates')?.scrollIntoView({ block: 'center' }); })()`, wait: 300 },
+];
+
+// Real update download against scripts/update-server.cjs (THETA_SHOTS_SET=p13real, THETA_UPDATE_URL set).
+// Stops before installing.
+const P13_REAL = [
+  { name: 'v00-picker', wait: 4000, noShot: true },
+  { name: 'v01-check', js: `(async () => {
+    document.querySelector('[data-pick="pro"]').click();
+    await new Promise(r => setTimeout(r, 1200));
+    window.__thetaTest.action('check-updates');
+    for (let i = 0; i < 100 && !document.getElementById('update-screen'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 1500));
+  })()`, wait: 200 },
+  { name: 'v02-downloading', wait: 2500 },
+  { name: 'v03-ready', bench: `(async () => {
+    for (let i = 0; i < 1200 && !/is ready/.test(document.querySelector('.upd-title')?.textContent || ''); i++) await new Promise(r => setTimeout(r, 100));
+    return { title: document.querySelector('.upd-title')?.textContent, sub: document.querySelector('.upd-sub')?.textContent, restart: !document.querySelector('.upd-foot .update-btn--primary')?.hidden };
+  })()`, wait: 300 },
+  { name: 'v04-card-later', js: `(async () => {
+    [...document.querySelectorAll('.upd-foot .update-btn')].find(b => b.textContent === 'Keep working')?.click();
+    await new Promise(r => setTimeout(r, 400));
+    window.__thetaTest.action('check-updates'); // ready: shows the card
+    await new Promise(r => setTimeout(r, 500));
+  })()`, wait: 300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { relay: RELAY_SCENES, python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES, p12: P12_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { p13: P13_SCENES, p13real: P13_REAL, relay: RELAY_SCENES, python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES, p12: P12_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

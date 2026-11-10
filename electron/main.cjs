@@ -23,7 +23,7 @@ const { registerPluginIpc } = require('./plugin-host.cjs');
 const { registerRelaySetupIpc } = require('./relay-setup.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
-const { initAutoUpdates } = require('./updater.cjs');
+const { registerUpdater } = require('./updater.cjs');
 const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
 const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
 const { registerLspIpc } = require('./lsp-ipc.cjs');
@@ -126,7 +126,8 @@ function createWindow() {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // THETA_SHOW_WELCOME=1 opens straight into the first-start welcome (for previews)
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), process.env.THETA_SHOW_WELCOME === '1' ? { query: { welcome: '1' } } : undefined);
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -1183,7 +1184,8 @@ app.whenReady().then(() => {
   registerGitIpc({ ipcMain, execFile, shell, getRoot: () => workspaceIpc?.workspace.root || null });
   Menu.setApplicationMenu(null);
   createWindow();
-  if (!isDev && app.isPackaged) initAutoUpdates(() => mainWindow);
+  // Updates: checked and downloaded in the background; the window asks when it is a good moment
+  registerUpdater({ ipcMain, app, getWindow: () => mainWindow, userData: app.getPath('userData') });
 });
 
 app.on('window-all-closed', () => {

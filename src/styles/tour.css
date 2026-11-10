@@ -1,0 +1,48 @@
+/* ═══ The startup guide (src/app/tour.js): a light on one part, a card beside it ═══ */
+
+.tour { position: fixed; inset: 0; z-index: 9500; pointer-events: none; }
+.tour__shade { position: absolute; inset: 0; pointer-events: auto; }
+.tour__spot {
+  position: absolute; border-radius: var(--radius-tile); pointer-events: none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-soft), 0 0 0 200vmax rgba(7, 6, 10, 0.68);
+  transition: left 420ms var(--ease-out), top 420ms var(--ease-out), width 420ms var(--ease-out), height 420ms var(--ease-out), opacity 300ms ease;
+  opacity: 0;
+}
+.tour.is-on .tour__spot { opacity: 1; }
+.tour.is-center .tour__spot { box-shadow: 0 0 0 200vmax rgba(7, 6, 10, 0.72); }
+.tour.is-out { opacity: 0; transition: opacity 240ms ease; }
+
+.tour__card {
+  position: absolute; width: min(380px, calc(100vw - 24px)); display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px;
+  pointer-events: auto; color: var(--text); background: var(--surface-2);
+  border: var(--border-w) solid var(--line-strong); border-radius: var(--radius-tile); box-shadow: var(--shadow-modal);
+  transition: left 420ms var(--ease-out), top 420ms var(--ease-out);
+}
+.tour__card.is-in { animation: tourIn 380ms var(--ease-out) both; }
+@keyframes tourIn { from { opacity: 0; transform: translateY(8px); } }
+.tour.is-center .tour__card { width: min(440px, calc(100vw - 24px)); padding: 24px 26px 20px; }
+.tour__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour__kicker { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-fg); }
+.tour__count { font: 600 var(--fs-xs) var(--font-code); color: var(--text-3); }
+.tour__title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; }
+:root[data-theme="playground"] .tour__title { font-family: var(--font-display); font-weight: 800; }
+.tour__body { margin: 0; font-size: var(--fs-base); line-height: 1.6; color: var(--text-2); }
+.tour__keys { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-3); }
+.tour__keys kbd { padding: 3px 8px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font: 600 12px var(--font-code); }
+.tour__bar { height: 3px; margin-top: 4px; border-radius: 2px; background: var(--surface-4); overflow: hidden; }
+.tour__fill { display: block; height: 100%; width: 0; background: var(--accent); transition: width 420ms var(--ease-out); }
+.tour__actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.tour__spacer { flex: 1; }
+.tour__btn {
+  min-height: var(--hit); padding: 0 16px; cursor: pointer; font: 600 var(--fs-sm)/1 var(--font-ui);
+  color: var(--text); background: var(--surface-1); border: var(--border-w) solid var(--line-strong); border-radius: var(--radius-control);
+}
+.tour__btn:hover { background: var(--surface-3); }
+.tour__btn--go { color: var(--on-accent); background: var(--accent); border-color: var(--accent-edge); }
+.tour__btn--go:hover { background: var(--accent-hover); }
+:root[data-theme="playground"] .tour__btn--go { box-shadow: var(--shadow-control); }
+.tour__btn--quiet { padding: 0 6px; border-color: transparent; background: transparent; color: var(--text-3); }
+.tour__btn--quiet:hover { color: var(--text); background: transparent; }
+.tour [hidden] { display: none !important; }
+.tour :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .tour__spot, .tour__card, .tour__fill { transition: none; } .tour__card.is-in { animation: none; } }
