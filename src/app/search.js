@@ -129,7 +129,7 @@ export function focusSearch() {
 
 /** Show one sidebar view: 'files', 'search' or 'debug'. */
 export function showSidebarView(view) {
-  for (const v of ['files', 'search', 'debug', 'git']) {
+  for (const v of ['files', 'search', 'debug', 'git', 'tests']) {
     const on = v === view;
     $(`${v}-view`)?.classList.toggle('hidden', !on);
     $(`view-${v}`)?.classList.toggle('active', on);
@@ -141,7 +141,7 @@ export function showSidebarView(view) {
 }
 
 export function currentSidebarView() {
-  return ['search', 'debug', 'git'].find((v) => !$(`${v}-view`)?.classList.contains('hidden')) || 'files';
+  return ['search', 'debug', 'git', 'tests'].find((v) => !$(`${v}-view`)?.classList.contains('hidden')) || 'files';
 }
 
 export function initSearch() {

@@ -59,6 +59,8 @@ export const DEFAULT_SHORTCUTS = {
   'prev-tab':          { ctrl: true,  shift: true,  alt: false, key: 'Tab' },
   'go-to-line':        { ctrl: true,  shift: false, alt: false, key: 'g' },
   'chain-lens':        { ctrl: true,  shift: false, alt: true,  key: 'l' },
+  'run-task':          { ctrl: true,  shift: true,  alt: false, key: 'b' },
+  'tests-run-all':     { ctrl: true,  shift: false, alt: true,  key: 't' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -110,6 +112,8 @@ export const SHORTCUT_LABELS = {
   'prev-tab':          'Previous Tab',
   'go-to-line':        'Go to Line',
   'chain-lens':        'Chain Lens',
+  'run-task':          'Run Task',
+  'tests-run-all':     'Run All Tests',
 };
 
 const KEY_NAMES = {

@@ -808,8 +808,45 @@ const P10_SCENES = [
   }, js: 'void 0', wait: 300 },
 ];
 
+// Phase 11: THETA_SHOTS_SET=p11 (Tests view, editor marks, tasks)
+const P11_SCENES = [
+  { name: 'q01-picker', wait: 4500 },
+  { name: 'q02-pro-tests-found', js: `(async () => {
+    document.querySelector('[data-pick="pro"]').click();
+    await new Promise(r => setTimeout(r, 900));
+    window.__thetaTest.action('show-tests');
+    for (let i = 0; i < 150 && !document.querySelector('#tests-view .tv-row--test'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 300 },
+  { name: 'q03-pro-tests-run', js: `(async () => {
+    window.__thetaTest.action('tests-run-all');
+    for (let i = 0; i < 200 && !document.querySelector('#tests-view .tv-summary .is-failed'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 500));
+    document.querySelector('#tests-view .tv-fail')?.setAttribute('open', '');
+  })()`, wait: 300 },
+  { name: 'q04-pro-editor-marks', js: `(async () => {
+    [...document.querySelectorAll('#tests-view .tv-row--test')].find((r) => r.textContent.includes('test_add_negative'))?.click();
+    for (let i = 0; i < 40 && !document.querySelector('.cm-test-mark'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 400));
+  })()`, wait: 300 },
+  { name: 'q05-pro-run-task', js: `(async () => {
+    window.__thetaTest.action('run-task');
+    await new Promise(r => setTimeout(r, 500));
+  })()`, wait: 300 },
+  { name: 'q06-pro-task-ruff', js: `(async () => {
+    [...document.querySelectorAll('.quick-pick .cmd-item, .quick-pick [role="option"]')].find((o) => o.textContent.includes('Lint the project'))?.click();
+    await new Promise(r => setTimeout(r, 4500));
+  })()`, wait: 300 },
+  { name: 'q07-play-tests', js: `(async () => {
+    document.querySelector('.ide-topbar [data-theme-choice="playground"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    window.__thetaTest.action('show-tests');
+    await new Promise(r => setTimeout(r, 400));
+  })()`, wait: 300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

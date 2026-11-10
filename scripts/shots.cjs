@@ -36,10 +36,42 @@ const files = {
   }, null, 1),
   'README.md': '# Dice game\n',
 };
+if (process.env.THETA_SHOTS_SET === 'p11') {
+  fs.mkdirSync(path.join(project, 'tests'));
+  fs.mkdirSync(path.join(project, '.theta'));
+  files['tests/test_helpers.py'] = [
+    'import pytest',
+    'from src.helpers import add',
+    '',
+    '',
+    'def test_add_numbers():',
+    '    assert add(2, 3) == 5',
+    '',
+    '',
+    'def test_add_negative():',
+    '    assert add(-2, -3) == -6',
+    '',
+    '',
+    'def test_add_text():',
+    '    assert add("a", "b") == "ab"',
+    '',
+    '',
+    '@pytest.mark.skip(reason="floats come next week")',
+    'def test_add_floats():',
+    '    assert add(0.1, 0.2) == 0.3',
+    '',
+    '',
+    'class TestBig:',
+    '    def test_big(self):',
+    '        assert add(10**6, 1) == 1000001',
+    '',
+  ].join('\n');
+  files['.theta/tasks.json'] = JSON.stringify({ tasks: [{ label: 'Run main.py', command: 'python main.py' }, { label: 'Tests with details', command: 'python -m pytest -v' }] }, null, 2);
+}
 for (const [f, c] of Object.entries(files)) fs.writeFileSync(path.join(project, f), c);
 // The notebook tour needs pandas and matplotlib: use the local test environment as the project's .venv
 const nbenv = path.join(root, 'tmp', 'nbenv');
-if (['notebook', 'p10'].includes(process.env.THETA_SHOTS_SET) && fs.existsSync(nbenv)) {
+if (['notebook', 'p10', 'p11'].includes(process.env.THETA_SHOTS_SET) && fs.existsSync(nbenv)) {
   try { fs.symlinkSync(nbenv, path.join(project, '.venv'), 'junction'); } catch (err) { console.log('no .venv link:', err.message); }
 }
 

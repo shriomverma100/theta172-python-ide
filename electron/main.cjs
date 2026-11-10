@@ -18,6 +18,7 @@ const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
 const { validRelayUrl } = require('./classroom-relay.cjs');
 const { PackageCache } = require('./package-mesh.cjs');
 const { GpuPool } = require('./gpu-pool.cjs');
+const { TestRunner, registerTestIpc } = require('./test-runner.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
@@ -41,6 +42,7 @@ let studyWindow = null;  // set in app.whenReady
 let notebookIpc = null;  // set in app.whenReady
 let packageCache = null; // class package folder (teacher), set in app.whenReady
 let gpuPool = null;      // class GPU pool (teacher), set in app.whenReady
+let testRunner = null;   // pytest, set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -463,6 +465,16 @@ const SMOKE_PROBE = `(async () => {
   document.querySelector('.editor-tab.active .editor-tab__close')?.click();
   await sleep(250);
   checks.notebookCloses = !document.querySelector('.nb');
+
+  console.log('STEP section tests ' + Math.round(performance.now() / 1000) + 's');
+  // Tests and tasks (Phase 11): the built-in Python has no pytest, so the view offers to install it
+  window.__thetaTest.action('show-tests');
+  for (let i = 0; i < 80 && !document.querySelector('#tests-view .tv-empty, #tests-view .tv-row'); i++) await sleep(100);
+  info.testsView = (document.getElementById('tests-view')?.textContent || '').slice(0, 120);
+  checks.testsView = /pytest is not installed|No tests found|passed/.test(info.testsView);
+  const toolPaths = await window.electronAPI.toolPaths();
+  checks.taskTools = !!toolPaths.ruff && !!toolPaths.shell;
+  document.getElementById('view-files').click();
 
   // Real system terminal
   document.getElementById('tab-shell').click();
@@ -963,6 +975,7 @@ ipcMain.on('classroom-send-event', (_, target, msg, key) => {
 ipcMain.handle('classroom-stop-server', () => {
   gpuPool?.dispose();
   packageCache?.stop();
+  testRunner?.stop();
   classroomServer.stop();
   return { success: true };
 });
@@ -1133,6 +1146,19 @@ app.whenReady().then(() => {
     sendTo: (studentId, msg) => classroomServer.sendEvent(studentId, msg),
     onState: (state) => toWindow('gpu-state-changed', state),
   });
+  testRunner = new TestRunner({
+    spawn,
+    getPython: () => pythonIpc?.active?.path || null,
+    getEnv: (base) => pythonIpc?.shellEnv(base) ?? base,
+    getRoot: () => workspaceIpc?.workspace.root || null,
+    onEvent: (ev) => toWindow('test-event', ev),
+  });
+  registerTestIpc({ ipcMain, runner: testRunner });
+  // Tasks call the bundled tools by path; the Shell is PowerShell on Windows
+  ipcMain.handle('tool-paths', () => ({
+    python: pythonIpc?.active?.path || null, ruff: tools.ruff || null, uv: tools.uv || null,
+    shell: process.platform === 'win32' ? 'powershell' : 'posix',
+  }));
   // Students in a class that shares packages install from the teacher first
   pythonIpc.envs.getMirror = () => classroomDiscovery.getPackageMirror();
   notebookIpc = registerNotebookIpc({

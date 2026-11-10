@@ -19,6 +19,11 @@ function activeText() {
   return isNotebookTab(tab) ? tabText(tab) : getValue();
 }
 
+const savedListeners = new Set();
+/** fn(filePath) after a file reached disk (Save, Save As, Save All, auto save). */
+export function onFileSaved(fn) { savedListeners.add(fn); return () => savedListeners.delete(fn); }
+const emitSaved = (p) => savedListeners.forEach((fn) => { try { fn(p); } catch (err) { console.error('[saved]', err); } });
+
 let beforeSave = null;
 /**
  * fn(code, fileName) → Promise<string|null> runs before a save (format on
@@ -64,6 +69,7 @@ export async function saveToFile() {
     clearUnsavedDot();
     markActiveTabSaved();
     showToast(`Saved: ${fileName}`, 'save', 1800);
+    emitSaved(filePath);
     return true;
   }
 
@@ -100,6 +106,7 @@ export async function saveAsFile() {
   }
   updateActiveTab({ filePath: result.filePath, name: result.fileName, unsaved: false });
   clearUnsavedDot();
+  emitSaved(result.filePath);
   showToast(`Saved: ${result.fileName}`, 'save', 2000);
   return true;
 }
@@ -179,6 +186,7 @@ export async function saveAll({ quiet = false } = {}) {
     if (res?.error) { out.failed++; continue; }
     markTabSaved(tab.id);
     out.saved++;
+    emitSaved(tab.filePath);
   }
   if (out.saved) clearUnsavedDot();
   if (!quiet) {

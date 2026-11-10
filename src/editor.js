@@ -20,6 +20,7 @@ import { linter, lintGutter } from '@codemirror/lint';
 import { tags } from '@lezer/highlight';
 import { debugEditorExtension } from './debug-editor.js';
 import { gitGutterExtension } from './git-gutter.js';
+import { testGutterExtension } from './testing/test-gutter.js';
 
 // ── Compartments for dynamic reconfiguration ──────────────────
 const themeCompartment = new Compartment();
@@ -483,6 +484,7 @@ export async function createEditor(container) {
     debugEditorExtension,
     lineNumbers(),
     gitGutterExtension,
+    testGutterExtension,
     highlightActiveLineGutter(),
     highlightSpecialChars(),
     history(),

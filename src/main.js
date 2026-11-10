@@ -85,6 +85,8 @@ import { ideActions } from './app/ide-actions.js';
 import { initAuthorship, openViva, openReplay, recordingFor } from './learn/viva-ui.js';
 import { lensInFile } from './learn/lens-ui.js';
 import { runOnClassGpu } from './classroom/class-share.js';
+import { initTests, showTests, runAllTests, runFailedTests, runTestsInFile, refreshTests } from './testing/test-view.js';
+import { initTasks, openTasks, runLastTask, configureTasks } from './app/tasks.js';
 import { initMenubar } from './app/menubar.js';
 import { APP_MENUS } from './app/app-menus.js';
 import { fixCode } from './app/ai-fix.js';
@@ -140,6 +142,19 @@ const actions = {
   'new-tab': () => addNewTab(null, '# New file\n'),
   'new-notebook': newNotebook,
   'predict': startPrediction,
+  'run-task': openTasks,
+  'rerun-task': runLastTask,
+  'configure-tasks': configureTasks,
+  'show-tests': showTests,
+  'tests-run-all': () => { showTests(); runAllTests(); },
+  'tests-run-failed': runFailedTests,
+  'tests-run-file': () => {
+    const p = getActiveTab()?.filePath;
+    if (!p) { showToast('Save the file in your project first', 'info', 2000); return; }
+    showTests();
+    runTestsInFile(p);
+  },
+  'tests-refresh': refreshTests,
   'run-class-gpu': () => runOnClassGpu({ code: getValue(), fileName: getActiveFileName() }),
   'chain-lens': () => {
     const nb = activeNotebook();
@@ -497,6 +512,8 @@ async function initIDE() {
 
   initLearn({ onRunFinish, onRunStart, runCode }); // explanations, predictions, progress
   initAuthorship(); // who wrote what, for Viva Mode and replays
+  initTests();      // pytest: the Tests view and marks in the editor
+  initTasks({ runFile: runCode, runTests: () => { showTests(); runAllTests(); } });
   await initRuntime();
   // Language intelligence needs local Python (desktop); it starts in the background
   if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));

@@ -1,0 +1,87 @@
+/* ═══ Tests view (sidebar) and test marks in the editor ═════════════ */
+
+.tests-view { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px 10px 12px; }
+.tests-view.hidden { display: none; }
+.tv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tv-title { flex: 1; font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-3); }
+.tv-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.tv-btn {
+  height: 26px; padding: 0 9px; border-radius: 7px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--text); font: 600 var(--fs-xs)/1 var(--font-ui);
+}
+.tv-btn:hover { background: var(--surface-3); }
+.tv-btn--primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
+.tv-btn--primary:hover { background: var(--red-hover); }
+.tv-btn:focus-visible, .tv-run:focus-visible, .tv-twisty:focus-visible, .tv-row:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.tv-summary { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-sm); color: var(--text-2); }
+.tv-summary b { font-family: var(--font-code); }
+.tv-summary .is-passed b { color: var(--ok-text); }
+.tv-summary .is-failed b { color: var(--accent-text); }
+.tv-summary .is-skipped b { color: var(--warn-text); }
+.tv-summary .is-running { color: var(--sky); }
+.tv-option { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-3); cursor: pointer; }
+.tv-empty { margin: 4px 0; font-size: var(--fs-sm); line-height: 1.55; color: var(--text-3); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.tv-empty p { margin: 0; }
+
+.tv-tree { display: flex; flex-direction: column; }
+.tv-row {
+  display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 4px 0 calc(4px + var(--depth, 0) * 14px);
+  border-radius: 6px; cursor: pointer; font-size: var(--fs-sm); color: var(--text); min-width: 0;
+}
+.tv-row:hover { background: var(--surface-3); }
+.tv-row--file { font-weight: 600; }
+.tv-twisty { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 10px; flex: none; }
+.tv-row--test { padding-left: calc(26px + var(--depth, 0) * 14px - 14px); }
+.tv-icon { width: 14px; flex: none; text-align: center; font: 700 12px/1 var(--font-ui); color: var(--text-3); }
+.tv-icon.is-passed, .tv-icon.is-xpass { color: var(--ok-text); }
+.tv-icon.is-failed, .tv-icon.is-error { color: var(--accent-text); }
+.tv-icon.is-skipped, .tv-icon.is-xfail { color: var(--warn-text); }
+.tv-icon.is-running::before {
+  content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--sky); border-right-color: transparent; animation: tvSpin 0.8s linear infinite;
+}
+.tv-icon.is-queued { color: var(--sky); }
+@keyframes tvSpin { to { transform: rotate(360deg); } }
+.tv-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-code); font-size: 12.5px; }
+.tv-row--file .tv-name { font-family: var(--font-ui); font-size: var(--fs-sm); }
+.tv-detail { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); color: var(--text-3); }
+.tv-dur { flex: none; font: 11px/1 var(--font-code); color: var(--text-3); }
+.tv-run {
+  width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 6px;
+  border: 1px solid transparent; background: transparent; color: var(--text-2); cursor: pointer; opacity: 0;
+}
+.tv-row:hover .tv-run, .tv-row:focus-within .tv-run { opacity: 1; }
+.tv-run:hover { background: var(--red); color: var(--on-red); }
+.tv-fail, .tv-skip { margin: 0 0 4px calc(26px + var(--depth, 0) * 14px - 14px); }
+.tv-fail > summary { cursor: pointer; font: 600 12px/1.5 var(--font-code); color: var(--accent-text); overflow-wrap: anywhere; }
+.tv-fail pre, .tv-log pre, .tv-collect-error pre {
+  margin: 4px 0 0; max-height: 260px; overflow: auto; padding: 6px 8px; border-radius: 6px;
+  background: var(--panel); color: var(--panel-text); font: 11.5px/1.45 var(--font-code); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.tv-fail__out { margin-top: 4px; font-size: var(--fs-xs); color: var(--text-3); }
+.tv-skip { font-size: var(--fs-xs); color: var(--warn-text); }
+.tv-collect-error { padding: 6px 8px; border-radius: 8px; border-left: 3px solid var(--red); background: var(--red-tint); font-size: var(--fs-sm); }
+.tv-log > summary { cursor: pointer; font-size: var(--fs-xs); color: var(--text-3); }
+
+/* Five sidebar tabs: Tests is an icon in Playground (like Search and Git);
+   in Pro only the active tab shows its name, the others their icon */
+:root[data-theme="playground"] #view-tests:not(.active) .sidebar-view__label { display: none; }
+:root[data-theme="playground"] #view-tests:not(.active) .sidebar-view__icon { display: block; }
+:root[data-theme="pro"] .sidebar-view:not(.active):not(#view-files) .sidebar-view__label { display: none; }
+:root[data-theme="pro"] .sidebar-view:not(.active):not(#view-files) .sidebar-view__icon { display: block; }
+:root[data-theme="pro"] .sidebar-view { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Editor gutter: ▶ ✓ ✗ beside test functions */
+.cm-test-gutter { min-width: 0; }
+.cm-test-mark {
+  display: inline-block; width: 16px; text-align: center; cursor: pointer; border-radius: 4px;
+  font: 700 11px/18px var(--font-ui); color: var(--panel-text-2);
+}
+.cm-test-mark:hover { background: color-mix(in srgb, var(--panel-text) 14%, transparent); }
+.cm-test-mark.is-unknown { color: var(--panel-text-2); font-size: 9px; }
+.cm-test-mark.is-passed, .cm-test-mark.is-xpass { color: #5CC98A; }
+.cm-test-mark.is-failed, .cm-test-mark.is-error { color: #FF6E5D; }
+.cm-test-mark.is-skipped, .cm-test-mark.is-xfail { color: #E8B04E; }
+.cm-test-mark.is-running, .cm-test-mark.is-queued { color: #6EA8FE; }
+@media (prefers-reduced-motion: reduce) { .tv-icon.is-running::before { animation: none; } }

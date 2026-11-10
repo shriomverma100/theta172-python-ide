@@ -53,6 +53,15 @@ export class ShellTerminal {
     this.term.focus();
   }
 
+  /** Type a command into the shell and press Enter (tasks). Starts the shell first if needed. */
+  async run(command) {
+    await this.open();
+    for (let i = 0; i < 50 && !this.alive; i++) await new Promise((r) => setTimeout(r, 100));
+    if (!this.alive) return false;
+    window.electronAPI?.shellInput?.(`${command}\r`);
+    return true;
+  }
+
   async start() {
     if (this.starting) return;
     this.starting = true;
