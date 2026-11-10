@@ -22,40 +22,47 @@ const SAFE_IMAGE = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=\s]+$/i
  * @param {Document} [doc]  a document to parse with (tests pass jsdom's)
  * @param {object} [opts]
  * @param {boolean} [opts.notebook]  also keep data: pictures, list starts and table spans
+ * @param {boolean} [opts.actions]   plugin panels: also keep <button data-action="name"> (clicks go to the plugin)
  * @returns {string}
  */
-export function sanitizeHTML(html, doc = globalThis.document, { notebook = false } = {}) {
+export function sanitizeHTML(html, doc = globalThis.document, { notebook = false, actions = false } = {}) {
   const tpl = doc.createElement('template');
   tpl.innerHTML = String(html ?? '');
-  clean(tpl.content, notebook);
+  clean(tpl.content, { notebook: notebook || actions, actions });
   return tpl.innerHTML;
 }
 
-function clean(node, notebook) {
+const ACTION_RE = /^[\w.-]{1,64}$/;
+
+function clean(node, opts) {
+  const { notebook, actions } = opts;
   for (const child of [...node.childNodes]) {
     if (child.nodeType === 3) continue; // text
     if (child.nodeType !== 1) { child.remove(); continue; } // comments etc.
     const tag = child.tagName.toLowerCase();
-    if (!ALLOWED_TAGS.has(tag) && !(notebook && tag === 'img')) {
+    const extra = (notebook && tag === 'img') || (actions && tag === 'button');
+    if (!ALLOWED_TAGS.has(tag) && !extra) {
       // Drop dangerous elements with their content; unwrap harmless unknown ones
       if (/^(script|style|iframe|object|embed|frame|frameset|form|input|button|textarea|select|svg|math|template|link|meta|base|img|video|audio|source)$/.test(tag)) {
         child.remove();
       } else {
-        clean(child, notebook);
+        clean(child, opts);
         child.replaceWith(...child.childNodes);
       }
       continue;
     }
     for (const attr of [...child.attributes]) {
       const name = attr.name.toLowerCase();
-      const ok = ALLOWED_ATTRS['*'].has(name) || ALLOWED_ATTRS[tag]?.has(name) || (notebook && NOTEBOOK_ATTRS[tag]?.has(name));
+      const action = actions && name === 'data-action' && ACTION_RE.test(attr.value);
+      const ok = action || ALLOWED_ATTRS['*'].has(name) || ALLOWED_ATTRS[tag]?.has(name) || (notebook && NOTEBOOK_ATTRS[tag]?.has(name));
       if (!ok || (name === 'href' && !SAFE_URL.test(attr.value.trim())) || (name === 'src' && !SAFE_IMAGE.test(attr.value.trim()))) child.removeAttribute(attr.name);
     }
     if (tag === 'img' && !child.hasAttribute('src')) { child.remove(); continue; }
+    if (tag === 'button') child.setAttribute('type', 'button');
     if (tag === 'a') {
       child.setAttribute('target', '_blank');
       child.setAttribute('rel', 'noopener noreferrer');
     }
-    clean(child, notebook);
+    clean(child, opts);
   }
 }

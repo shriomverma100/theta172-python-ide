@@ -5,6 +5,7 @@
  * Every path is checked again in the main process (electron/workspace.cjs).
  */
 import { showToast } from '../toast.js';
+import { logoSvg } from '../core/tech-logos.js';
 import { $ } from '../core/dom.js';
 import {
   openFileTab, retargetTabs, detachTabs, findTabByPath, reloadTab, getActiveFilePath, closeTabsUnder,
@@ -182,6 +183,9 @@ function rowFor(entry, depth) {
   else { const pad = document.createElement('span'); pad.style.width = '12px'; pad.style.flex = 'none'; row.appendChild(pad); }
   const icon = document.createElement('span');
   icon.className = `ws-row__icon ${iconClass(entry)}`;
+  // Python and notebook files show their official logos
+  const mark = icon.classList.contains('is-py') ? 'python' : icon.classList.contains('is-nb') ? 'jupyter' : '';
+  if (mark) { icon.classList.add('has-logo'); icon.innerHTML = logoSvg(mark, 14); }
   const name = document.createElement('span');
   name.className = 'ws-row__name';
   name.textContent = entry.name;

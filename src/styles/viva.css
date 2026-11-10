@@ -14,31 +14,31 @@
 .viva-modal--wide .viva-modal__box { width: min(1100px, 100%); height: min(760px, calc(100vh - 32px)); }
 .viva-modal__head { display: flex; align-items: center; gap: 10px; }
 .viva-modal__title { flex: 1; margin: 0; font: 800 var(--fs-lg)/1.25 var(--font-display); }
-.viva-modal__close { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 18px; cursor: pointer; }
+.viva-modal__close { width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 18px; cursor: pointer; }
 .viva-modal__lead { margin: 0; font-size: var(--fs-sm); line-height: 1.55; color: var(--text-2); }
 .viva-modal__row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .viva-modal__note { flex: 1; font-size: var(--fs-sm); color: var(--accent-text); }
 .viva-modal__btn {
-  height: 34px; padding: 0 14px; border-radius: 10px; cursor: pointer;
+  height: 34px; padding: 0 14px; border-radius: var(--r-md); cursor: pointer;
   border: 1px solid var(--line-strong); background: transparent; color: var(--text); font: 700 var(--fs-sm)/1 var(--font-ui);
 }
-.viva-modal__btn--primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
+.viva-modal__btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .viva-modal__btn:focus-visible, .viva-modal__close:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 
-.viva-q { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: var(--surface-3); }
+.viva-q { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--r-lg); background: var(--surface-3); }
 .viva-q__top { display: flex; gap: 10px; align-items: flex-start; }
 .viva-q__n {
   flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--red); color: var(--on-red); font: 700 12px/1 var(--font-ui);
+  background: var(--accent); color: var(--on-accent); font: 700 12px/1 var(--font-ui);
 }
 .viva-q__text { font: 600 var(--fs-base)/1.5 var(--font-ui); }
 .viva-q__code {
-  display: block; overflow-x: auto; white-space: pre; padding: 6px 10px; border-radius: 8px;
+  display: block; overflow-x: auto; white-space: pre; padding: 6px 10px; border-radius: var(--r-md);
   background: var(--panel); color: var(--panel-text); font: 13px/1.5 var(--font-code);
 }
 .viva-q__ln { display: inline-block; min-width: 26px; margin-right: 8px; color: var(--panel-text-2); text-align: right; }
 .viva-q__answer {
-  resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong);
+  resize: vertical; padding: 8px 10px; border-radius: var(--r-md); border: 1px solid var(--line-strong);
   background: var(--surface-1); color: var(--text); font: var(--fs-sm)/1.55 var(--font-ui);
 }
 .viva-q__answer:focus { outline: 2px solid var(--focus); outline-offset: 0; }
@@ -47,23 +47,23 @@
 .replay { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 320px); gap: 14px; }
 .replay:not(:has(.replay__viva)) { grid-template-columns: minmax(0, 1fr); }
 .replay__main { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
-.replay__bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px; flex: none; }
+.replay__bar { display: flex; height: 10px; border-radius: var(--r-sm); overflow: hidden; gap: 2px; flex: none; }
 .replay__seg { flex-basis: 0; }
 .replay__legend { display: flex; flex-wrap: wrap; gap: 6px 12px; flex: none; }
-.replay__key { padding: 1px 8px; border-radius: 6px; font: 600 var(--fs-xs)/1.6 var(--font-ui); }
+.replay__key { padding: 1px 8px; border-radius: var(--r-sm); font: 600 var(--fs-xs)/1.6 var(--font-ui); }
 .replay__code {
-  flex: 1; min-height: 120px; margin: 0; overflow: auto; padding: 10px 12px; border-radius: 10px;
+  flex: 1; min-height: 120px; margin: 0; overflow: auto; padding: 10px 12px; border-radius: var(--r-md);
   background: var(--panel); color: var(--panel-text); font: 13px/1.6 var(--font-code); white-space: pre;
 }
 .replay__controls { display: flex; align-items: center; gap: 10px; flex: none; }
-.replay__slider { flex: 1; accent-color: var(--red); }
+.replay__slider { flex: 1; accent-color: var(--accent); }
 .replay__time { font: 12px/1 var(--font-code); color: var(--text-3); white-space: nowrap; }
-.replay__speed { height: 30px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); }
+.replay__speed { height: 30px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); }
 .replay__note { margin: 0; font-size: var(--fs-xs); color: var(--text-3); flex: none; }
 .replay__viva { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; padding-left: 14px; border-left: 1px solid var(--line); }
 .replay__viva-title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-3); }
 .replay__q { font: 600 var(--fs-sm)/1.45 var(--font-ui); }
-.replay__a { margin-top: 4px; padding: 8px 10px; border-radius: 8px; background: var(--surface-3); font-size: var(--fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.replay__a { margin-top: 4px; padding: 8px 10px; border-radius: var(--r-md); background: var(--surface-3); font-size: var(--fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Who wrote it */
 .replay-k--typed { background: color-mix(in srgb, var(--lime) 55%, transparent); color: var(--ink); }
@@ -74,7 +74,7 @@
 .replay-k--loaded { background: color-mix(in srgb, var(--panel-text-2) 18%, transparent); color: inherit; }
 .replay__legend .replay__key { color: var(--text); }
 
-:root[data-theme="pro"] .viva-modal__box { border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+:root[data-theme="pro"] .viva-modal__box { border: 1px solid var(--line-strong); border-radius: var(--r-lg); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
 :root[data-theme="pro"] .viva-modal__title { font-family: var(--font-ui); }
 @media (max-width: 760px) { .replay { grid-template-columns: 1fr; } .replay__viva { border-left: 0; padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .viva-modal, .viva-modal__box { animation: none; } }

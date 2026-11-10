@@ -44,6 +44,77 @@ export function setRelayUrl(url) {
   try { localStorage.setItem(RELAY_KEY, String(url || '').trim()); } catch (_) { /* private mode */ }
 }
 
+const WAY_KEY = 'theta-class-join-way';
+/** 'wifi' | 'relay': how students outside this Wi-Fi join (the teacher's choice). */
+export function getJoinWay() {
+  try {
+    const w = localStorage.getItem(WAY_KEY);
+    if (w === 'wifi' || w === 'relay') return w;
+  } catch (_) { /* private mode */ }
+  return getRelayUrl() ? 'relay' : 'wifi';
+}
+export function setJoinWay(way) {
+  try { localStorage.setItem(WAY_KEY, way === 'relay' ? 'relay' : 'wifi'); } catch (_) { /* private mode */ }
+}
+/** The relay this teacher's class uses ('' = same Wi-Fi only). */
+export const classRelayUrl = () => (getJoinWay() === 'relay' ? getRelayUrl() : '');
+
+/** "K7M-4QX @ theta172-relay.school.workers.dev" (the same format electron/classroom-relay.cjs reads). */
+export function inviteText(code, relayUrl) {
+  if (!code) return '';
+  const pretty = `${code.slice(0, 3)}-${code.slice(3)}`;
+  let u;
+  try { u = new URL(relayUrl); } catch (_) { return pretty; }
+  if (u.protocol !== 'wss:' && u.protocol !== 'ws:') return pretty;
+  const where = u.protocol === 'wss:' ? u.host + u.pathname.replace(/\/+$/, '') : String(relayUrl).replace(/\/+$/, '');
+  return `${pretty} @ ${where}`;
+}
+
+/** Wire the teacher's "How students join" choices (call after the setup is in the page). */
+export function wireJoinWays(openSetup) {
+  const box = document.getElementById('cr-join-ways');
+  if (!box) return;
+  const url = document.getElementById('cr-relay-url');
+  const detail = document.getElementById('cr-relay-detail');
+  const hint = document.getElementById('cr-relay-hint');
+  const paint = () => {
+    const way = box.querySelector('input[name="cr-join-way"]:checked')?.value || 'wifi';
+    detail?.classList.toggle('hidden', way !== 'relay');
+    for (const l of box.querySelectorAll('.cr-way')) l.classList.toggle('is-on', !!l.querySelector('input:checked'));
+  };
+  const choose = (way) => {
+    const r = box.querySelector(`input[value="${way}"]`);
+    if (r) r.checked = true;
+    setJoinWay(way);
+    paint();
+  };
+  if (url) url.value = getRelayUrl();
+  choose(getJoinWay());
+  for (const r of box.querySelectorAll('input[name="cr-join-way"]')) {
+    r.addEventListener('change', () => { choose(r.value); if (r.value === 'relay' && !url?.value) url?.focus(); });
+  }
+  url?.addEventListener('change', () => setRelayUrl(url.value));
+  document.getElementById('cr-relay-test')?.addEventListener('click', async () => {
+    const v = url?.value.trim() || '';
+    setRelayUrl(v);
+    if (!hint) return;
+    if (!v) { hint.textContent = 'Type the address first (it starts with wss://).'; hint.className = 'cr-hint is-bad'; return; }
+    hint.textContent = 'Testing: opening a test class through the relay…';
+    hint.className = 'cr-hint';
+    const r = await api()?.relayTest?.(v).catch((e) => ({ ok: false, message: e.message }));
+    hint.textContent = r?.ok ? `Works. A test class went through in ${r.ms} ms.` : `Not working: ${r?.message || 'no answer'}`;
+    hint.className = `cr-hint ${r?.ok ? 'is-ok' : 'is-bad'}`;
+  });
+  document.getElementById('cr-relay-setup')?.addEventListener('click', () => openSetup({
+    onSaved: (saved) => {
+      setRelayUrl(saved);
+      if (url) url.value = saved;
+      choose('relay');
+      if (hint) { hint.textContent = 'Saved. Your classes now use this relay.'; hint.className = 'cr-hint is-ok'; }
+    },
+  }));
+}
+
 // ══════════════════════════════════════════════════════════════════
 // TEACHER
 // ══════════════════════════════════════════════════════════════════
@@ -262,12 +333,12 @@ function renderRoutes() {
     off: ['is-off', 'Internet: off'],
   };
   const [cls, label] = states[relay.state] || states.off;
-  box.append(chip(cls, label, relay.state === 'off' ? 'Add a relay server in the class setup to let students join from any network' : relay.message || ''));
+  box.append(chip(cls, label, relay.state === 'off' ? 'Choose "From anywhere" in the class setup to let students join from any network' : relay.message || ''));
   const codeBox = document.getElementById('cr-join-code');
   if (codeBox) {
     codeBox.classList.toggle('hidden', !relay.code);
     const v = codeBox.querySelector('.cr-join-code__value');
-    if (v) v.textContent = relay.code ? `${relay.code.slice(0, 3)}-${relay.code.slice(3)}` : '';
+    if (v) v.textContent = relay.code ? inviteText(relay.code, classRelayUrl()) : '';
   }
 }
 

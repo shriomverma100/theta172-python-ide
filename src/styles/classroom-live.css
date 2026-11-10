@@ -16,7 +16,7 @@
 .cr-join-code__label { font-size: var(--fs-xs); font-weight: 700; }
 .cr-join-code__value { font: 700 var(--fs-md)/1 var(--font-code); letter-spacing: 0.12em; }
 .cr-join-code__copy {
-  height: 24px; padding: 0 8px; border: 1px solid #17142E; border-radius: 6px;
+  height: 24px; padding: 0 8px; border: 1px solid #17142E; border-radius: var(--r-sm);
   background: #FFFFFF; color: #17142E; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; /* the chip is yellow in both themes */
 }
 .cr-join-code { color: #17142E; border-color: #17142E; }
@@ -37,7 +37,7 @@
 .cr-pulse__key.is-done b { color: var(--ok-text); }
 .cr-pulse__key.is-working b { color: var(--sky); }
 .cr-pulse__key.is-stuck b { color: var(--accent-text); }
-.cr-pulse__bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-3); gap: 2px; }
+.cr-pulse__bar { display: flex; height: 12px; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-3); gap: 2px; }
 .cr-pulse__seg { flex-basis: 0; transition: flex-grow 600ms cubic-bezier(0.22, 1, 0.36, 1); }
 .cr-pulse__seg.is-done { background: var(--lime); }
 .cr-pulse__seg.is-working { background: var(--sky); }
@@ -92,19 +92,19 @@
   position: fixed; right: 20px; bottom: 96px; z-index: 2050; width: min(380px, calc(100vw - 32px));
   max-height: min(70vh, 560px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 14px;
   background: var(--surface-2); color: var(--text);
-  border: var(--border-w) solid var(--ink); border-radius: 16px; box-shadow: var(--shadow-tile);
+  border: var(--border-w) solid var(--ink); border-radius: var(--r-lg); box-shadow: var(--shadow-tile);
   animation: explainIn 220ms var(--ease-out);
 }
 .cr-help-card__head { display: flex; align-items: center; gap: 8px; }
 .cr-help-card__title { flex: 1; font: 800 var(--fs-md)/1.2 var(--font-display); }
-.cr-help-card__close { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 16px; cursor: pointer; }
+.cr-help-card__close { width: 28px; height: 28px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 16px; cursor: pointer; }
 .cr-help-card__lead, .cr-help-card__hint { margin: 0; font-size: var(--fs-sm); line-height: 1.55; color: var(--text-2); }
 .cr-help-card__hint { font-size: var(--fs-base); color: var(--text); }
-.cr-help-card__err { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: var(--red-tint); color: var(--accent-text); font: 600 var(--fs-xs)/1.5 var(--font-code); }
-.cr-help-card__code { margin: 0; max-height: 220px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre; }
-.cr-help-card__box { resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); font: var(--fs-sm)/1.5 var(--font-ui); }
+.cr-help-card__err { align-self: flex-start; padding: 2px 8px; border-radius: var(--r-sm); background: var(--red-tint); color: var(--accent-text); font: 600 var(--fs-xs)/1.5 var(--font-code); }
+.cr-help-card__code { margin: 0; max-height: 220px; overflow: auto; padding: 8px 10px; border-radius: var(--r-md); background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre; }
+.cr-help-card__box { resize: vertical; padding: 8px 10px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); font: var(--fs-sm)/1.5 var(--font-ui); }
 .cr-help-card .cr-action-btn { align-self: flex-end; }
-:root[data-theme="pro"] .cr-help-card { border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+:root[data-theme="pro"] .cr-help-card { border: 1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
 :root[data-theme="pro"] .cr-help-card__title { font-family: var(--font-ui); }
 
 /* Shared with the class: packages and the GPU (teacher) */
@@ -125,7 +125,7 @@
 .cr-share-status { font-size: var(--fs-sm); color: var(--ok-text); }
 .cr-pkg-row { display: flex; gap: 8px; }
 .cr-pkg-row .cr-input { flex: 1; font-family: var(--font-code); }
-.cr-pkg-log { margin: 0; min-height: 60px; max-height: 240px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre-wrap; }
+.cr-pkg-log { margin: 0; min-height: 60px; max-height: 240px; overflow: auto; padding: 8px 10px; border-radius: var(--r-md); background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre-wrap; }
 .cr-pkg-log:empty { display: none; }
 @media (max-width: 900px) { .cr-share__queue { margin-left: 0; } .cr-share__label { width: auto; } }
 
@@ -133,7 +133,7 @@
 .cm-class-heat-gutter { min-width: 0; }
 .cm-class-heat {
   display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin: 2px 2px 0; padding: 0 3px;
-  border-radius: 8px; font: 700 10px/1 var(--font-code); color: #fff;
+  border-radius: var(--r-md); font: 700 10px/1 var(--font-code); color: #fff;
   background: color-mix(in srgb, var(--red) calc(45% + var(--heat, 0) * 55%), transparent);
   cursor: help;
 }

@@ -37,6 +37,11 @@ export default [
     files: ['electron/**/*.cjs', 'scripts/**/*.cjs', 'relay-server/**/*.js'],
     languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node } },
   },
+  // Example plugins: plain scripts that get the plugin API as `theta` (and may await at the top)
+  {
+    files: ['examples/plugins/**/*.js'],
+    languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { theta: 'readonly' } },
+  },
   // Tests
   {
     files: ['tests/**/*.js'],

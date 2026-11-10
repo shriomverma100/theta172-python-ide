@@ -1,0 +1,10 @@
+{
+  "id": "word-count",
+  "name": "Word Count",
+  "version": "1.0.0",
+  "description": "Shows the lines and words of the open file in the status bar, and counts the words you selected.",
+  "author": "THETA172",
+  "main": "plugin.js",
+  "apiVersion": 1,
+  "permissions": ["editor.read"]
+}

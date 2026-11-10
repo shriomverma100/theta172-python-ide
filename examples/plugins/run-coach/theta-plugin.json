@@ -1,0 +1,10 @@
+{
+  "id": "run-coach",
+  "name": "Run Coach",
+  "version": "1.0.0",
+  "description": "Counts your runs and errors today and cheers when you fix an error. A small example of listening to runs.",
+  "author": "THETA172",
+  "main": "plugin.js",
+  "apiVersion": 1,
+  "permissions": ["runs"]
+}

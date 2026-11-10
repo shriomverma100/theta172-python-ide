@@ -9,6 +9,7 @@ import {
   createTests, applyEvent, beginCollect, endCollect, beginRun, endRun, tree, summary, failedIds, fileMarks, groupStatus, isTestFile,
 } from './test-model.js';
 import { setTestMarks, setTestRunHandler } from './test-gutter.js';
+import { logoSvg } from '../core/tech-logos.js';
 import { visibleTabs, onTabShow } from '../app/tabs.js';
 import { openPath, getWorkspaceRoot, onWorkspaceChange } from '../app/workspace.js';
 import { onFileSaved } from '../app/files.js';
@@ -150,7 +151,9 @@ function render() {
   if (!box) return;
   box.replaceChildren();
   const head = el('div', 'tv-head');
-  head.append(el('span', 'tv-title', 'Tests'));
+  const title = el('span', 'tv-title');
+  title.innerHTML = `${logoSvg('pytest', 14)}<span>Tests</span>`; // our own static markup
+  head.append(title);
   const actions = el('div', 'tv-actions');
   const busy = m.running || m.collecting;
   actions.append(

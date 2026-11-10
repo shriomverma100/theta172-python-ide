@@ -4,7 +4,7 @@
  * native window controls via IPC, local Python execution, crash recovery.
  */
 
-const { app, BrowserWindow, ipcMain, session, shell, Menu, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Menu, dialog, screen, safeStorage } = require('electron');
 const { execFile, spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -15,10 +15,12 @@ if (process.env.THETA_SMOKE === '1') app.commandLine.appendSwitch('disable-featu
 
 const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
-const { validRelayUrl } = require('./classroom-relay.cjs');
+const { validRelayUrl, parseInvite } = require('./classroom-relay.cjs');
 const { PackageCache } = require('./package-mesh.cjs');
 const { GpuPool } = require('./gpu-pool.cjs');
 const { TestRunner, registerTestIpc } = require('./test-runner.cjs');
+const { registerPluginIpc } = require('./plugin-host.cjs');
+const { registerRelaySetupIpc } = require('./relay-setup.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
@@ -43,6 +45,7 @@ let notebookIpc = null;  // set in app.whenReady
 let packageCache = null; // class package folder (teacher), set in app.whenReady
 let gpuPool = null;      // class GPU pool (teacher), set in app.whenReady
 let testRunner = null;   // pytest, set in app.whenReady
+let relaySetup = null;   // "set up your own relay", set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -707,7 +710,7 @@ const SMOKE_PROBE = `(async () => {
   const editorBg = () => getComputedStyle(document.querySelector('#monaco-container .cm-editor')).backgroundColor;
   for (let i = 0; i < 10 && editorBg() !== 'rgb(14, 15, 17)'; i++) await sleep(100);
   info.proEditorBg = editorBg();
-  checks.proEditorColours = info.proEditorBg === 'rgb(14, 15, 17)';
+  checks.proEditorColours = info.proEditorBg === 'rgb(27, 29, 34)';
   checks.themeRemembered = localStorage.getItem('theta-theme') === 'pro';
 
   // Start-up screen is gone and pixel effects stayed inside their frame budget
@@ -1053,11 +1056,14 @@ ipcMain.on('classroom-start-discovery', (_, name, roll, opts = {}) => {
   d.onSessionEnd = () => toWindow('classroom-session-end');
   d.onChatMessage = (data) => toWindow('classroom-chat-message-received', data);
   d.onClassEvent = (msg) => toWindow('classroom-class-event', msg);
-  const relayUrl = relayUrlFor(opts?.relayUrl);
-  d.startDiscovery(name, roll, { code: opts?.code, relayUrl });
-  // A code needs the internet relay; without one only this network is searched
-  if (opts?.code && !relayUrl) {
-    toWindow('classroom-join-error', 'A class code needs an internet relay server. Add its address under "Students on other networks", or join on the teacher\'s Wi-Fi.');
+  // "K7M-4QX @ theta172-relay.school.workers.dev": the invite carries the school's relay
+  const invite = parseInvite(opts?.code);
+  const relayUrl = invite ? invite.relayUrl : relayUrlFor(opts?.relayUrl);
+  const code = invite ? invite.code : opts?.code;
+  d.startDiscovery(name, roll, { code, relayUrl });
+  // A bare code needs the school's relay; without one only this network is searched
+  if (code && !relayUrl) {
+    toWindow('classroom-join-error', 'To join from another network, paste the whole invite your teacher shared (it looks like K7M-4QX @ something). With only the code, the class is found on the teacher\'s Wi-Fi.');
   }
 });
 
@@ -1154,6 +1160,10 @@ app.whenReady().then(() => {
     onEvent: (ev) => toWindow('test-event', ev),
   });
   registerTestIpc({ ipcMain, runner: testRunner });
+  // Plugins: the store lives here; their code runs in isolated workers in the window
+  registerPluginIpc({ ipcMain, dialog, shell, getWindow: () => mainWindow, userData: app.getPath('userData') });
+  // Classroom: set up the school's own relay (Cloudflare, Docker, or this computer)
+  relaySetup = registerRelaySetupIpc({ ipcMain, shell, safeStorage, userData: app.getPath('userData'), toWindow });
   // Tasks call the bundled tools by path; the Shell is PowerShell on Windows
   ipcMain.handle('tool-paths', () => ({
     python: pythonIpc?.active?.path || null, ruff: tools.ruff || null, uv: tools.uv || null,
@@ -1185,6 +1195,7 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
+  relaySetup?.dispose();
   workspaceIpc?.dispose();
   lspIpc?.dispose();
   debugIpc?.dispose();

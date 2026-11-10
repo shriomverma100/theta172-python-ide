@@ -15,7 +15,7 @@ export function isQuickPickOpen() { return !!open; }
 
 export function closeQuickPick() { open?.(); }
 
-export function openQuickPick({ title = 'Select', items = [], load = null, value = '', emptyText = 'Nothing matches' }) {
+export function openQuickPick({ title = 'Select', items = [], load = null, value = '', emptyText = 'Nothing matches', onCancel = null }) {
   closeQuickPick();
 
   const root = document.createElement('div');
@@ -40,15 +40,16 @@ export function openQuickPick({ title = 'Select', items = [], load = null, value
   let shown = [];
   let selected = 0;
 
-  const close = () => {
+  const close = (chosen = false) => {
     if (open !== close) return;
     open = null;
     root.remove();
     focusEditor();
+    if (!chosen) onCancel?.();
   };
 
   const choose = (item) => {
-    close();
+    close(true);
     item.run?.();
   };
 
@@ -159,7 +160,7 @@ export function openQuickPick({ title = 'Select', items = [], load = null, value
     }
     if (e.key === 'Enter' && pickable[selected]) { e.preventDefault(); choose(pickable[selected]); }
   });
-  root.querySelector('.cmd-palette-backdrop').addEventListener('click', close);
+  root.querySelector('.cmd-palette-backdrop').addEventListener('click', () => close());
 
   document.body.appendChild(root);
   open = close;

@@ -334,25 +334,25 @@ const playgroundHighlight = HighlightStyle.define([
 
 // Pro: graphite, from the approved Round 4 design
 const proDark = blackoutTheme({
-  bg: '#0E0F11', text: '#E7E8EB', caret: '#FF4A36', activeLine: '#16181C', gutter: '#868A93',
-  bracketBg: 'rgba(110,168,254,0.18)', searchBg: 'rgba(242,166,90,0.28)', selectionMatch: 'rgba(255,255,255,0.07)',
-  surface: '#1B1D21', border: '#3B3F47', selected: '#23252A', scroll: '#2A2D33',
+  bg: '#1B1D22', text: '#E4E6EB', caret: '#86AEF7', activeLine: '#22252B', gutter: '#8D929E',
+  bracketBg: 'rgba(122,167,247,0.20)', searchBg: 'rgba(226,178,86,0.26)', selectionMatch: 'rgba(255,255,255,0.07)',
+  surface: '#252830', border: '#3E434D', selected: '#2B2F37', scroll: '#333842',
 }, true);
 
 const proHighlight = HighlightStyle.define([
-  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword], color: '#FF7A68' },
-  { tag: tags.comment, color: '#8C909A', fontStyle: 'italic' },
-  { tag: tags.string, color: '#F2A65A' },
-  { tag: [tags.number, tags.bool, tags.null], color: '#B39DFF' },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#6EA8FE' },
-  { tag: tags.definition(tags.variableName), color: '#6EA8FE' },
-  { tag: [tags.className, tags.definition(tags.className), tags.typeName], color: '#4FC6AE' },
-  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#B3B6BE' },
-  { tag: tags.propertyName, color: '#E7E8EB' },
-  { tag: tags.variableName, color: '#E7E8EB' },
-  { tag: tags.self, color: '#B39DFF', fontStyle: 'italic' },
-  { tag: tags.special(tags.variableName), color: '#E8B04E' },
-  { tag: tags.meta, color: '#E8B04E' },
+  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword], color: '#C69CF2' },
+  { tag: tags.comment, color: '#8D929E', fontStyle: 'italic' },
+  { tag: tags.string, color: '#E2B98A' },
+  { tag: [tags.number, tags.bool, tags.null], color: '#F0A07C' },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#7FB0F5' },
+  { tag: tags.definition(tags.variableName), color: '#7FB0F5' },
+  { tag: [tags.className, tags.definition(tags.className), tags.typeName], color: '#5CC8BC' },
+  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#B4B9C3' },
+  { tag: tags.propertyName, color: '#E4E6EB' },
+  { tag: tags.variableName, color: '#E4E6EB' },
+  { tag: tags.self, color: '#C69CF2', fontStyle: 'italic' },
+  { tag: tags.special(tags.variableName), color: '#E2C07A' },
+  { tag: tags.meta, color: '#E2C07A' },
   { tag: tags.invalid, color: '#FF7A68', textDecoration: 'underline' },
 ]);
 

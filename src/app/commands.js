@@ -34,6 +34,7 @@ const COMMANDS = [
   { id: 'copy-path',      name: 'Copy Path of Active File',     icon: '<path d="M4 4h7v8H4Z M2.5 10V2.5H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
   { id: 'next-tab',       name: 'Next Tab',                     icon: '<path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
   { id: 'prev-tab',       name: 'Previous Tab',                 icon: '<path d="M11 7H3M6 4L3 7l3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+  { id: 'manage-plugins', name: 'Plugins: Manage Plugins…',      icon: '<path d="M5 2h4v2.2a1.3 1.3 0 1 0 2.6 0V2H12v4h-2.2a1.3 1.3 0 1 0 0 2.6H12V12H8V9.8a1.3 1.3 0 1 0-2.6 0V12H2V8h2.2a1.3 1.3 0 1 0 0-2.6H2V2h3Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" fill="none"/>' },
   { id: 'run-task',       name: 'Run Task…',                    icon: '<path d="M2.5 3.5h9v7h-9Z M4.5 6l1.5 1.5L4.5 9M7.5 9h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
   { id: 'rerun-task',     name: 'Run Last Task',                icon: '<path d="M3 7a4 4 0 1 0 1.2-2.8M3 2.5v2.7h2.7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
   { id: 'configure-tasks', name: 'Configure Tasks (.theta/tasks.json)', icon: '<path d="M7 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
@@ -98,9 +99,24 @@ let actions = {};
 let filtered = [...COMMANDS];
 let selected = 0;
 
+/** Commands added while the app runs (plugins): { id, name, run }. */
+const extra = [];
+const PLUGIN_ICON = '<path d="M5 2h4v2.2a1.3 1.3 0 1 0 2.6 0V2H12v4h-2.2a1.3 1.3 0 1 0 0 2.6H12V12H8V9.8a1.3 1.3 0 1 0-2.6 0V12H2V8h2.2a1.3 1.3 0 1 0 0-2.6H2V2h3Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" fill="none"/>';
+
+export function addCommand({ id, name, run }) {
+  removeCommand(id);
+  extra.push({ id, name, run, icon: PLUGIN_ICON });
+}
+export function removeCommand(id) {
+  const i = extra.findIndex((c) => c.id === id);
+  if (i >= 0) extra.splice(i, 1);
+}
+export const extraCommands = () => extra.slice();
+
 export function filterCommands(query) {
   const q = query.trim().toLowerCase();
-  return q ? COMMANDS.filter((c) => c.name.toLowerCase().includes(q)) : [...COMMANDS];
+  const all = [...COMMANDS, ...extra];
+  return q ? all.filter((c) => c.name.toLowerCase().includes(q)) : all;
 }
 
 export function isPaletteOpen() {
@@ -130,7 +146,8 @@ export function toggleCommandPalette() {
 
 function execute(cmd) {
   closeCommandPalette();
-  actions[cmd.id]?.();
+  if (cmd.run) cmd.run();
+  else actions[cmd.id]?.();
 }
 
 function render() {

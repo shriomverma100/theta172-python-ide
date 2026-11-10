@@ -244,6 +244,8 @@ function renderProblems({ errors, warnings, files }) {
   if ($status) {
     $status.querySelector('[data-errors]').textContent = String(errors);
     $status.querySelector('[data-warnings]').textContent = String(warnings);
+    $status.classList.toggle('is-clean', !errors && !warnings);
+    $status.classList.toggle('no-errors', !errors);
     $status.classList.remove('hidden');
   }
   if (!$list) return;

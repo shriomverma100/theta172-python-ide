@@ -8,6 +8,7 @@
  */
 
 import { showToast } from './toast.js';
+import { logoEl } from './core/tech-logos.js';
 import { isValidPackageSpec } from './core/package-spec.js';
 import {
   installPackages, uninstallPackage, checkEnvironment, showInterpreterPicker, getInterpreter, onInterpreterChange,
@@ -176,6 +177,9 @@ export class PipManager {
       const verSpan = document.createElement('span');
       verSpan.className = 'pip-package-item__version';
       verSpan.textContent = pkg.version;
+      left.className = 'pip-package-item__left';
+      const logo = logoEl(pkg.name, 16);
+      if (logo) left.append(logo);
       left.append(nameSpan, verSpan);
       item.appendChild(left);
 

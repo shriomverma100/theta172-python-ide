@@ -46,19 +46,19 @@
 .tp-preview { max-width: 520px; height: 220px; }
 .tp-preview--play { display: grid; grid-template-columns: 1fr 2fr 1.2fr; gap: 10px; }
 .tpp-col { display: flex; flex-direction: column; gap: 10px; }
-.tpp-tile { flex: 1; background: #FFFFFF; border: 2px solid #17142E; border-radius: 18px; box-shadow: 3px 3px 0 #17142E; }
+.tpp-tile { flex: 1; background: #FFFFFF; border: 2px solid #17142E; border-radius: var(--r-xl); box-shadow: 3px 3px 0 #17142E; }
 .tpp-tile--red { background: #FF4A36; }
 .tpp-tile--lime { flex: 2; background: #C6F24E; }
 .tpp-tile--lilac { background: #CDBEFF; }
-.tpp-editor { display: flex; flex-direction: column; gap: 9px; padding: 16px; background: #17142E; border-radius: 20px; box-shadow: 4px 4px 0 #FF4A36; }
-.tpp-editor span { height: 8px; border-radius: 4px; background: #ECEAFF; }
+.tpp-editor { display: flex; flex-direction: column; gap: 9px; padding: 16px; background: #17142E; border-radius: var(--r-xl); box-shadow: 4px 4px 0 #FF4A36; }
+.tpp-editor span { height: 8px; border-radius: var(--r-sm); background: #ECEAFF; }
 .tpp-editor span:nth-child(1) { width: 60%; background: #FF7A68; }
 .tpp-editor span:nth-child(2) { width: 82%; }
 .tpp-editor span:nth-child(3) { width: 45%; background: #C6F24E; }
 .tpp-editor span:nth-child(4) { width: 70%; }
 .tpp-editor span:nth-child(5) { width: 55%; background: #CDBEFF; }
 
-.tp-preview--pro { display: flex; border: 1px solid #2A2D33; border-radius: 12px; overflow: hidden; }
+.tp-preview--pro { display: flex; border: 1px solid #2A2D33; border-radius: var(--r-lg); overflow: hidden; }
 .tppr-rail { width: 30px; background: #15161A; border-right: 1px solid #2A2D33; }
 .tppr-main { flex: 1; display: flex; flex-direction: column; }
 .tppr-code { flex: 1; display: flex; flex-direction: column; gap: 9px; padding: 16px; }
@@ -85,7 +85,7 @@
   color: #17142E;
   background: #C6F24E;
   border: 2px solid #17142E;
-  border-radius: 18px;
+  border-radius: var(--r-xl);
   box-shadow: 3px 3px 0 #17142E;
 }
 .tp-pick--play:active { transform: translate(3px, 3px); box-shadow: none; }
@@ -97,7 +97,7 @@
   color: #0E0F11;
   background: #E7E8EB;
   border: 1px solid #E7E8EB;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 .tp-pick--play:focus-visible { outline: 3px solid #4B32C3; outline-offset: 3px; }
 .tp-pick--pro:focus-visible { outline: 2px solid #6EA8FE; outline-offset: 3px; }

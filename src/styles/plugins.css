@@ -1,0 +1,52 @@
+/* ═══ Plugins: the manager window, status bar items, plugin panels ═══ */
+
+.pl-box { width: min(760px, 100%); }
+.pl-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.pl-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--surface-3); border-left: 4px solid var(--line-strong); }
+.pl-card.is-on { border-left-color: var(--lime); }
+.pl-card.is-broken { border-left-color: var(--red); }
+.pl-card__top { display: flex; align-items: center; gap: 10px; }
+.pl-card__name { flex: 1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.pl-card__name b { font-size: var(--fs-base); }
+.pl-card__ver { font: 12px/1.4 var(--font-code); color: var(--text-3); }
+.pl-card__dev { font-size: var(--fs-xs); font-weight: 700; color: var(--warn-text); }
+.pl-card__state { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.pl-card__state.is-on { color: var(--ok-text); }
+.pl-card__state.is-error, .pl-card__state.is-cannot-load { color: var(--accent-text); }
+.pl-card__desc { margin: 0; font-size: var(--fs-sm); color: var(--text-2); line-height: 1.5; }
+.pl-card__err { margin: 0; font: 12px/1.5 var(--font-code); color: var(--accent-text); overflow-wrap: anywhere; }
+.pl-card__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-card__actions .viva-modal__btn { height: 30px; padding: 0 12px; }
+.pl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-chip { padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-strong); font: 600 11px/1.6 var(--font-code); color: var(--text-2); cursor: help; }
+.pl-log { margin: 0; max-height: 200px; overflow: auto; padding: 8px 10px; border-radius: var(--r-md); background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre-wrap; }
+.pl-perms-list { margin: 0; padding-left: 20px; font-size: var(--fs-base); line-height: 1.7; }
+.pl-note { font-size: var(--fs-xs) !important; }
+
+/* Status bar items (Pro status bar, Playground run rail) */
+.plugin-status { display: inline-flex; align-items: center; gap: 8px; }
+.plugin-status:empty { display: none; }
+.plugin-status__item { font: 12px/1 var(--font-code); color: var(--text-3); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+.plugin-status--pro .plugin-status__item { padding: 0 8px; }
+.plugin-status--play .plugin-status__item + .plugin-status__item::before { content: '|'; margin-right: 8px; opacity: 0.45; }
+.plugin-status--play { padding: 0 6px; }
+
+/* A plugin's panel */
+.plugin-panel {
+  position: fixed; right: 20px; top: 76px; z-index: 1240; width: min(400px, calc(100vw - 32px)); max-height: calc(100vh - 180px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface-2); color: var(--text);
+  border: var(--border-w) solid var(--ink); border-radius: var(--r-lg); box-shadow: var(--shadow-tile);
+  animation: explainIn 220ms var(--ease-out);
+}
+.plugin-panel__head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+.plugin-panel__title { flex: 1; font: 700 var(--fs-sm)/1.3 var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plugin-panel__close { width: 26px; height: 26px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 16px; cursor: pointer; }
+.plugin-panel__body { padding: 10px 14px 14px; overflow: auto; color: var(--text); }
+.plugin-panel__body button {
+  height: 28px; padding: 0 10px; margin: 2px 4px 2px 0; border-radius: var(--r-md); cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); font: 600 var(--fs-xs)/1 var(--font-ui);
+}
+.plugin-panel__body button:hover { background: var(--surface-3); }
+.plugin-panel__body code { background: var(--surface-3); border-color: var(--line-soft); }
+:root[data-theme="pro"] .plugin-panel { border: 1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }

@@ -4,6 +4,7 @@
  * user changes shows up here too.
  */
 import { recentItems, autoSaveItems } from './ide-actions.js';
+import { pluginMenuItems } from '../plugins/plugin-host.js';
 
 const sep = { separator: true };
 const notebookOpen = () => document.querySelector('.monaco-container.nb-shown') !== null;
@@ -112,6 +113,14 @@ export const APP_MENUS = [
       { label: 'Manage Packages', action: 'manage-packages' },
       { label: 'Check Environment', action: 'check-environment' },
     ],
+  },
+  {
+    label: 'Plugins',
+    // Built when the menu opens: the commands of the plugins that are on
+    get items() {
+      const mine = pluginMenuItems();
+      return [...mine, ...(mine.length ? [sep] : []), { label: 'Manage Plugins…', action: 'manage-plugins' }];
+    },
   },
   {
     label: 'Help',

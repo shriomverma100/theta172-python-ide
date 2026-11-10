@@ -445,7 +445,7 @@
   text-align: center;
 }
 .cr-searching { display: flex; gap: 8px; }
-.cr-searching span { width: 10px; height: 10px; background: var(--red); animation: searchStep 0.9s steps(1) infinite; }
+.cr-searching span { width: 10px; height: 10px; background: var(--accent); animation: searchStep 0.9s steps(1) infinite; }
 .cr-searching span:nth-child(2) { animation-delay: 0.3s; }
 .cr-searching span:nth-child(3) { animation-delay: 0.6s; }
 @keyframes searchStep { 0%, 66% { opacity: 0.2; } 33% { opacity: 1; } }
@@ -523,15 +523,15 @@
 .cr-chat-target, .cr-action-btn, .cr-stop-btn, .cr-view-btn, .cr-chat-send, .cr-toolbar-btn,
 .cr-badge, .cr-student-count-badge, .cr-chat-text { border-radius: var(--radius-control); }
 .cr-role-btn, .cr-edit-dialog { border-radius: var(--radius-tile); box-shadow: var(--shadow-tile); }
-.cr-action-btn, .cr-chat-send { background: var(--red); border-color: var(--line-strong); color: var(--on-red); }
-.cr-action-btn:hover, .cr-chat-send:hover { background: var(--red-hover); }
+.cr-action-btn, .cr-chat-send { background: var(--accent); border-color: var(--line-strong); color: var(--on-accent); }
+.cr-action-btn:hover, .cr-chat-send:hover { background: var(--accent-hover); }
 .cr-action-btn--hand { background: transparent; color: var(--text); border-color: var(--red); }
 .cr-action-btn--hand:hover { background: var(--red-tint); }
 :root[data-theme="playground"] .cr-action-btn, :root[data-theme="playground"] .cr-role-btn:hover { box-shadow: var(--shadow-control); }
 :root[data-theme="playground"] .classroom-panel { background: var(--bg); }
 :root[data-theme="playground"] .cr-topbar { background: var(--bg); }
 :root[data-theme="playground"] .cr-title, :root[data-theme="playground"] .cr-setup-title, :root[data-theme="playground"] .cr-role-btn__title { font-family: var(--font-display); }
-:root[data-theme="playground"] .cr-editor-toolbar { margin: 0 14px 8px; border: var(--border-w) solid var(--ink); border-radius: 14px; background: var(--red); color: var(--ink); }
+:root[data-theme="playground"] .cr-editor-toolbar { margin: 0 14px 8px; border: var(--border-w) solid var(--ink); border-radius: var(--r-lg); background: var(--red); color: var(--ink); }
 :root[data-theme="playground"] .cr-editor-toolbar .cr-toolbar-label,
 :root[data-theme="playground"] .cr-editor-toolbar .cr-toolbar-students { color: var(--ink); }
 :root[data-theme="playground"] .cr-editor-toolbar .cr-toolbar-live-dot { background: var(--ink); }

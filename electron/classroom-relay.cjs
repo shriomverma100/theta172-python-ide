@@ -30,6 +30,37 @@ function validRelayUrl(url) {
 }
 
 /**
+ * The address of one relay path. The Node relay accepts any path; on
+ * Cloudflare /host makes a new class and /room/CODE reaches an existing one.
+ */
+function relayPath(base, tail) {
+  const u = new URL(base);
+  u.pathname = u.pathname.replace(/\/+$/, '') + tail;
+  return u.toString();
+}
+
+/** "K7M-4QX @ theta172-relay.asha.workers.dev" → { code: 'K7M4QX', relayUrl: 'wss://…' } (null if it is not an invite). */
+function parseInvite(text) {
+  if (typeof text !== 'string' || text.length > 400) return null;
+  const m = text.trim().match(/^([A-Za-z0-9]{3}[\s-]?[A-Za-z0-9]{3})\s*@\s*(\S+)$/);
+  if (!m) return null;
+  const code = m[1].toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let host = m[2].replace(/\/+$/, '');
+  if (!/^wss?:\/\//i.test(host)) host = `wss://${host}`;
+  return validRelayUrl(host) ? { code, relayUrl: host } : null;
+}
+
+/** The short text a teacher shares: "K7M-4QX @ host" (just the code when there is no relay). */
+function inviteText(code, relayUrl) {
+  if (!code) return '';
+  const pretty = `${code.slice(0, 3)}-${code.slice(3)}`;
+  if (!validRelayUrl(relayUrl)) return pretty;
+  const u = new URL(relayUrl);
+  const where = u.protocol === 'wss:' ? u.host + u.pathname.replace(/\/+$/, '') : relayUrl.replace(/\/+$/, '');
+  return `${pretty} @ ${where}`;
+}
+
+/**
  * One WebSocket to the relay that keeps coming back.
  * Subclasses handle the relay protocol in _onOpen / _onRelay.
  */
@@ -82,7 +113,7 @@ class RelayLink {
     if (this.stopped) return;
     let ws;
     try {
-      ws = new this.WS(this.url, { maxPayload: MAX_PAYLOAD, handshakeTimeout: OPEN_TIMEOUT_MS });
+      ws = new this.WS(this._address(), { maxPayload: MAX_PAYLOAD, handshakeTimeout: OPEN_TIMEOUT_MS });
     } catch (err) {
       this._failed(err);
       return;
@@ -120,6 +151,7 @@ class RelayLink {
   }
 
   // Overridden
+  _address() { return this.url; }
   _onOpen() {}
   _onRelay() {}
   _onDown() {}
@@ -152,6 +184,8 @@ class RelayHost extends RelayLink {
 
   sendTo(peerId, text) { return this._raw({ t: 'send', to: peerId, data: text }); }
 
+  _address() { return relayPath(this.url, this.code ? `/room/${this.code}` : '/host'); }
+
   _onOpen() {
     if (this.code && this.token) this._raw({ t: 'resume-host', code: this.code, token: this.token });
     else this._raw({ t: 'host', name: this.name });
@@ -175,6 +209,7 @@ class RelayHost extends RelayLink {
         if (typeof msg.from === 'string' && typeof msg.data === 'string') this.onPeerData?.(msg.from, msg.data);
         break;
       case 'error':
+        if (msg.code === 'TAKEN') { this.restart(); break; } // a new code clashed (Cloudflare): ask again
         if (msg.code === 'ROOM_GONE') {
           // Away too long: the old class is gone, so host a new one (students get the new code)
           this.code = null;
@@ -210,6 +245,8 @@ class RelayJoin extends RelayLink {
   }
 
   send(text) { return this.joined && this._raw({ t: 'send', data: text }); }
+
+  _address() { return relayPath(this.url, `/room/${String(this.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')}`); }
 
   /** Leave for good (frees the seat at once). */
   leave() {
@@ -259,4 +296,4 @@ class RelayJoin extends RelayLink {
   }
 }
 
-module.exports = { RelayHost, RelayJoin, validRelayUrl };
+module.exports = { RelayHost, RelayJoin, validRelayUrl, relayPath, parseInvite, inviteText };

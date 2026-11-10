@@ -70,70 +70,100 @@
   --focus:       #4B32C3;
   --red-tint:    rgba(255, 74, 54, 0.14);
 
+  /* The one action colour. Playground: the red sticker; Pro: blue */
+  --accent:       #FF4A36;
+  --accent-hover: #FF6E5D;
+  --accent-edge:  #17142E;
+  --on-accent:    #17142E;
+  --accent-soft:  rgba(255, 74, 54, 0.10);
+  --accent-fg:    #4B32C3;   /* links and selected text */
+
   --font-ui:      'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Unbounded', 'Inter', sans-serif;
 
   --border-w:       2px;
-  --radius-tile:    26px;
+  --radius-tile:    22px;
   --radius-control: 12px;
   --radius-pill:    999px;
+  --r-sm:           6px;
+  --r-md:           10px;
+  --r-lg:           14px;
+  --r-xl:           20px;
   --shadow-tile:    4px 4px 0 var(--ink);
   --shadow-hero:    6px 6px 0 var(--red);
   --shadow-control: 2px 2px 0 var(--ink);
+  --shadow-modal:   6px 6px 0 var(--ink);
   --gap:            14px;
   --label-track:    0.06em;
   --label-case:     none;
 
   --topbar-h:      64px;
-  --control-h:     38px;
+  --control-h:     40px;
+  --hit:           40px;    /* smallest click target (buttons, close ×, toggles) */
 }
 
 /* ── Pro: graphite, hairlines, quiet ── */
 :root[data-theme="pro"] {
+  /* Graphite, not black: three close greys for depth (chrome < editor <
+     menus), hairline dividers, one blue for "do this", red only for errors,
+     Stop and the logo. Corners 3–6 px. */
   color-scheme: dark;
 
-  --bg:          #0E0F11;
-  --surface-1:   #15161A;
-  --surface-2:   #1B1D21;
-  --surface-3:   #23252A;
-  --surface-4:   #2A2D33;
+  --bg:          #181A1F;   /* chrome: title bar, sidebars, status bar */
+  --surface-1:   #1E2127;   /* cards, inputs, tiles */
+  --surface-2:   #252830;   /* menus, dialogs */
+  --surface-3:   #2B2F37;   /* hover */
+  --surface-4:   #333842;   /* pressed / selected */
 
-  --panel:       #0E0F11;
-  --panel-2:     #15161A;
-  --panel-text:  #E7E8EB;
-  --panel-text-2:#B3B6BE;
-  --panel-line:  #2A2D33;
+  --panel:       #1B1D22;   /* editor and terminal */
+  --panel-2:     #22252B;
+  --panel-text:  #E4E6EB;
+  --panel-text-2:#B4B9C3;
+  --panel-line:  #30343C;
 
-  --line:        #2A2D33;
-  --line-soft:   #202226;
-  --line-strong: #646A74;   /* 3:1 on surfaces: buttons stay visible */
+  --line:        #30343C;
+  --line-soft:   #272A31;
+  --line-strong: #686F7C;   /* 3:1 on surfaces: buttons stay visible */
 
-  --text:        #E7E8EB;
-  --text-2:      #B3B6BE;
-  --text-3:      #9A9EA8;
-  --text-4:      #8C909A;
-  --accent-text: #FF7A68;
-  --ok-text:     #5CC98A;
-  --warn-text:   #E8B04E;
+  --text:        #E4E6EB;
+  --text-2:      #B4B9C3;
+  --text-3:      #9CA1AC;
+  --text-4:      #959AA6;
+  --accent-text: #F2806F;   /* errors as text */
+  --ok-text:     #62C98E;
+  --warn-text:   #E2B256;
 
   --on-red:      #0E0F11;
-  --focus:       #6EA8FE;
+  --focus:       #7AA7F7;
   --red-tint:    rgba(255, 74, 54, 0.14);
+
+  --accent:       #3A72D8;
+  --accent-hover: #4A80E2;
+  --accent-edge:  #3A72D8;
+  --on-accent:    #FFFFFF;
+  --accent-soft:  rgba(58, 114, 216, 0.16);
+  --accent-fg:    #86AEF7;
 
   --font-ui:      'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Inter', 'Segoe UI', sans-serif;
 
   --border-w:       1px;
-  --radius-tile:    10px;
-  --radius-control: 8px;
-  --radius-pill:    999px;
+  --radius-tile:    6px;
+  --radius-control: 4px;
+  --radius-pill:    4px;
+  --r-sm:           3px;
+  --r-md:           4px;
+  --r-lg:           6px;
+  --r-xl:           6px;
   --shadow-tile:    none;
   --shadow-hero:    none;
   --shadow-control: none;
+  --shadow-modal:   0 20px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
   --gap:            0px;
-  --label-track:    0.08em;
-  --label-case:     uppercase;
+  --label-track:    0.04em;
+  --label-case:     none;
 
   --topbar-h:      44px;
-  --control-h:     30px;
+  --control-h:     32px;
+  --hit:           32px;
 }

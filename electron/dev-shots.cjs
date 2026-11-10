@@ -845,8 +845,158 @@ const P11_SCENES = [
   })()`, wait: 300 },
 ];
 
+// Phase 12: THETA_SHOTS_SET=p12 (plugins: install, consent, status bar, commands, panel)
+const exampleDir = (name) => path.join(__dirname, '..', 'examples', 'plugins', name);
+const clickButton = (text) => `[...document.querySelectorAll('[role=alertdialog] button')].find((b) => b.textContent === ${JSON.stringify(text)})?.click()`;
+const P12_SCENES = [
+  { name: 'r01-picker', wait: 4500 },
+  { name: 'r02-pro-plugins-installed', node: async (win) => {
+    // A TODO for the TODO Finder to find
+    const project = process.env.THETA_SMOKE_WORKSPACE;
+    if (project) fs.writeFileSync(path.join(project, 'src', 'stats.py'), 'def mean(xs):\n    # TODO: handle an empty list\n    return sum(xs) / len(xs)\n\n# FIXME: rounding\n');
+    await win.webContents.executeJavaScript(`(async () => {
+      document.querySelector('[data-pick="pro"]').click();
+      await new Promise(r => setTimeout(r, 900));
+      for (const d of ${JSON.stringify(['word-count', 'todo-finder', 'run-coach'].map(exampleDir))}) await window.electronAPI.pluginsLink(d);
+      window.__thetaTest.action('manage-plugins');
+      await new Promise(r => setTimeout(r, 500));
+    })()`);
+  }, js: 'void 0', wait: 300 },
+  { name: 'r03-pro-consent', js: `(async () => {
+    [...document.querySelectorAll('.pl-card')].find((c) => c.textContent.includes('TODO Finder'))?.querySelector('.viva-modal__btn--primary')?.click();
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 300 },
+  { name: 'r04-pro-plugins-on', js: `(async () => {
+    ${clickButton('Turn on')};
+    await new Promise(r => setTimeout(r, 600));
+    for (const name of ['Word Count', 'Run Coach']) {
+      [...document.querySelectorAll('.pl-card')].find((c) => c.textContent.includes(name))?.querySelector('.viva-modal__btn--primary')?.click();
+      await new Promise(r => setTimeout(r, 300));
+      ${clickButton('Turn on')};
+      await new Promise(r => setTimeout(r, 600));
+    }
+  })()`, wait: 600 },
+  { name: 'r05-pro-status-bar', js: `(async () => {
+    document.querySelector('#plugins-modal .viva-modal__close')?.click();
+    window.__thetaTest.setCode('for i in range(3):\\n    print(i)\\n');
+    await new Promise(r => setTimeout(r, 800));
+    ${RUN}
+    await new Promise(r => setTimeout(r, 600));
+  })()`, wait: 300 },
+  { name: 'r06-pro-todo-panel', js: `(async () => {
+    window.__thetaTest.action('cmd-palette');
+    await new Promise(r => setTimeout(r, 200));
+    const input = document.getElementById('cmd-input');
+    input.value = 'TODO';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 200));
+    document.querySelector('.cmd-result-item')?.click();
+    for (let i = 0; i < 40 && !document.querySelector('.plugin-panel'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 300 },
+  { name: 'r07-pro-plugins-menu', js: `(async () => {
+    [...document.querySelectorAll('.menubar__item')].find((b) => b.textContent === 'Plugins')?.click();
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 300 },
+  { name: 'r07b-sandbox-check', node: async (win) => {
+    // A plugin that looks for ways out of its sandbox and reports what it found
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'theta-sandbox-plugin-'));
+    fs.writeFileSync(path.join(dir, 'theta-plugin.json'), JSON.stringify({ id: 'sandbox-check', name: 'Sandbox Check', version: '1.0.0', main: 'plugin.js', permissions: [] }));
+    fs.writeFileSync(path.join(dir, 'plugin.js'), [
+      "const seen = {};",
+      "for (const k of ['fetch', 'XMLHttpRequest', 'WebSocket', 'importScripts', 'indexedDB', 'Worker', 'navigator', 'document', 'window', 'require', 'process', 'electronAPI']) seen[k] = typeof self[k];",
+      "await theta.log('SANDBOX ' + JSON.stringify(seen));",
+      "try { await theta.editor.getText(); await theta.log('EDITOR allowed'); } catch (e) { await theta.log('EDITOR refused: ' + e.message); }",
+    ].join('\n'));
+    const out = await win.webContents.executeJavaScript(`(async () => {
+      document.querySelector('.app-menu') && document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      await window.electronAPI.pluginsLink(${JSON.stringify(dir)});
+      window.__thetaTest.action('manage-plugins');
+      await new Promise(r => setTimeout(r, 500));
+      [...document.querySelectorAll('.pl-card')].find((c) => c.textContent.includes('Sandbox Check'))?.querySelector('.viva-modal__btn--primary')?.click();
+      await new Promise(r => setTimeout(r, 300));
+      ${clickButton('Turn on')};
+      await new Promise(r => setTimeout(r, 1500));
+      const card = [...document.querySelectorAll('.pl-card')].find((c) => c.textContent.includes('Sandbox Check'));
+      [...card.querySelectorAll('button')].find((b) => b.textContent.startsWith('Log'))?.click();
+      await new Promise(r => setTimeout(r, 300));
+      const card2 = [...document.querySelectorAll('.pl-card')].find((c) => c.textContent.includes('Sandbox Check'));
+      return card2?.querySelector('.pl-log')?.textContent || 'no log';
+    })()`);
+    console.log(`THETA_BENCH sandbox ${JSON.stringify(out)}`);
+  }, js: 'void 0', wait: 300 },
+  { name: 'r08-play-status', js: `(async () => {
+    document.querySelector('#plugins-modal .viva-modal__close')?.click();
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.querySelector('.plugin-panel .plugin-panel__close')?.click();
+    document.querySelector('.ide-topbar [data-theme-choice="playground"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+  })()`, wait: 300 },
+];
+
+// Relay setup + redesign tour: THETA_SHOTS_SET=relay
+const OPEN_CLASS_SETUP = `(async () => {
+  (document.getElementById('rail-classroom')?.offsetParent ? document.getElementById('rail-classroom') : document.getElementById('btn-class-tile')).click();
+  await new Promise(r => setTimeout(r, 1700));
+  document.querySelector('[data-role="teacher"]').click();
+  await new Promise(r => setTimeout(r, 400));
+  document.getElementById('cr-teacher-name').value = 'Ms. Sharma';
+  document.querySelector('input[name="cr-join-way"][value="relay"]').click();
+  document.getElementById('cr-relay-url').value = 'wss://theta172-relay.dps-noida.workers.dev';
+})()`;
+const LEAVE_CLASS = `(async () => {
+  document.querySelector('.rs-close')?.click();
+  document.getElementById('cr-global-back')?.click();
+  await new Promise(r => setTimeout(r, 900));
+})()`;
+const scrollGuide = (sel) => `(async () => { document.querySelector('${sel}')?.scrollIntoView({ block: 'start' }); await new Promise(r => setTimeout(r, 200)); })()`;
+const relayTour = (t) => [
+  { name: `${t}01-ide`, js: `(async () => {
+    window.__thetaTest.setCode('import pandas as pd\\n\\nscores = [91, 78, 64]\\nfor s in scores:\\n    print(s)\\n');
+    ${RUN}
+  })()`, wait: 600 },
+  { name: `${t}02-error-card`, js: `(async () => {
+    window.__thetaTest.setCode('marks = {"maths": 91}\\nprint(marks["science"])\\n');
+    await new Promise(r => setTimeout(r, 400));
+    ${RUN}
+    await new Promise(r => setTimeout(r, 900));
+  })()`, wait: 300 },
+  { name: `${t}03-progress`, js: `(async () => { window.__thetaTest.action('my-progress'); await new Promise(r => setTimeout(r, 400)); })()`, wait: 200 },
+  { name: `${t}04-class-setup`, js: `(async () => { document.querySelector('.progress-modal__close')?.click(); await (${OPEN_CLASS_SETUP}); })()`, wait: 300 },
+  { name: `${t}05-guide-cloudflare`, js: `(async () => { document.getElementById('cr-relay-setup').click(); await new Promise(r => setTimeout(r, 1500)); })()`, wait: 300 },
+  { name: `${t}06-guide-steps`, js: scrollGuide('.rs-steps'), wait: 200 },
+  { name: `${t}07-guide-token`, js: scrollGuide('.rs-steps > li:nth-child(2) .rs-figs'), wait: 200 },
+  { name: `${t}08-guide-paste`, js: scrollGuide('.rs-steps > li:nth-child(3)'), wait: 200 },
+  { name: `${t}09-guide-docker`, js: `(async () => { document.querySelector('.rs-tab[data-tab="docker"]').click(); await new Promise(r => setTimeout(r, 600)); })()`, wait: 300 },
+  { name: `${t}10-guide-pc`, js: `(async () => { document.querySelector('.rs-tab[data-tab="pc"]').click(); await new Promise(r => setTimeout(r, 300)); })()`, wait: 200 },
+  { name: `${t}11-student-join`, js: `(async () => {
+    document.querySelector('.rs-close')?.click();
+    document.getElementById('cr-teacher-back')?.click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('[data-role="student"]').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.getElementById('cr-student-name').value = 'Aarav Gupta';
+    document.getElementById('cr-student-roll').value = '12';
+    document.getElementById('cr-join-code-input').value = 'K7M-4QX @ theta172-relay.dps-noida.workers.dev';
+  })()`, wait: 300 },
+  { name: `${t}12-settings`, js: `(async () => { await (${LEAVE_CLASS}); (document.getElementById('rail-settings')?.offsetParent ? document.getElementById('rail-settings') : document.getElementById('btn-settings')).click(); await new Promise(r => setTimeout(r, 300)); })()`, wait: 200 },
+];
+const RELAY_SCENES = [
+  { name: 'q00-picker', wait: 4500 },
+  { name: 'q00-pro', js: `document.querySelector('[data-pick="pro"]').click()`, wait: 1200, noShot: true },
+  ...relayTour('qp'),
+  { name: 'q50-switch', js: `(async () => {
+    document.getElementById('close-settings')?.click();
+    document.getElementById('cr-global-back')?.click();
+    await new Promise(r => setTimeout(r, 900));
+    document.querySelector('.ide-topbar [data-theme-choice="playground"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+  })()`, wait: 300, noShot: true },
+  ...relayTour('qg'),
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { relay: RELAY_SCENES, python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES, p12: P12_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

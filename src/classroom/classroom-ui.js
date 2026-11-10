@@ -7,6 +7,8 @@
  * Anything that comes from the network is inserted as text, never as HTML.
  */
 
+import { JOIN_ICONS } from './relay-art.js';
+
 // ── Helpers ───────────────────────────────────────────────────────
 function el(tag, cls, html) {
   const e = document.createElement(tag);
@@ -76,7 +78,7 @@ export function buildRoleSelector(onSelectRole) {
   wrap.innerHTML = `
     <div class="cr-intro">
       <h1 class="cr-title">Classroom</h1>
-      <p class="cr-lead">Teach a class or join one. On the same Wi-Fi it just works; from anywhere else, join with the class code.</p>
+      <p class="cr-lead">Teach a class or join one. On the same Wi-Fi it just works; from anywhere else, students paste the teacher's invite.</p>
     </div>
     <div class="cr-role-grid">
       <button class="cr-role-btn" type="button" data-role="teacher">
@@ -128,20 +130,38 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
   setup.innerHTML = `
     <button class="cr-setup-back" id="cr-teacher-back" type="button">${BACK_ICON}<span>Back</span></button>
     <h2 class="cr-setup-title">Start a class</h2>
-    <p class="cr-setup-lead">Students on this network see your class and join it. Students anywhere else join with the code you get.</p>
+    <p class="cr-setup-lead">Students on this Wi-Fi always find your class. Choose how everyone else joins.</p>
     <div class="cr-input-group">
       <label class="cr-label" for="cr-teacher-name">Your name</label>
       <input type="text" class="cr-input" id="cr-teacher-name" placeholder="e.g. Ms. Sharma" autocomplete="off" spellcheck="false" maxlength="64" />
       <span class="cr-hint">Students see this name when they join.</span>
     </div>
-    <details class="cr-advanced">
-      <summary>Students on other networks</summary>
-      <div class="cr-input-group">
-        <label class="cr-label" for="cr-relay-url">Internet relay server</label>
-        <input type="url" class="cr-input" id="cr-relay-url" placeholder="wss://relay.your-school.in" autocomplete="off" spellcheck="false" maxlength="300" />
-        <span class="cr-hint">With a relay, anyone can join with the class code from any network, and the class keeps going if the Wi-Fi drops. Without one, only students on the same Wi-Fi can join.</span>
+    <fieldset class="cr-join-ways" id="cr-join-ways">
+      <legend class="cr-label">How students join</legend>
+      <label class="cr-way">
+        <input type="radio" name="cr-join-way" value="wifi" />
+        <span class="cr-way__icon">${JOIN_ICONS.wifi}</span>
+        <span class="cr-way__words"><b>Same Wi-Fi only</b><small>Students in this room. Nothing to set up.</small></span>
+      </label>
+      <label class="cr-way">
+        <input type="radio" name="cr-join-way" value="relay" />
+        <span class="cr-way__icon">${JOIN_ICONS.relay}</span>
+        <span class="cr-way__words"><b>From anywhere, with our school's relay</b><small>Home Wi-Fi, mobile data, another campus. Students paste your invite.</small></span>
+      </label>
+      <div class="cr-way__detail" id="cr-relay-detail">
+        <label class="cr-label" for="cr-relay-url">School relay address</label>
+        <div class="cr-relay-row">
+          <input type="url" class="cr-input" id="cr-relay-url" placeholder="wss://theta172-relay.your-school.workers.dev" autocomplete="off" spellcheck="false" maxlength="300" />
+          <button class="cr-action-btn cr-action-btn--ghost" id="cr-relay-test" type="button">Test</button>
+        </div>
+        <span class="cr-hint" id="cr-relay-hint">Ask the teacher or IT person who set it up, or set one up below.</span>
       </div>
-    </details>
+      <button class="cr-way cr-way--setup" id="cr-relay-setup" type="button">
+        <span class="cr-way__icon">${JOIN_ICONS.setup}</span>
+        <span class="cr-way__words"><b>No relay yet? Set one up</b><small>Free on Cloudflare, about 10 minutes, once for the whole school. Step-by-step guide with pictures.</small></span>
+        <span class="cr-way__go" aria-hidden="true">Open guide →</span>
+      </button>
+    </fieldset>
     <button class="cr-action-btn" id="cr-go-live-btn" type="button">Go live</button>
   `;
 
@@ -154,7 +174,7 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
         <span class="cr-live-label">Live</span>
         <span id="cr-live-teacher-name"></span>
         <span class="cr-student-count-badge" title="Students connected"><span id="cr-student-count-badge">0</span> joined</span>
-        <span class="cr-join-code hidden" id="cr-join-code" title="Students on other networks type this code"><span class="cr-join-code__label">Join code</span><span class="cr-join-code__value"></span><button class="cr-join-code__copy" id="cr-join-code-copy" type="button">Copy</button></span>
+        <span class="cr-join-code hidden" id="cr-join-code" title="Students on other networks paste this invite into Classroom → Join a class"><span class="cr-join-code__label">Invite</span><span class="cr-join-code__value"></span><button class="cr-join-code__copy" id="cr-join-code-copy" type="button">Copy invite</button></span>
         <span class="cr-routes" id="cr-routes" role="status"></span>
       </div>
       <div class="cr-panel-actions">
@@ -226,7 +246,7 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
   setup.innerHTML = `
     <button class="cr-setup-back" id="cr-student-back" type="button">${BACK_ICON}<span>Back</span></button>
     <h2 class="cr-setup-title">Join a class</h2>
-    <p class="cr-setup-lead">On your teacher's Wi-Fi we find the class by ourselves. Anywhere else, type the class code.</p>
+    <p class="cr-setup-lead">On your teacher's Wi-Fi the class is found by itself. Anywhere else, paste the invite your teacher shared.</p>
     <div class="cr-input-group">
       <label class="cr-label" for="cr-student-name">Your name</label>
       <input type="text" class="cr-input" id="cr-student-name" placeholder="e.g. Aarav Gupta" autocomplete="off" spellcheck="false" maxlength="64" />
@@ -236,18 +256,19 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
       <input type="text" class="cr-input" id="cr-student-roll" placeholder="e.g. 12" autocomplete="off" spellcheck="false" maxlength="32" />
     </div>
     <div class="cr-input-group">
-      <label class="cr-label" for="cr-join-code-input">Class code <span class="cr-label__opt">only if you are not on the teacher's Wi-Fi</span></label>
-      <input type="text" class="cr-input cr-input--code" id="cr-join-code-input" placeholder="e.g. K7M-4QX" autocomplete="off" spellcheck="false" maxlength="9" />
+      <label class="cr-label" for="cr-join-code-input">Class invite <span class="cr-label__opt">only if you are not on the teacher's Wi-Fi</span></label>
+      <input type="text" class="cr-input cr-input--code" id="cr-join-code-input" placeholder="e.g. K7M-4QX @ theta172-relay.school.workers.dev" autocomplete="off" spellcheck="false" maxlength="320" />
+      <span class="cr-hint" id="cr-invite-hint">Paste the whole line your teacher shared, then press Join.</span>
     </div>
     <details class="cr-advanced">
-      <summary>Students on other networks</summary>
+      <summary>My teacher gave only a code</summary>
       <div class="cr-input-group">
-        <label class="cr-label" for="cr-relay-url-student">Internet relay server</label>
-        <input type="url" class="cr-input" id="cr-relay-url-student" placeholder="wss://relay.your-school.in" autocomplete="off" spellcheck="false" maxlength="300" />
-        <span class="cr-hint">With a relay, anyone can join with the class code from any network, and the class keeps going if the Wi-Fi drops. Without one, only students on the same Wi-Fi can join.</span>
+        <label class="cr-label" for="cr-relay-url-student">School relay address</label>
+        <input type="url" class="cr-input" id="cr-relay-url-student" placeholder="wss://theta172-relay.school.workers.dev" autocomplete="off" spellcheck="false" maxlength="300" />
+        <span class="cr-hint">Type it once; the app remembers it for the next class.</span>
       </div>
     </details>
-    <button class="cr-action-btn" id="cr-join-btn" type="button">Find my class</button>
+    <button class="cr-action-btn" id="cr-join-btn" type="button">Join</button>
   `;
 
   const discovery = el('section', 'cr-discovery hidden');

@@ -28,9 +28,10 @@ import { currentCodeTheme } from '../editor.js';
 import { fx, screenTransition } from '../fx/moments.js';
 import {
   initClassLive, teacherStarted, teacherStopped, noteJoin, noteLeave, noteActivity, noteHelp, liveInfo,
-  studentJoined as liveStudentJoined, studentLeft as liveStudentLeft, setDone, isDone, helpError, getRelayUrl, setRelayUrl, handIn,
+  studentJoined as liveStudentJoined, studentLeft as liveStudentLeft, setDone, isDone, helpError, getRelayUrl, setRelayUrl, handIn, wireJoinWays, classRelayUrl,
 } from './class-live.js';
 import { runOnClassGpu } from './class-share.js';
+import { openRelaySetup } from './relay-setup-ui.js';
 
 // ── State ─────────────────────────────────────────────────────────
 let panelOpen = false;
@@ -328,8 +329,7 @@ function handleRoleSelect(selectedRole) {
     });
     interactiveArea.appendChild(teacherPanel);
 
-    const relayBox = document.getElementById('cr-relay-url');
-    if (relayBox) relayBox.value = getRelayUrl();
+    wireJoinWays(openRelaySetup);
     // Restore saved name
     const savedName = localStorage.getItem('theta-classroom-teacher-name');
     if (savedName) {
@@ -384,7 +384,8 @@ async function handleGoLive(name) {
 
   const relayInput = document.getElementById('cr-relay-url');
   if (relayInput) setRelayUrl(relayInput.value);
-  const result = await window.electronAPI.classroomStartServer(name, { relayUrl: getRelayUrl() });
+  const relayUrl = classRelayUrl();
+  const result = await window.electronAPI.classroomStartServer(name, { relayUrl });
   if (!result.success) {
     showToast(`Failed to go live: ${result.error}`, 'error', 3000);
     return;
@@ -405,8 +406,8 @@ async function handleGoLive(name) {
   if (status) status.textContent = result.lan ? `Live on ${result.ip}` : 'Live over the internet';
   teacherStarted(result);
   document.getElementById('cr-join-code-copy')?.addEventListener('click', () => {
-    const code = document.querySelector('#cr-join-code .cr-join-code__value')?.textContent || '';
-    if (code) navigator.clipboard.writeText(code).then(() => showToast(`Copied the code ${code}`, 'success', 1600)).catch(() => {});
+    const invite = document.querySelector('#cr-join-code .cr-join-code__value')?.textContent || '';
+    if (invite) navigator.clipboard.writeText(invite).then(() => showToast('Invite copied. Students paste it into Classroom → Join a class.', 'success', 2400)).catch(() => {});
   });
 
   // Inject in-editor toolbar
@@ -415,7 +416,7 @@ async function handleGoLive(name) {
   // Send initial code sync
   broadcastCurrentCode();
 
-  showToast(result.lan ? `Live on ${result.ip}:${result.port}` : 'Live: students join with the class code', 'success', 3000);
+  showToast(relayUrl ? 'Live: share the invite with students on other networks' : `Live on ${result.ip}:${result.port}`, 'success', 3000);
 
   // Setup student search
   const searchInput = document.getElementById('cr-student-search');
@@ -704,6 +705,9 @@ function handleStudentJoin(name, roll, code = '') {
 
   const relayBox = document.getElementById('cr-relay-url-student');
   if (relayBox) setRelayUrl(relayBox.value);
+  // An invite carries the school relay: remember it so a bare code works next time
+  const at = code.match(/@\s*(\S+)$/);
+  if (at) setRelayUrl(/^wss?:\/\//i.test(at[1]) ? at[1] : `wss://${at[1]}`);
   const discoveryText = document.getElementById('cr-discovery-text');
   if (discoveryText) {
     discoveryText.textContent = code

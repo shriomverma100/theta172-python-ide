@@ -87,12 +87,15 @@ import { lensInFile } from './learn/lens-ui.js';
 import { runOnClassGpu } from './classroom/class-share.js';
 import { initTests, showTests, runAllTests, runFailedTests, runTestsInFile, refreshTests } from './testing/test-view.js';
 import { initTasks, openTasks, runLastTask, configureTasks } from './app/tasks.js';
+import { initPlugins } from './plugins/plugin-host.js';
+import { openPluginsManager } from './plugins/plugins-ui.js';
 import { initMenubar } from './app/menubar.js';
 import { APP_MENUS } from './app/app-menus.js';
 import { fixCode } from './app/ai-fix.js';
 import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js';
 import { initContextMenu, showMenu } from './app/context-menu.js';
 import { initAccessibility } from './app/a11y.js';
+import { fillLogoSlots } from './core/tech-logos.js';
 
 // ── Global error reporting ───────────────────────────────────────
 window.onerror = (message, source, line, col, error) => {
@@ -142,6 +145,7 @@ const actions = {
   'new-tab': () => addNewTab(null, '# New file\n'),
   'new-notebook': newNotebook,
   'predict': startPrediction,
+  'manage-plugins': openPluginsManager,
   'run-task': openTasks,
   'rerun-task': runLastTask,
   'configure-tasks': configureTasks,
@@ -510,10 +514,12 @@ async function initIDE() {
     });
   }
 
+  fillLogoSlots(); // official logos next to Python, Git, Ruff …
   initLearn({ onRunFinish, onRunStart, runCode }); // explanations, predictions, progress
   initAuthorship(); // who wrote what, for Viva Mode and replays
   initTests();      // pytest: the Tests view and marks in the editor
   initTasks({ runFile: runCode, runTests: () => { showTests(); runAllTests(); } });
+  initPlugins().catch((err) => console.error('[THETA] plugins', err)); // each in its own sandboxed worker
   await initRuntime();
   // Language intelligence needs local Python (desktop); it starts in the background
   if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));

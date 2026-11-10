@@ -1,0 +1,38 @@
+/* ═══ Pro: the finishing layer ═══
+   The palette, corners and sizes come from tokens.css. These rules give
+   Pro the calm of a serious tool: blue for the one thing to do, red only
+   for errors, Stop and "live"; selected states are a tint, not a white
+   block; text in sentence case with normal tracking. */
+
+:root[data-theme="pro"] ::selection { background: rgba(122, 167, 247, 0.32); color: inherit; }
+
+/* Toggles and segmented choices: selected = blue, not a white slab */
+:root[data-theme="pro"] .switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+:root[data-theme="pro"] .switch[aria-checked="true"]::after { background: #FFFFFF; }
+:root[data-theme="pro"] :is(.segmented, .theme-switch) button[aria-pressed="true"] {
+  color: var(--text); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Buttons read as words, not shouting */
+:root[data-theme="pro"] :is(.cr-action-btn, .cr-stop-btn, .cr-close-panel-btn, .cr-back-btn, .cr-setup-back, .cr-view-btn,
+  .cr-chat-send, .cr-toolbar-btn, .unsaved-btn, .api-key-btn, .loading-retry-btn) { letter-spacing: 0.01em; font-weight: 600; }
+:root[data-theme="pro"] .cr-action-btn, :root[data-theme="pro"] .cr-chat-send { border-color: var(--accent); }
+
+/* Chat: my messages in the accent tint */
+:root[data-theme="pro"] .cr-chat-message.self .cr-chat-text { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: var(--accent-soft); }
+
+/* Hairline dividers everywhere, a touch of depth on floating things */
+:root[data-theme="pro"] :is(.cmd-palette, .quick-pick, .app-menu, .context-menu, .toast) { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); }
+
+/* Focus: the accent ring */
+:root[data-theme="pro"] :focus-visible { outline-color: var(--focus); }
+
+/* Zero problems is not an error: grey dots until there is one (both themes) */
+.status-problems.no-errors .sp-err { background: var(--text-4); opacity: 0.6; }
+.status-problems.is-clean { color: var(--text-3); }
+
+/* ═══ Playground: fewer buttons in the top bar ═══
+   The Classroom tile is always on screen, so the top bar does not repeat
+   it; Open lives in Menu → File and in the Files tile. */
+:root:not([data-theme="pro"]):has(#btn-class-tile) #btn-classroom:not(.classroom-live) { display: none; }
+:root:not([data-theme="pro"]) #btn-import-file { display: none; }

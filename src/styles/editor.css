@@ -5,7 +5,7 @@
    ============================================ */
 
 .monaco-container { position: relative; flex: 1; min-height: 0; overflow: hidden; contain: layout style; }
-.monaco-container.drag-over { outline: 2px dashed var(--red); outline-offset: -8px; background: var(--red-tint); }
+.monaco-container.drag-over { outline: 2px dashed var(--accent); outline-offset: -8px; background: var(--accent-soft); }
 
 .monaco-container .cm-editor { width: 100%; height: 100%; }
 .monaco-container .cm-scroller { font-family: var(--font-code) !important; overscroll-behavior: contain; }
@@ -25,7 +25,7 @@
 .cm-error-line { background-color: rgba(255, 74, 54, 0.18) !important; box-shadow: inset 3px 0 0 var(--red); }
 
 .cm-foldGutter .cm-gutterElement { padding: 0 3px; cursor: pointer; }
-.cm-foldGutter .cm-gutterElement:hover { color: var(--red); }
+.cm-foldGutter .cm-gutterElement:hover { color: var(--accent); }
 
 /* AI Fix busy state */
 .pane-action-btn.loading { pointer-events: none; opacity: 0.6; }

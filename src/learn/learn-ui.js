@@ -6,6 +6,7 @@
  */
 import { explainError, uiText, LANGS } from './explain/errors.js';
 import { detectConcepts, conceptLabel, CONCEPTS } from './concepts.js';
+import { conceptIcon } from './concept-icons.js';
 import { loadMastery, recordRun, levelOf, summarize, reportHtml, LEVELS } from './mastery.js';
 import { comparePrediction } from './predict.js';
 import { storageGet, storageSet } from '../core/storage.js';
@@ -241,7 +242,11 @@ export function openProgress() {
     const fill = el('span', 'progress-row__fill');
     fill.style.width = `${l * 25}%`;
     bar.append(fill);
-    row.append(el('span', 'progress-row__name', conceptLabel(id, lang)), bar, el('span', 'progress-row__level', LEVELS[l][lang] || LEVELS[l].en));
+    const name = el('span', 'progress-row__name');
+    const ico = el('span', 'progress-row__icon');
+    ico.innerHTML = conceptIcon(id); // static, built from our own tables
+    name.append(ico, el('span', '', conceptLabel(id, lang)));
+    row.append(name, bar,el('span', 'progress-row__level', LEVELS[l][lang] || LEVELS[l].en));
     row.title = c ? `${c.ok} / ${c.runs}` : '';
     list.append(row);
   }

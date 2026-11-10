@@ -60,7 +60,7 @@
 :root[data-theme="pro"] .topbar-file::before { content: '/'; color: var(--text-4); margin-right: 2px; }
 
 .save-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; border: var(--border-w) solid var(--text-3); }
-.save-dot.visible { background: var(--red); border-color: var(--line-strong); }
+.save-dot.visible { background: var(--accent); border-color: var(--line-strong); }
 :root[data-theme="pro"] .save-dot { border: none; }
 :root[data-theme="pro"] .save-dot.visible { background: var(--warn-text); }
 
@@ -77,12 +77,12 @@
   text-align: left;
   background: var(--surface-1);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--r-md);
   transition: border-color var(--t-fast);
 }
 .cmd-bar:hover { border-color: var(--text-4); color: var(--text-2); }
 .cmd-bar__text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cmd-bar kbd { height: 20px; font-size: 11px; border-radius: 4px; }
+.cmd-bar kbd { height: 20px; font-size: 11px; border-radius: var(--r-sm); }
 :root[data-theme="pro"] .cmd-bar { display: flex; }
 
 /* ── Run state: the Playground status pill / the Pro kernel chip ── */
@@ -104,7 +104,7 @@
 }
 #run-status-text { overflow: hidden; text-overflow: ellipsis; }
 .run-status__dot { width: 10px; height: 10px; flex: none; background: var(--lime); }
-.run-status--running .run-status__dot { background: var(--red); animation: liveBlink 0.6s steps(2) infinite; }
+.run-status--running .run-status__dot { background: var(--accent); animation: liveBlink 0.6s steps(2) infinite; }
 .run-status--error .run-status__dot { background: var(--red); }
 .run-status--idle .run-status__dot { background: #8E87C9; }
 
@@ -164,7 +164,7 @@
   border-radius: var(--radius-pill);
 }
 .theme-switch button[aria-pressed="true"] { background: var(--lime); color: var(--ink); font-weight: 700; }
-:root[data-theme="pro"] .theme-switch { padding: 0; background: transparent; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+:root[data-theme="pro"] .theme-switch { padding: 0; background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; }
 :root[data-theme="pro"] .theme-switch button { height: 28px; padding: 0 10px; font-size: var(--fs-xs); color: var(--text-2); border-radius: 0; }
 :root[data-theme="pro"] .theme-switch button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 
@@ -175,17 +175,17 @@
   gap: 10px;
   flex: none;
   font-weight: 700;
-  color: var(--on-red);
-  background: var(--red);
+  color: var(--on-accent);
+  background: var(--accent);
   white-space: nowrap;
   transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
-.btn-run:hover { background: var(--red-hover); }
+.btn-run:hover { background: var(--accent-hover); }
 .btn-run.running { background: var(--ink); color: #FFFFFF; }
 :root[data-theme="pro"] .btn-run.running { background: var(--surface-4); color: var(--text); }
 
 /* Header Run: Pro only (Playground runs from the run rail) */
-.ide-topbar .btn-run { display: none; height: 30px; padding: 0 14px 0 12px; font-size: var(--fs-sm); border-radius: 8px; }
+.ide-topbar .btn-run { display: none; height: 30px; padding: 0 14px 0 12px; font-size: var(--fs-sm); border-radius: var(--r-md); }
 :root[data-theme="pro"] .ide-topbar .btn-run { display: inline-flex; }
 
 /* ── Narrow windows ── */

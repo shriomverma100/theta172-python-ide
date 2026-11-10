@@ -1,0 +1,10 @@
+{
+  "id": "todo-finder",
+  "name": "TODO Finder",
+  "version": "1.0.0",
+  "description": "Lists every TODO and FIXME comment in the project's Python files; click one to jump to it.",
+  "author": "THETA172",
+  "main": "plugin.js",
+  "apiVersion": 1,
+  "permissions": ["workspace.read", "panel"]
+}

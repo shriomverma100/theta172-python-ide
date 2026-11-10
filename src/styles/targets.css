@@ -1,0 +1,41 @@
+/* ═══ Click targets ═══
+   Every button is at least --hit tall (40 px Playground, 32 px Pro), and
+   icon buttons are --hit square, so nothing needs a precise aim (Fitts's
+   law: small, far targets are slow and missed). Loaded after the
+   component styles, so min-* wins over their fixed sizes. Tiny controls
+   that must stay small inside a row (a tab's ×) get a larger invisible
+   hit area instead. */
+
+/* Text buttons */
+:is(.progress-modal__btn, .viva-modal__btn, .pl-card__actions .viva-modal__btn, .explain-card__lang,
+    .pane-action-btn, .pip-bar__btn, .pip-head-btn, .fix-bar__btn, .btn-predict--top, .diff-btn:not(.diff-btn--close),
+    .search-replace-btn, .tv-btn, .nb-btn, .nb-add__btn, .cr-toolbar-btn, .cr-view-btn, .cr-join-code__copy,
+    .cr-chat-send, .cr-close-panel-btn, .cr-stop-btn, .cr-back-btn, .cr-setup-back, .cr-action-btn--sm,
+    .plugin-panel__body button, .unsaved-btn, .api-key-btn, .study-off, .ws-open-btn, .loading-retry-btn,
+    .predict-pop__btn, .theme-switch button, .ide-topbar .btn-run, .topbar-btn) {
+  min-height: var(--hit);
+}
+
+/* Icon buttons: square */
+:is(.progress-modal__close, .viva-modal__close, .explain-card__close, .plugin-panel__close, .lens__close,
+    .cr-help-card__close, .pip-packages-close, .fix-bar__close, .study-suggestion__close, .diff-btn--close,
+    .shortcut-edit-btn, .dbg-btn, .git-icon-btn, .study-bar__btn, .sb-btn, .search-toggle, .group-close,
+    .editor-tab-add, .rail-btn, .wc-btn, .rs-close, .modal-close, .settings-close) {
+  min-width: var(--hit);
+  min-height: var(--hit);
+}
+
+/* The Hindi | English switch: the whole segment is the target */
+.explain-card__langs { align-self: center; }
+.explain-card__lang { padding: 0 14px; font-size: var(--fs-sm); }
+
+/* Inside dense rows: keep the look, widen the target */
+:is(.editor-tab__close, .ws-close) { position: relative; }
+:is(.editor-tab__close, .ws-close)::after { content: ''; position: absolute; inset: -8px; }
+
+/* Rows people click (lists, menus) */
+:is(.cmd-result-item, .ws-row, .menubar__menu-item, .app-menu__item, .tv-row) { min-height: 32px; }
+:root[data-theme="playground"] :is(.cmd-result-item, .ws-row, .app-menu__item, .tv-row) { min-height: 36px; }
+
+/* Checkboxes and radios are hard to hit at 13 px */
+:is(.settings-panel, .viva-modal, .progress-modal, .rs-box, .pl-box) input:is([type="checkbox"], [type="radio"]) { width: 16px; height: 16px; }
