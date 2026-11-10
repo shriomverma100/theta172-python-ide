@@ -442,8 +442,7 @@ const NB_SCENES = [
     nb.cellViews.get(cell.id).root.scrollIntoView({ block: 'center' });
   })()`, wait: 400 },
   { name: 'n07c-play-text-done', js: `(async () => {
-    document.querySelector('.nb-cell--selected .nb-cell__run--done')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    document.querySelector('.nb-cell--selected .nb-cell__run--done')?.click();
+    window.__thetaTest.notebook().commandMode(); // like clicking away from the cell
   })()`, wait: 400 },
   { name: 'n08-pro-notebook', js: `(async () => {
     document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
@@ -463,8 +462,215 @@ const NB_SCENES = [
   })()`, wait: 400 },
 ];
 
+// Spotlight frame rate: THETA_SHOTS_SET=spot (prints THETA_BENCH lines; pinned vs the old way)
+const SPOT_FILL = `(async () => {
+  const lines = Array.from({ length: 60 }, (_, i) => 'print("line ' + i + ': " + "x" * ' + (i % 40) + ')').join('\\n');
+  window.__thetaTest.setCode('# a long file\\n' + lines + '\\n');
+  ${RUN}
+})()`;
+const SPOT_SCENES = [
+  { name: 's01-picker', wait: 4500 },
+  { name: 's02-play', js: `document.querySelector('[data-pick="playground"]').click(); ${SPOT_FILL}`, wait: 600 },
+  { name: 's03-bench-old', bench: 'window.__spotNoPin = true; window.__thetaTest.spotBench(10)', wait: 300, noShot: true },
+  { name: 's04-bench-new', bench: 'window.__spotNoPin = false; window.__thetaTest.spotBench(10)', wait: 300, noShot: true },
+  { name: 's05-play-output-grown', js: "document.querySelector('.ide-body').dataset.spot = 'output'", wait: 700 },
+  { name: 's06-pro', js: `(async () => {
+    delete document.querySelector('.ide-body').dataset.spot;
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+  })()`, wait: 300 },
+  { name: 's07-pro-bench-old', bench: 'window.__spotNoPin = true; window.__thetaTest.spotBench(10)', wait: 300, noShot: true },
+  { name: 's08-pro-bench-new', bench: 'window.__spotNoPin = false; window.__thetaTest.spotBench(10)', wait: 300, noShot: true },
+];
+
+// Learning helpers: THETA_SHOTS_SET=learn
+const LEARN_SCENES = [
+  { name: 'l01-picker', wait: 4500 },
+  { name: 'l02-play-explain', js: `(async () => {
+    document.querySelector('[data-pick="playground"]').click();
+    await new Promise(r => setTimeout(r, 600));
+    window.__thetaTest.setCode('scores = [90, 80, 70]\\ntotal = 0\\nfor s in scores:\\n    total += s\\nprint("average", total / len(score))\\n');
+    ${RUN}
+    await new Promise(r => setTimeout(r, 400));
+  })()`, wait: 300 },
+  { name: 'l03-play-explain-hindi', js: "[...document.querySelectorAll('.explain-card__lang')].find((b) => b.textContent === 'हिंदी')?.click()", wait: 300 },
+  { name: 'l04-play-predict', js: `(async () => {
+    window.__thetaTest.setCode('for i in range(3):\\n    print(i * 2)\\nprint("done")\\n');
+    document.querySelector('.btn-predict--rail').click();
+    await new Promise(r => setTimeout(r, 250));
+    document.querySelector('.predict-pop__box').value = '0\\n2\\n6\\ndone';
+  })()`, wait: 300 },
+  { name: 'l05-play-predict-result', js: `(async () => {
+    document.querySelector('.predict-pop__btn--go').click();
+    ${waitFor("/Done|Error/.test(document.getElementById('run-status-text').textContent)")}
+    await new Promise(r => setTimeout(r, 400));
+  })()`, wait: 300 },
+  { name: 'l06-play-progress', js: "document.getElementById('btn-progress').click()", wait: 500 },
+  { name: 'l07-pro-explain', js: `(async () => {
+    document.querySelector('.progress-modal__close')?.click();
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    window.__thetaTest.setCode('age = input("Age? ")\\nif age > 18:\\n    print("adult")\\n');
+    document.getElementById('btn-run').click();
+    await new Promise(r => setTimeout(r, 1500));
+    window.__thetaTest.sendInput?.('20');
+    ${waitFor("/Done|Error/.test(document.getElementById('run-status-text').textContent)")}
+    await new Promise(r => setTimeout(r, 400));
+  })()`, wait: 300 },
+  { name: 'l08-pro-file-menu', js: "document.querySelector('.menubar__item').click()", wait: 300 },
+  { name: 'l09-pro-open-recent', js: `(async () => {
+    [...document.querySelectorAll('.app-menu__item')].find((b) => b.textContent.includes('Open Recent'))?.dispatchEvent(new MouseEvent('mouseenter'));
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 200 },
+  { name: 'l10-pro-edit-menu', js: "document.querySelectorAll('.menubar__item')[1].dispatchEvent(new MouseEvent('mouseenter'))", wait: 300 },
+  { name: 'l11-play-menu', js: `(async () => {
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.querySelector('.ide-topbar [data-theme-choice="playground"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    document.querySelector('.menubar__all').click();
+    await new Promise(r => setTimeout(r, 200));
+    [...document.querySelectorAll('.app-menu__item')].find((b) => b.textContent.includes('File'))?.dispatchEvent(new MouseEvent('mouseenter'));
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 200 },
+];
+
+// Classroom across networks: THETA_SHOTS_SET=class
+// A real relay and real student apps (the classroom client, without a window)
+// run in this process and talk to the app over the real protocol.
+const cls = { relay: null, students: [], teacher: null };
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+async function classRelay() {
+  if (cls.relay) return cls.relay;
+  const relay = require('../relay-server/server.js');
+  const port = await relay.listen(0);
+  cls.relay = `ws://127.0.0.1:${port}`;
+  process.env.THETA_RELAY_URL = cls.relay; // the app uses it when Settings has none
+  return cls.relay;
+}
+function fakeStudent(name, roll, endpoint) {
+  const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
+  const s = new ClassroomDiscovery({ udp: false });
+  s.startDiscovery(name, roll, endpoint.code ? { code: endpoint.code, relayUrl: cls.relay } : {});
+  if (endpoint.port) {
+    s.lanEndpoint = { ip: '127.0.0.1', port: endpoint.port, seenAt: Date.now(), classId: null };
+    s._connectLan();
+  }
+  cls.students.push(s);
+  return s;
+}
+const fail = (type, message, line, lineText) => ({ type: 'run', ok: false, error: { type, message, line, lineText }, concepts: ['for-loops'] });
+const TEACHER_DEMO = 'scores = [90, 80, 70]\\ntotal = 0\\nfor s in scores:\\n    total += s\\nprint("average", total / len(scores))\\nbest = max(scores)\\nprint("best", best)\\n';
+const CLASS_SCENES = [
+  { name: 'c01-picker', node: () => classRelay(), wait: 4500 },
+  { name: 'c02-play-teacher-setup', js: `(async () => {
+    document.querySelector('[data-pick="playground"]').click();
+    await new Promise(r => setTimeout(r, 700));
+    window.__thetaTest.setCode('${TEACHER_DEMO}');
+    document.getElementById('btn-class-tile').click();
+    await new Promise(r => setTimeout(r, 1700));
+    document.querySelector('[data-role="teacher"]').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.getElementById('cr-teacher-name').value = 'Ms. Rao';
+    document.querySelector('#cr-teacher-setup .cr-advanced').open = true;
+  })()`, wait: 300 },
+  { name: 'c03-play-live-empty', js: `(async () => {
+    document.getElementById('cr-go-live-btn').click();
+    for (let i = 0; i < 60 && !document.querySelector('#cr-join-code:not(.hidden)'); i++) await new Promise(r => setTimeout(r, 100));
+  })()`, wait: 400 },
+  { name: 'c04-play-class-pulse', node: async (win) => {
+    const st = await win.webContents.executeJavaScript('window.electronAPI.classroomStatus()');
+    const code = st.relay?.code;
+    const lan = { port: st.port };
+    const asha = fakeStudent('Asha Verma', '7', lan);
+    const ravi = fakeStudent('Ravi Kumar', '12', { code });
+    const meera = fakeStudent('Meera Iyer', '18', lan);
+    const kabir = fakeStudent('Kabir Singh', '21', { code });
+    const diya = fakeStudent('Diya Nair', '9', lan);
+    for (let i = 0; i < 80 && !cls.students.every((s) => s.connected); i++) await sleepMs(100);
+    asha.sendCodeLive('scores = [90, 80, 70]\ntotal = 0\nfor s in scores:\n    total += s\nprint("average", total / len(scor))\n', 'main.py');
+    asha.sendEvent(fail('NameError', "name 'scor' is not defined", 5, 'print("average", total / len(scor))'));
+    asha.sendEvent(fail('NameError', "name 'scor' is not defined", 5, 'print("average", total / len(scor))'));
+    asha.sendHelpRequest('HELP_REQ', { type: 'NameError', message: "name 'scor' is not defined", line: 5 });
+    ravi.sendEvent(fail('NameError', "name 'scor' is not defined", 5, 'print("average", total / len(scores))'));
+    ravi.sendEvent({ type: 'run', ok: true, concepts: ['for-loops'] });
+    ravi.sendEvent({ type: 'done', done: true }, 'done');
+    meera.sendEvent({ type: 'run', ok: true });
+    kabir.sendEvent(fail('NameError', "name 'Total' is not defined", 4, '    total += s'));
+    kabir.sendEvent(fail('NameError', "name 'Total' is not defined", 4, '    total += s'));
+    diya.sendEvent(fail('TypeError', 'can only concatenate str (not "int") to str', 7, 'print("best", best)'));
+    await sleepMs(1500);
+  }, js: 'void 0', wait: 600 },
+  { name: 'c05-play-heat-on-teacher-code', js: `(async () => {
+    document.getElementById('cr-teacher-to-editor')?.click();
+    await new Promise(r => setTimeout(r, 4500)); // the pulse refreshes the heat every few seconds
+  })()`, wait: 300 },
+  { name: 'c06-pro-dashboard', js: `(async () => {
+    document.querySelector('.ide-topbar [data-theme-choice="pro"]').click();
+    await new Promise(r => setTimeout(r, 1900));
+    document.getElementById('rail-classroom')?.click();
+    await new Promise(r => setTimeout(r, 1600));
+  })()`, wait: 300 },
+  { name: 'c07-pro-student-reconnecting', node: async () => {
+    // Asha's internet drops for a moment: her card shows it, nothing is lost
+    const asha = cls.students[0];
+    try { asha.lan?.ws.terminate(); } catch (_) { /* gone */ }
+    asha.lanEndpoint.seenAt = 0;
+    await sleepMs(900);
+  }, js: 'void 0', wait: 200 },
+  { name: 'c08-pro-routed', js: `(async () => {
+    [...document.querySelectorAll('.cr-hand .cr-action-btn')].find((b) => /Ask/.test(b.textContent))?.click();
+    await new Promise(r => setTimeout(r, 600));
+  })()`, wait: 300 },
+  // The app as a student: a test teacher elsewhere, joined with the code
+  { name: 'c09-student-join-code', node: async (win) => {
+    await win.webContents.executeJavaScript(`(async () => {
+      document.getElementById('cr-stop-live-btn')?.click();
+      await new Promise(r => setTimeout(r, 600));
+    })()`);
+    for (const s of cls.students) s.stopDiscovery();
+    cls.students = [];
+    const { ClassroomServer } = require('./classroom-server.cjs');
+    const t = new ClassroomServer({ udp: false, lan: false });
+    cls.teacher = t;
+    await t.start('Mr. Das', { relayUrl: cls.relay });
+    for (let i = 0; i < 50 && !t.relayState.code; i++) await sleepMs(100);
+    cls.code = t.relayState.code;
+    await win.webContents.executeJavaScript(`(async () => {
+      document.getElementById('cr-global-back')?.click();
+      await new Promise(r => setTimeout(r, 400));
+      document.querySelector('[data-role="student"]')?.click();
+      await new Promise(r => setTimeout(r, 300));
+      document.getElementById('cr-student-name').value = 'Aarav Gupta';
+      document.getElementById('cr-student-roll').value = '12';
+      document.getElementById('cr-join-code-input').value = '${cls.code.slice(0, 3)}-${cls.code.slice(3)}';
+    })()`);
+  }, js: 'void 0', wait: 300 },
+  { name: 'c10-student-connected', js: `(async () => {
+    document.getElementById('cr-join-btn').click();
+    for (let i = 0; i < 80 && document.getElementById('cr-connected-view')?.classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 100));
+  })()`, node: async () => {
+    await sleepMs(2500);
+    cls.teacher.broadcastCode(TEACHER_DEMO.split('\\n').join('\n'), 0, 'lesson.py');
+  }, wait: 800 },
+  { name: 'c11-student-explained-by-teacher', node: async () => {
+    cls.teacher.sendEvent('*', { type: 'explain', error: { type: 'NameError', message: "name 'scor' is not defined", line: 5, lineText: 'print("average", total / len(scor))' } });
+    await sleepMs(600);
+  }, js: "document.getElementById('cr-student-to-editor')?.click()", wait: 600 },
+  { name: 'c12-student-helper-card', node: async () => {
+    const id = cls.teacher.getStudents()[0]?.id;
+    cls.teacher.sendEvent(id, { type: 'help-route', role: 'helper', to: 'student-x', name: 'Meera', error: { type: 'KeyError', line: 3 }, code: 'marks = {"maths": 90}\nprint(marks["Maths"])\n' });
+    await sleepMs(500);
+  }, js: 'void 0', wait: 300 },
+  { name: 'c13-student-reconnecting', node: async () => {
+    // The student's connection drops: the app reconnects by itself
+    for (const ws of require('../relay-server/server.js').wss.clients) if (ws.role === 'student') ws.terminate();
+    await sleepMs(250);
+  }, js: 'void 0', wait: 100 },
+  { name: 'c14-student-back', node: async () => { await sleepMs(3500); }, js: 'void 0', wait: 200 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {
@@ -482,7 +688,16 @@ function attachShots(win, dir) {
             scene.js.split('\n').forEach((l, i) => console.error(`  ${String(i + 1).padStart(3)} | ${l.slice(0, 160)}`));
           }
         }
+        if (scene.node) {
+          try { await scene.node(win); }
+          catch (err) { console.error(`shots failed in ${scene.name} (node): ${err.stack || err.message}`); }
+        }
+        if (scene.bench) {
+          try { console.log(`THETA_BENCH ${scene.name} ${JSON.stringify(await win.webContents.executeJavaScript(scene.bench, true))}`); }
+          catch (err) { console.error(`shots failed in ${scene.name}: ${err.message}`); }
+        }
         await sleep(scene.wait || 0);
+        if (scene.noShot) continue;
         const img = await win.webContents.capturePage();
         const file = path.join(dir, `${scene.name}@${scale}x.png`);
         fs.writeFileSync(file, img.toPNG());

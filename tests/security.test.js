@@ -53,8 +53,11 @@ describe('network text sanitizing', () => {
     const server = new ClassroomServer();
     const joined = [];
     server.onStudentJoin = (info) => joined.push(info);
-    server.students.set('student-1', { ws: {}, name: '', roll: '', code: '', fileName: '', helpRequested: false, editPermission: false });
-    server._handleStudentMessage('student-1', { type: 'join', name: '<img src=x onerror=alert(1)>\u202E'.padEnd(200, 'A'), roll: { bad: 1 } });
+    // A student's hello on a connection (local network or relay)
+    const link = server._makeLink('lan', () => true, () => {});
+    link.received(JSON.stringify({
+      type: 'join', proto: 2, clientId: 'abcdefgh1234', name: '<img src=x onerror=alert(1)>\u202E'.padEnd(200, 'A'), roll: { bad: 1 },
+    }));
     expect(joined).toHaveLength(1);
     expect(joined[0].name.length).toBeLessThanOrEqual(64);
     expect(joined[0].name).not.toContain('\u202E');

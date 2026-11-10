@@ -109,6 +109,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   wsReplace:    (q, rep, opts, skip)  => ipcRenderer.invoke('ws-replace', q, rep, opts, skip),
   wsGit:        ()                    => ipcRenderer.invoke('ws-git'),
   wsReveal:     (p)                   => ipcRenderer.invoke('ws-reveal', p),
+  wsRecent:     ()                    => ipcRenderer.invoke('ws-recent'),
+  wsOpenRecent: (dir)                 => ipcRenderer.invoke('ws-open-recent', dir),
+  fileReveal:   (p)                   => ipcRenderer.invoke('file-reveal', p),
   onWsChanged:  (cb) => safeOn('ws-changed', (_, paths) => cb(paths)),
 
   // ── System terminal (PowerShell / bash in a real pty) ──
@@ -152,7 +155,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendUnsavedDialogResponse: (choice) => ipcRenderer.send('unsaved-dialog-response', choice),
 
   // ── Classroom (Teacher) ──
-  classroomStartServer:   (name) => ipcRenderer.invoke('classroom-start-server', name),
+  classroomStartServer:   (name, opts) => ipcRenderer.invoke('classroom-start-server', name, opts),
+  classroomStatus:        ()     => ipcRenderer.invoke('classroom-status'),
+  classroomSendEvent:     (target, msg, key) => ipcRenderer.send('classroom-send-event', target, msg, key),
+  onRelayStatus:          (cb)   => safeOn('classroom-relay-status', (_, info) => cb(info)),
+  onStudentStatus:        (cb)   => safeOn('classroom-student-status', (_, info) => cb(info)),
+  onStudentEvent:         (cb)   => safeOn('classroom-student-event', (_, who, msg) => cb(who, msg)),
   classroomStopServer:    ()     => ipcRenderer.invoke('classroom-stop-server'),
   classroomBroadcastCode: (code, cursor, fileName) => ipcRenderer.send('classroom-broadcast-code', code, cursor, fileName),
   classroomBroadcastChange: (from, to, insert) => ipcRenderer.send('classroom-broadcast-change', from, to, insert),
@@ -178,9 +186,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onClassroomChatMessageReceived: (cb) => safeOn('classroom-chat-message-received', (_, info) => cb(info)),
 
   // ── Classroom (Student) ──
-  classroomStartDiscovery: (name, roll) => ipcRenderer.send('classroom-start-discovery', name, roll),
+  classroomStartDiscovery: (name, roll, opts) => ipcRenderer.send('classroom-start-discovery', name, roll, opts),
+  classroomStudentSendEvent: (msg, key) => ipcRenderer.send('classroom-student-send-event', msg, key),
+  onLinkStatus:      (cb) => safeOn('classroom-link-status', (_, info) => cb(info)),
+  onJoinError:       (cb) => safeOn('classroom-join-error', (_, message) => cb(message)),
+  onClassEvent:      (cb) => safeOn('classroom-class-event', (_, msg) => cb(msg)),
   classroomStopDiscovery:  ()           => ipcRenderer.send('classroom-stop-discovery'),
-  classroomSendHelp:       (msg)        => ipcRenderer.send('classroom-send-help', msg),
+  classroomSendHelp:       (msg, error) => ipcRenderer.send('classroom-send-help', msg, error),
   classroomSendCode:       (code, fn)   => ipcRenderer.send('classroom-send-code', code, fn),
   classroomSendCodeLive:   (code, fn)   => ipcRenderer.send('classroom-send-code-live', code, fn),
   classroomSendOutputLive: (text, stream) => ipcRenderer.send('classroom-send-output-live', text, stream),

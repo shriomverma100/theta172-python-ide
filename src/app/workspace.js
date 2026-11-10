@@ -70,6 +70,15 @@ export async function openFolder() {
   return true;
 }
 
+/** Open a folder from File → Open Recent. */
+export async function openRecentFolder(dir) {
+  const res = await call('wsOpenRecent', dir);
+  if (!res.ok) { showToast(res.error, 'error', 3000); return false; }
+  await setOpened(res.value);
+  showToast(`Opened ${res.value.name}`, 'success', 1800);
+  return true;
+}
+
 /** Reopen last session's folder (the main process remembers which). */
 export async function reopenFolder() {
   const res = await call('wsReopen');

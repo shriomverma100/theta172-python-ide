@@ -637,6 +637,7 @@ export function closeTab(tabId, g = groupHolding(tabId)) {
   const idx = group.ids.indexOf(tabId);
   group.ids.splice(idx, 1);
   if (!elsewhere) {
+    rememberClosed(tab);
     tabs = tabs.filter((t) => t !== tab);
     disposeTab(tab);
   }
@@ -648,6 +649,87 @@ export function closeTab(tabId, g = groupHolding(tabId)) {
     group.active = group.ids[Math.min(idx, group.ids.length - 1)];
     display(g, tabById(group.active));
   }
+  renderTabs();
+  emitChange();
+}
+
+// ── Closing more, reopening, cycling ─────────────────────────────
+
+const closedStack = []; // most recent last: { name, filePath, code }
+const MAX_CLOSED = 20;
+
+function rememberClosed(tab) {
+  if (tab.libraryUri) return;
+  const text = tab.filePath && !tab.unsaved ? null : tabText(tab);
+  if (!tab.filePath && !text?.trim()) return; // an empty scratch tab is not worth reopening
+  closedStack.push({ name: tab.name, filePath: tab.filePath, code: text });
+  if (closedStack.length > MAX_CLOSED) closedStack.shift();
+}
+
+/** The last closed tab ({ name, filePath, code }), removed from the list; null if none. */
+export function popClosedTab() { return closedStack.pop() || null; }
+
+/** Close the tab shown in the focused group (Ctrl+W). */
+export function closeActiveTab() {
+  const tab = getActiveTab();
+  if (tab) closeTab(tab.id, focused);
+}
+
+/**
+ * Close every tab (asks once when some are unsaved). One fresh untitled tab is left.
+ * @returns {boolean} false when the user cancelled
+ */
+export function closeAllTabs() {
+  storeGroup(0);
+  if (rightOpen()) storeGroup(1);
+  const unsaved = tabs.filter((t) => t.unsaved);
+  if (unsaved.length && !window.confirm(
+    `Close all files? ${unsaved.length} file${unsaved.length === 1 ? ' has' : 's have'} unsaved changes that will be lost:\n\n${unsaved.map((t) => t.name).join('\n')}`,
+  )) return false;
+  if (rightOpen()) closeRightGroup();
+  for (const t of tabs) { rememberClosed(t); disposeTab(t); }
+  const fresh = createTabData('untitled-1.py', '', null);
+  tabs = [fresh];
+  groups[0] = { ids: [fresh.id], active: fresh.id };
+  focused = 0;
+  display(0, fresh);
+  renderTabs();
+  emitChange();
+  return true;
+}
+
+/** Ctrl+Tab / Ctrl+Shift+Tab: the next or previous tab in the focused group. */
+export function cycleTab(dir = 1) {
+  const g = groups[focused];
+  if (g.ids.length < 2) return;
+  const i = g.ids.indexOf(g.active);
+  switchTab(g.ids[(i + dir + g.ids.length) % g.ids.length], focused);
+}
+
+/** The live text of any tab (what Save would write). */
+export function currentText(tabId) {
+  const tab = tabById(tabId);
+  if (!tab) return '';
+  if (isNotebook(tab)) return tabText(tab);
+  return viewOf(tab)?.state.doc.toString() ?? tab.code;
+}
+
+/** Any tab reached disk (Save All, auto save). */
+export function markTabSaved(tabId) {
+  const tab = tabById(tabId);
+  if (!tab || !tab.unsaved) return;
+  tab.unsaved = false;
+  renderTabs();
+  emitChange();
+}
+
+/** Replace a tab's text with what is on disk (Revert File). */
+export function revertTab(tabId, content) {
+  const tab = tabById(tabId);
+  if (!tab?.filePath) return;
+  tab.unsaved = false;
+  reloadTab(tab.filePath, content);
+  tab.code = content;
   renderTabs();
   emitChange();
 }

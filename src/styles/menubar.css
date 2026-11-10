@@ -1,0 +1,70 @@
+/* ═══════════════════════════════════════════════════════════════════
+   App menu: File / Edit / View / Run / Help
+   Pro: a menu bar. Playground: one "Menu" button.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.menubar { display: flex; align-items: center; gap: 2px; flex: none; }
+
+.menubar__all {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px;
+  border: var(--border-w) solid var(--ink); border-radius: var(--radius-pill);
+  background: var(--surface-1); color: var(--ink); font: 700 var(--fs-sm)/1 var(--font-ui);
+  cursor: pointer; box-shadow: var(--shadow-control);
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+.menubar__all:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.menubar__all.is-open { background: var(--lime); }
+.menubar__item { display: none; }
+
+:root[data-theme="pro"] .menubar__all { display: none; }
+:root[data-theme="pro"] .menubar__item {
+  display: inline-flex; align-items: center; height: 28px; padding: 0 9px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--text-2); font: 500 var(--fs-sm)/1 var(--font-ui); cursor: pointer;
+}
+:root[data-theme="pro"] .menubar__item:hover,
+:root[data-theme="pro"] .menubar__item.is-open { background: var(--surface-3); color: var(--text); }
+.menubar__all:focus-visible, .menubar__item:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* The dropdowns */
+.app-menu {
+  position: fixed; z-index: 1400; min-width: 250px; max-width: min(460px, calc(100vw - 12px));
+  max-height: calc(100vh - 12px); overflow-y: auto;
+  padding: 6px; display: flex; flex-direction: column;
+  background: var(--surface-2); color: var(--text);
+  border: var(--border-w) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow-tile);
+  outline: none;
+  animation: menuIn 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: top left;
+}
+@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+.app-menu__item {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+  min-height: 30px; padding: 0 10px 0 6px; border: 0; border-radius: 8px;
+  background: transparent; color: inherit; text-align: left; cursor: pointer;
+  font: 500 var(--fs-sm)/1.2 var(--font-ui);
+}
+.app-menu__item:hover, .app-menu__item:focus-visible, .app-menu__item.is-open { background: var(--surface-3); outline: none; }
+.app-menu__item:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.app-menu__item:disabled { opacity: .5; cursor: default; background: transparent; }
+.app-menu__check { font-size: 12px; color: var(--accent-text); text-align: center; }
+.app-menu__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-menu__key { font: 500 11px/1 var(--font-code); color: var(--text-3); white-space: nowrap; padding-left: 16px; }
+.app-menu__sep { height: 1px; margin: 5px 6px; background: var(--line-soft); flex: none; }
+
+:root[data-theme="pro"] .app-menu {
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .5);
+}
+:root[data-theme="pro"] .app-menu__item { min-height: 26px; border-radius: 4px; }
+:root[data-theme="pro"] .app-menu__item:hover,
+:root[data-theme="pro"] .app-menu__item:focus-visible,
+:root[data-theme="pro"] .app-menu__item.is-open { background: color-mix(in srgb, var(--focus) 28%, transparent); }
+:root[data-theme="pro"] .app-menu__sep { background: var(--line); }
+
+/* Study layouts and narrow windows: the button keeps only its icon */
+:root[data-study] .menubar__all span { display: none; }
+:root[data-study] .menubar__all { padding: 0 10px; }
+@media (max-width: 1100px) {
+  :root[data-theme="pro"] .menubar__item { padding: 0 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .app-menu { animation: none; } }

@@ -5,10 +5,27 @@
 /* ── Spotlight: the tile you head for grows ──────────────────────
    app/spotlight.js sets .ide-body[data-spot="output" | "files"]. */
 .ide-body {
-  transition: grid-template-columns 380ms var(--ease-out), grid-template-rows 380ms var(--ease-out);
+  --spot-ease: cubic-bezier(0.22, 1, 0.36, 1); /* fast start, long soft landing */
+  transition: grid-template-columns 420ms var(--spot-ease), grid-template-rows 420ms var(--spot-ease);
 }
 .sidebar, .ide-pane--terminal, #editor-pane, .class-tile {
-  transition: box-shadow 260ms ease, transform 260ms var(--ease-out), opacity 260ms ease, filter 260ms ease;
+  transition: box-shadow 300ms ease, transform 420ms var(--spot-ease), opacity 260ms ease;
+}
+/* Measuring the end layout: no transitions for that instant */
+.ide-body.spot-measure, .ide-body.spot-measure * { transition: none !important; }
+/* While tiles move, their heavy content (editor, terminal) keeps one size on its own GPU layer */
+.ide-body.spot-animating .editor-panes,
+.ide-body.spot-animating .terminal-well,
+.ide-body.spot-animating #sidebar > :is(#files-view, #search-view, #git-view, #debug-view) { will-change: transform; contain: strict; }
+/* Each tile on its own layer: a tile that resizes repaints only itself */
+.ide-body.spot-animating #editor-pane,
+.ide-body.spot-animating .ide-pane--terminal,
+.ide-body.spot-animating .sidebar,
+.ide-body.spot-animating .class-tile { contain: layout paint style; will-change: transform; }
+/* The editor steps back with a dimming layer (composited), not a filter (repaints every frame) */
+#editor-pane::after {
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: inherit;
+  background: rgba(14, 12, 30, 0.14); opacity: 0; transition: opacity 300ms ease; will-change: opacity;
 }
 
 /* Playground: Output grows to about half the window; Files and Classroom step back */
@@ -24,9 +41,9 @@
   transform: translateY(-3px);
   box-shadow: 8px 10px 0 var(--ink);
 }
-:root[data-theme="playground"]:not([data-study]) .ide-body[data-spot] #editor-pane { filter: brightness(0.9) saturate(0.9); }
+:root[data-theme="playground"]:not([data-study]) .ide-body[data-spot] #editor-pane::after { opacity: 1; }
 /* The Classroom tile folds away so Output gets the whole column */
-.class-tile { max-height: 220px; overflow: hidden; transition: max-height 380ms var(--ease-out), opacity 200ms ease, padding 380ms var(--ease-out), margin 380ms var(--ease-out), border-width 380ms ease; }
+.class-tile { max-height: 220px; overflow: hidden; transition: max-height 420ms var(--spot-ease), opacity 200ms ease, padding 420ms var(--spot-ease), margin 420ms var(--spot-ease), border-width 420ms ease; }
 :root[data-theme="playground"]:not([data-study]) .ide-body[data-spot="output"] .class-tile {
   max-height: 0; padding-top: 0; padding-bottom: 0; border-width: 0; opacity: 0; margin-top: calc(var(--gap) * -1);
 }

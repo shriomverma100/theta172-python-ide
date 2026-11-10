@@ -141,8 +141,36 @@ function activeFileId() {
   return path && isInWorkspace(path) ? relativePath(path) : getActiveFileName() || 'main.py';
 }
 
+// ── Run events (error explanations, predictions, progress, class pulse) ──
+
+const runListeners = { start: new Set(), finish: new Set() };
+/** fn({ code, fileName }) when a run starts. */
+export function onRunStart(fn) { runListeners.start.add(fn); return () => runListeners.start.delete(fn); }
+/**
+ * fn({ code, fileName, ok, stopped, durationMs, stdout, stderr, error }) when a run ends;
+ * error = { type, message, line, lineText } for a failed run.
+ */
+export function onRunFinish(fn) { runListeners.finish.add(fn); return () => runListeners.finish.delete(fn); }
+
+const MAX_CAPTURE = 200_000;
+let current = null; // { code, fileName, stdout, stderr, stopped }
+
+/** The exception at the end of a traceback: { type, message }. */
+export function lastException(stderr) {
+  const lines = String(stderr || '').trimEnd().split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = /^(\w+(?:Error|Exception|Interrupt|Exit|Warning)|StopIteration|KeyboardInterrupt)(?::\s?(.*))?$/.exec(lines[i].trim());
+    if (m) return { type: m[1], message: (m[2] || '').trim() };
+  }
+  return null;
+}
+
 function forwardOutput(text, stream) {
   if (stream === 'stderr') text = tidyTraceback(text, getActiveFileName() || 'main.py', getWorkspaceRoot());
+  if (current) {
+    const k = stream === 'stderr' ? 'stderr' : 'stdout';
+    if (current[k].length < MAX_CAPTURE) current[k] += text;
+  }
   if (stream === 'stderr') state.terminal?.writeError(text);
   else state.terminal?.writeOutput(text);
 
@@ -181,6 +209,20 @@ function finishRun({ durationMs, failed, message }) {
   if (failed) runFailed($anchor);
   else if (durationMs !== undefined) runSucceeded($anchor);
   offerFixes({ failed, rerun: runCode });
+
+  const run = current;
+  current = null;
+  if (run) {
+    const exc = failed ? lastException(run.stderr) : null;
+    const line = failed ? state.lastErrorLine || null : null;
+    const lineText = line ? (run.code.split('\n')[line - 1] ?? '').trim() : '';
+    const event = {
+      code: run.code, fileName: run.fileName, ok: !failed, stopped: run.stopped, durationMs,
+      stdout: run.stdout, stderr: run.stderr,
+      error: failed ? { type: exc?.type || state.lastError || 'Error', message: exc?.message || '', line, lineText } : null,
+    };
+    runListeners.finish.forEach((fn) => { try { fn(event); } catch (err) { console.error('[run listener]', err); } });
+  }
 }
 
 // ── Run / Stop ───────────────────────────────────────────────────
@@ -232,6 +274,9 @@ export async function runCode() {
   startProgressBar();
   startExecTimer();
 
+  current = { code, fileName: getActiveFileName() || 'main.py', stdout: '', stderr: '', stopped: false };
+  runListeners.start.forEach((fn) => { try { fn({ code, fileName: current.fileName }); } catch (err) { console.error('[run listener]', err); } });
+
   if (state.useLocalPython) window.electronAPI.runPython(code, projectFile ? { filePath: tab.filePath } : {});
   else state.workerManager.run(code);
 }
@@ -240,6 +285,7 @@ export function stopCode() {
   if (state.debugging) { state.stopDebug?.(); return; }
   if (!state.isRunning && interruptActiveNotebook()) return;
   const wasRunning = state.isRunning;
+  if (current) current.stopped = true;
   if (state.useLocalPython) window.electronAPI.killPython();
   else state.workerManager?.kill(); // Pyodide reports back via onInterrupted
   setRunState('idle', 'Stopped');

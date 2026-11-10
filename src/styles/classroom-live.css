@@ -1,0 +1,115 @@
+/* ═══ Classroom, Phase 10: any network, class pulse, help routing ═══ */
+
+/* Setup: the relay and the class code */
+.cr-advanced { border: 1px dashed var(--line-strong); border-radius: var(--radius-control); padding: 8px 12px; }
+.cr-advanced > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); }
+.cr-advanced[open] > summary { margin-bottom: 8px; }
+.cr-label__opt { font-weight: 400; color: var(--text-3); margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.cr-input--code { font-family: var(--font-code); letter-spacing: 0.18em; text-transform: uppercase; }
+
+/* Live header: join code and routes */
+.cr-join-code {
+  display: inline-flex; align-items: center; gap: 8px; padding: 3px 4px 3px 10px;
+  border: var(--border-w) solid var(--ink); border-radius: var(--radius-control); background: var(--yellow); color: var(--ink);
+}
+.cr-join-code.hidden { display: none; }
+.cr-join-code__label { font-size: var(--fs-xs); font-weight: 700; }
+.cr-join-code__value { font: 700 var(--fs-md)/1 var(--font-code); letter-spacing: 0.12em; }
+.cr-join-code__copy {
+  height: 24px; padding: 0 8px; border: 1px solid #17142E; border-radius: 6px;
+  background: #FFFFFF; color: #17142E; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; /* the chip is yellow in both themes */
+}
+.cr-join-code { color: #17142E; border-color: #17142E; }
+.cr-join-code__copy:hover { background: #17142E; color: #FFFFFF; }
+.cr-routes { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.cr-route { padding: 3px 9px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--line-strong); color: var(--text-2); }
+.cr-route.is-on { color: var(--ok-text); border-color: currentColor; }
+.cr-route.is-wait { color: var(--warn-text); border-color: currentColor; }
+.cr-route.is-off { color: var(--text-3); }
+
+/* Class pulse */
+.cr-pulse { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.cr-pulse:empty { display: none; }
+.cr-pulse__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cr-pulse__title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-3); }
+.cr-pulse__legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--fs-sm); color: var(--text-2); }
+.cr-pulse__key b { font: 700 var(--fs-md)/1 var(--font-code); }
+.cr-pulse__key.is-done b { color: var(--ok-text); }
+.cr-pulse__key.is-working b { color: var(--sky); }
+.cr-pulse__key.is-stuck b { color: var(--accent-text); }
+.cr-pulse__bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-3); gap: 2px; }
+.cr-pulse__seg { flex-basis: 0; transition: flex-grow 600ms cubic-bezier(0.22, 1, 0.36, 1); }
+.cr-pulse__seg.is-done { background: var(--lime); }
+.cr-pulse__seg.is-working { background: var(--sky); }
+.cr-pulse__seg.is-stuck { background: var(--red); }
+.cr-pulse__seg.is-idle { background: var(--line-strong); }
+.cr-pulse__empty { font-size: var(--fs-sm); color: var(--text-3); }
+.cr-pulse__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; }
+.cr-bug, .cr-hands {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; min-width: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface-1);
+}
+.cr-bug { border-left: 4px solid var(--red); }
+.cr-bug.is-empty { border-left-color: var(--lime); }
+.cr-bug__kicker { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-3); }
+.cr-bug__title { font: 700 var(--fs-md)/1.3 var(--font-ui); color: var(--text); }
+.cr-bug__names, .cr-bug__why { font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.cr-bug .cr-action-btn { align-self: flex-start; }
+.cr-hands__empty { font-size: var(--fs-sm); color: var(--text-3); }
+.cr-hand { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+.cr-hand__who { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.cr-hand__who b { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-hand__when { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.cr-hand__err { grid-column: 1; font: 600 var(--fs-xs)/1.4 var(--font-code); color: var(--accent-text); }
+.cr-hand__actions { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.cr-hand__routed { font-size: var(--fs-xs); font-weight: 600; color: var(--ok-text); }
+@media (max-width: 900px) { .cr-pulse__row { grid-template-columns: 1fr; } }
+
+/* Student cards: live state */
+.cr-student-item.is-stuck { border-left-color: var(--red); }
+.cr-student-item.is-done { border-left-color: var(--lime); }
+.cr-student-item.is-working { border-left-color: var(--sky); }
+.cr-student-item.is-away { opacity: 0.6; }
+.cr-student-badges { flex-wrap: wrap; justify-content: flex-end; }
+.cr-badge--done { color: var(--ok-text); }
+.cr-badge--stuck { color: var(--accent-text); }
+.cr-badge--error { color: var(--accent-text); font-family: var(--font-code); letter-spacing: 0; text-transform: none; }
+.cr-badge--away { color: var(--warn-text); }
+.cr-badge--via { color: var(--text-3); border-style: dashed; }
+.cr-badge--progress { color: var(--focus); cursor: help; }
+.cr-chat-message--peer .cr-chat-meta { color: var(--ok-text); }
+
+/* Student: connection state and the "done" toggle */
+.cr-link-status { font-size: var(--fs-sm); font-weight: 500; color: var(--text-3); }
+.cr-link-status[data-state="reconnecting"], .cr-link-status[data-state="teacher-away"] { color: var(--warn-text); }
+.cr-done-btn[aria-pressed="true"] { background: var(--lime); color: var(--ink); border-color: var(--ink); }
+:root[data-class-reconnecting] .cr-toolbar-live-dot { background: var(--yellow) !important; }
+
+/* A classmate to help, or a hint from one (floats over the IDE) */
+.cr-help-card {
+  position: fixed; right: 20px; bottom: 96px; z-index: 1250; width: min(380px, calc(100vw - 32px));
+  max-height: min(70vh, 560px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 14px;
+  background: var(--surface-2); color: var(--text);
+  border: var(--border-w) solid var(--ink); border-radius: 16px; box-shadow: var(--shadow-tile);
+  animation: explainIn 220ms var(--ease-out);
+}
+.cr-help-card__head { display: flex; align-items: center; gap: 8px; }
+.cr-help-card__title { flex: 1; font: 800 var(--fs-md)/1.2 var(--font-display); }
+.cr-help-card__close { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 16px; cursor: pointer; }
+.cr-help-card__lead, .cr-help-card__hint { margin: 0; font-size: var(--fs-sm); line-height: 1.55; color: var(--text-2); }
+.cr-help-card__hint { font-size: var(--fs-base); color: var(--text); }
+.cr-help-card__err { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: var(--red-tint); color: var(--accent-text); font: 600 var(--fs-xs)/1.5 var(--font-code); }
+.cr-help-card__code { margin: 0; max-height: 220px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre; }
+.cr-help-card__box { resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-1); color: var(--text); font: var(--fs-sm)/1.5 var(--font-ui); }
+.cr-help-card .cr-action-btn { align-self: flex-end; }
+:root[data-theme="pro"] .cr-help-card { border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+:root[data-theme="pro"] .cr-help-card__title { font-family: var(--font-ui); }
+
+/* Teacher's editor: how many students are stuck on a line */
+.cm-class-heat-gutter { min-width: 0; }
+.cm-class-heat {
+  display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin: 2px 2px 0; padding: 0 3px;
+  border-radius: 8px; font: 700 10px/1 var(--font-code); color: #fff;
+  background: color-mix(in srgb, var(--red) calc(45% + var(--heat, 0) * 55%), transparent);
+  cursor: help;
+}

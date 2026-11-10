@@ -37,7 +37,7 @@ import { fx, startLoadingLoop, runSucceeded, runFailed, screenTransition } from 
 import { handleThemeToggle, initTheme } from './theme-manager.js';
 import { PipManager } from './pip-manager.js';
 import { showInterpreterPicker, checkEnvironment, initFixBar } from './app/interpreter.js';
-import { initSpotlight } from './app/spotlight.js';
+import { initSpotlight, benchSpot } from './app/spotlight.js';
 import { initGit, pickBranch, commit as gitCommit, sync as gitSync, refreshGitView } from './app/git.js';
 import { initStudy, toggleStudySheet, exitStudy, enterStudy, getStudyMode, toggleDrawer, showSuggestion } from './app/study.js';
 import {
@@ -69,15 +69,21 @@ import { initSession, restoreSession, saveSessionSoon } from './app/session.js';
 import { initNotebooks, newNotebook, activeNotebook } from './notebook/notebooks.js';
 import { toPythonScript } from './notebook/model.js';
 import { ShellTerminal } from './app/shell-terminal.js';
-import { saveToFile, saveAsFile, openFile, initFileInputs } from './app/files.js';
+import { saveToFile, saveAsFile, openFile, initFileInputs, initAutoSave } from './app/files.js';
 import { updateCodeStats, markUnsaved, scheduleAutoSave, saveCode } from './app/autosave.js';
-import { initRuntime, runCode, stopCode } from './app/runtime.js';
+import { initRuntime, runCode, stopCode, onRunFinish, onRunStart } from './app/runtime.js';
+import {
+  initLearn, openProgress, startPrediction, showExplanation, getLastError, getExplainLang, setExplainLang,
+} from './learn/learn-ui.js';
 import { startBoot, setBootStep } from './app/boot.js';
 import { initSettings, openSettings, closeSettings, toggleFx, applyEditorPrefs } from './app/settings.js';
 import { initPaneTabs, initGutter, clearOutput, adjustFontSize, switchPane } from './app/layout.js';
 import { initShortcuts } from './app/shortcuts.js';
 import { initCommandPalette, toggleCommandPalette, openCommandPalette, isPaletteOpen, closeCommandPalette } from './app/commands.js';
 import { initModals, openExamples, openShortcuts, closeAllModals } from './app/modals.js';
+import { ideActions } from './app/ide-actions.js';
+import { initMenubar } from './app/menubar.js';
+import { APP_MENUS } from './app/app-menus.js';
 import { fixCode } from './app/ai-fix.js';
 import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js';
 import { initContextMenu, showMenu } from './app/context-menu.js';
@@ -130,6 +136,17 @@ const actions = {
   'open-file': openFile,
   'new-tab': () => addNewTab(null, '# New file\n'),
   'new-notebook': newNotebook,
+  'predict': startPrediction,
+  'my-progress': openProgress,
+  'explain-error': () => {
+    const err = getLastError();
+    if (err) showExplanation(err);
+    else showToast('No error to explain: the last run worked', 'info', 2000);
+  },
+  'explain-language': () => {
+    setExplainLang(getExplainLang() === 'hi' ? 'en' : 'hi');
+    showToast(getExplainLang() === 'hi' ? 'त्रुटियाँ अब हिंदी में समझाई जाएँगी' : 'Errors are now explained in English', 'info', 2200);
+  },
   'nb-run-all': () => withNotebook((nb) => nb.runAll()),
   'nb-run-above': () => withNotebook((nb) => nb.runUpTo()),
   'nb-restart': () => withNotebook((nb) => nb.restart()),
@@ -353,7 +370,10 @@ async function initIDE() {
   initGutter();
   initModals();
   initButtons();
+  Object.assign(actions, ideActions, { shortcuts: openShortcuts });
   initCommandPalette(actions);
+  initMenubar({ menus: APP_MENUS, run: (id) => actions[id]?.() });
+  initAutoSave();
   initShortcuts(actions, { isRunning: () => state.isRunning, onEscape: handleEscape });
   initFileInputs($editorHost || document.querySelector('.ide-body'));
   initContextMenu($editorHost, { runCode, openFindReplace });
@@ -374,6 +394,7 @@ async function initIDE() {
       fxStats: () => fx.stats(),
       setCode: (code) => setValue(code),
       notebook: () => activeNotebook(),
+      spotBench: (rounds) => benchSpot(rounds),
       // Language intelligence (Phase 4)
       lspReady: () => isLanguageServerReady(),
       problems: () => problemSummary(),
@@ -453,6 +474,7 @@ async function initIDE() {
     });
   }
 
+  initLearn({ onRunFinish, onRunStart, runCode }); // explanations, predictions, progress
   await initRuntime();
   // Language intelligence needs local Python (desktop); it starts in the background
   if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));

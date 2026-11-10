@@ -7,8 +7,8 @@
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter,
          highlightSpecialChars, drawSelection, dropCursor,
          rectangularSelection, crosshairCursor,
-         highlightActiveLine } from '@codemirror/view';
-import { EditorState, Compartment, StateEffect, Annotation } from '@codemirror/state';
+         highlightActiveLine, gutter, GutterMarker } from '@codemirror/view';
+import { EditorState, Compartment, StateEffect, Annotation, Prec } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, indentOnInput, bracketMatching,
          foldGutter, foldKeymap, indentUnit,
@@ -501,6 +501,9 @@ export async function createEditor(container) {
     // Find & Replace
     search({ top: true }),
 
+    // Ctrl+G is the app's Go to Line (the editor would use it for "find next"; F3 still does that)
+    Prec.highest(keymap.of([{ key: 'Mod-g', run: () => true }])),
+
     // Keymaps
     keymap.of([
       ...closeBracketsKeymap,
@@ -517,6 +520,10 @@ export async function createEditor(container) {
 
     // Error line highlighting
     errorLineField,
+
+    // Classroom: how many students are stuck on each line of the teacher's code
+    classHeatField,
+    classHeatGutter,
 
     // Theme (dynamic via compartment)
     themeCompartment.of(editorThemeExtensions()),
@@ -869,4 +876,52 @@ export function gotoLine(lineNum) {
     scrollIntoView: true,
   });
   editorView.focus();
+}
+
+// ── Class heat (teacher, live class) ──────────────────────────
+const setHeatEffect = StateEffect.define();
+const classHeatField = StateField.define({
+  create: () => null,
+  update(value, tr) {
+    for (const e of tr.effects) if (e.is(setHeatEffect)) value = e.value;
+    return value;
+  },
+});
+
+class HeatMarker extends GutterMarker {
+  constructor(h) { super(); this.h = h; }
+  eq(other) { return other.h.count === this.h.count && other.h.names.join() === this.h.names.join(); }
+  toDOM() {
+    const d = document.createElement('span');
+    d.className = 'cm-class-heat';
+    d.textContent = String(this.h.count);
+    d.style.setProperty('--heat', String(Math.min(1, this.h.count / 5)));
+    d.title = `${this.h.count} student${this.h.count === 1 ? '' : 's'} stuck here (${this.h.types.join(', ')}): ${this.h.names.join(', ')}`;
+    return d;
+  }
+}
+
+const classHeatGutter = gutter({
+  class: 'cm-class-heat-gutter',
+  lineMarker(view, line) {
+    const heat = view.state.field(classHeatField, false);
+    if (!heat) return null;
+    const h = heat.get(view.state.doc.lineAt(line.from).number);
+    return h ? new HeatMarker(h) : null;
+  },
+  lineMarkerChange: (update) => update.transactions.some((tr) => tr.effects.some((e) => e.is(setHeatEffect))),
+});
+
+/**
+ * Show where students are stuck: Map(line number → { count, names, types }), or null to clear.
+ * Applies to the editor groups that are open now.
+ */
+export function setClassHeat(map) {
+  const value = map && map.size ? map : null;
+  for (const v of views) {
+    if (!v) continue;
+    const cur = v.state.field(classHeatField, false);
+    if (cur === value || (!cur && !value)) continue;
+    v.dispatch({ effects: setHeatEffect.of(value) });
+  }
 }

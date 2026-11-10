@@ -25,7 +25,6 @@ import { KernelSession, kernelsAvailable } from './kernel-client.js';
 const ICONS = {
   run: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>',
   edit: '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 10l.5-2.3L8.3 1.9a1 1 0 0 1 1.4 0l.4.4a1 1 0 0 1 0 1.4L4.3 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
-  done: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6.3l2.6 2.6L10 3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   runAll: '<svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1.5 1.8v8.4L7 6zM7 1.8v8.4L12.5 6z" fill="currentColor"/></svg>',
   stop: '<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><rect x="1.5" y="1.5" width="8" height="8" rx="1" fill="currentColor"/></svg>',
   restart: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M10.6 4.2A4.6 4.6 0 1 0 11 7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M11 1.6v3H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -156,12 +155,15 @@ export class NotebookView {
     const outputs = el('div', 'nb-cell__outputs', { 'aria-live': 'polite' });
     const tools = el('div', 'nb-cell__tools');
 
-    const run = cell.type === 'code'
-      ? button('nb-cell__run', 'Run this cell (Ctrl+Enter)', ICONS.run)
-      : button('nb-cell__run nb-cell__run--done', 'Done: show the formatted text (Ctrl+Enter)', ICONS.done);
-    run.addEventListener('click', (e) => { e.stopPropagation(); this.select(cell.id); this.runCell(cell.id); });
+    // Code cells get a Run button; text cells none (they show formatted when you click away)
+    let run = null;
+    if (cell.type === 'code') {
+      run = button('nb-cell__run', 'Run this cell (Ctrl+Enter)', ICONS.run);
+      run.addEventListener('click', (e) => { e.stopPropagation(); this.select(cell.id); this.runCell(cell.id); });
+      gutter.append(run);
+    }
     const count = el('div', 'nb-cell__count', cell.type === 'markdown' ? { text: 'Text' } : {});
-    gutter.append(run, count);
+    gutter.append(count);
 
     const type = el('button', 'nb-tool nb-tool--type', { type: 'button', title: cell.type === 'code' ? 'Make this a text cell (M)' : 'Make this a code cell (Y)', text: cell.type === 'code' ? 'Py' : 'Md' });
     type.addEventListener('click', (e) => { e.stopPropagation(); this.setType(cell.id, cell.type === 'code' ? 'markdown' : 'code'); });

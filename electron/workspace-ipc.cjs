@@ -16,6 +16,7 @@ const { Workspace } = require('./workspace.cjs');
 const { ShellSession } = require('./shell-session.cjs');
 
 const MAX_RECENT_FILES = 40;
+const MAX_RECENT_FOLDERS = 12;
 
 function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow, fileAccess, shellEnv = (base) => base }) {
   const workspace = new Workspace({ fs, trash: (p) => shell.trashItem(p), execFile });
@@ -69,6 +70,7 @@ function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow
   const open = async (dir) => {
     const info = await workspace.setRoot(dir);
     saved.lastRoot = info.root;
+    saved.recentFolders = [info.root, ...saved.recentFolders.filter((f) => f !== info.root)].slice(0, MAX_RECENT_FOLDERS);
     persist();
     watch(info.root);
     return info;
@@ -120,13 +122,35 @@ function registerWorkspaceIpc({ ipcMain, dialog, shell, app, execFile, getWindow
     return true;
   }));
 
+  // Open Recent: folders and files from our own state file that still exist
+  ipcMain.handle('ws-recent', safe(async () => {
+    const exists = (p) => { try { return fs.existsSync(p); } catch (_) { return false; } };
+    return {
+      folders: saved.recentFolders.filter((f) => f !== workspace.root && exists(f)),
+      files: saved.recentFiles.filter(exists).slice(0, 15),
+    };
+  }));
+  ipcMain.handle('ws-open-recent', safe(async (dir) => {
+    if (typeof dir !== 'string' || !saved.recentFolders.includes(dir)) throw new Error('That folder is not in the recent list.');
+    return open(dir);
+  }));
+  // Reveal any open file (project files and files opened through a dialog)
+  ipcMain.handle('file-reveal', safe(async (p) => {
+    if (typeof p !== 'string') throw new Error('Invalid path.');
+    const abs = path.resolve(p);
+    if (!workspace.contains(abs) && !fileAccess.isAllowed(abs)) throw new Error('This file was not opened in this app.');
+    shell.showItemInFolder(abs);
+    return true;
+  }));
+
   // Read a file to restore a tab: only project files or files picked in a dialog
   ipcMain.handle('file-read', safe(async (p) => {
     if (typeof p !== 'string') throw new Error('Invalid path.');
     if (workspace.contains(p)) return workspace.read(p);
     if (!fileAccess.isAllowed(p)) throw new Error('This file was not opened through a dialog.');
     const st = await fs.promises.stat(p);
-    if (st.size > 5 * 1024 * 1024) throw new Error('File is larger than 5 MB.');
+    const limit = /\.ipynb$/i.test(p) ? 40 : 5; // notebooks carry their plots
+    if (st.size > limit * 1024 * 1024) throw new Error(`File is larger than ${limit} MB.`);
     return fs.promises.readFile(p, 'utf8');
   }));
 
@@ -161,9 +185,10 @@ function loadState(file) {
     return {
       lastRoot: typeof s.lastRoot === 'string' ? s.lastRoot : null,
       recentFiles: Array.isArray(s.recentFiles) ? s.recentFiles.filter((f) => typeof f === 'string').slice(0, MAX_RECENT_FILES) : [],
+      recentFolders: Array.isArray(s.recentFolders) ? s.recentFolders.filter((f) => typeof f === 'string').slice(0, MAX_RECENT_FOLDERS) : [],
     };
   } catch (_) {
-    return { lastRoot: null, recentFiles: [] };
+    return { lastRoot: null, recentFiles: [], recentFolders: [] };
   }
 }
 

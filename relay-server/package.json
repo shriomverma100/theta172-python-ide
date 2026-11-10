@@ -1,0 +1,16 @@
+{
+  "name": "theta172-classroom-relay",
+  "version": "1.0.0",
+  "description": "Join-code relay that connects THETA172 teachers and students across any network",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

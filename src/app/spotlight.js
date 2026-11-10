@@ -61,9 +61,128 @@ export function setSpot(spot) {
   if (spot === current) return;
   current = spot;
   if (!body) return;
+  animateLayout(spot);
+  listeners.forEach((fn) => fn(spot));
+}
+
+// ── Smooth resizing ──────────────────────────────────────────────
+// Animating the grid re-lays out the page every frame. That is cheap for the
+// tile frames, but the code editor and the terminal would also re-measure and
+// re-render on every frame. So for the length of the animation their content
+// keeps one fixed size (the larger of before and after, clipped by its tile),
+// and they are measured once at the end. The frames move at full frame rate.
+
+const ANIM_MS = 420;
+let pinned = [];
+let endTimer = null;
+
+/**
+ * Frame-time benchmark (tests only): grow and shrink Output `rounds` times
+ * and report the frame intervals seen while the tiles move.
+ */
+export async function benchSpot(rounds = 6) {
+  const gaps = [];
+  const firsts = [];
+  for (let i = 0; i < rounds; i++) {
+    const s0 = performance.now();
+    setSpot(i % 2 === 0 ? 'output' : null);
+    const setupMs = performance.now() - s0;
+    await new Promise((resolve) => {
+      const t0 = performance.now();
+      let last = t0;
+      let n = 0;
+      const tick = (t) => {
+        if (n++ === 0) firsts.push(t - last + setupMs);
+        else gaps.push(t - last);
+        last = t;
+        if (t - t0 < ANIM_MS) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  setSpot(null);
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  return {
+    frames: gaps.length,
+    avgFps: Math.round(1000 / avg),
+    p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
+    worstMs: +sorted[sorted.length - 1].toFixed(1),
+    over20ms: gaps.filter((g) => g > 20).length,
+    firstFrameMs: +(firsts.reduce((a, b) => a + b, 0) / firsts.length).toFixed(1),
+  };
+}
+
+function applySpot(spot) {
   if (spot) body.dataset.spot = spot;
   else delete body.dataset.spot;
-  listeners.forEach((fn) => fn(spot));
+}
+
+/** The heavy parts whose size is held still while tiles move. */
+function heavyParts() {
+  return [
+    document.querySelector('#editor-pane .editor-panes'),
+    document.querySelector('#terminal-pane .terminal-well'),
+    document.querySelector('#sidebar > :is(#files-view, #search-view, #git-view, #debug-view):not(.hidden)'),
+  ].filter((el) => el && el.offsetParent !== null);
+}
+
+function unpin() {
+  for (const { el, w, h, flex } of pinned) {
+    el.style.width = w;
+    el.style.height = h;
+    el.style.flex = flex;
+  }
+  pinned = [];
+  body.classList.remove('spot-animating');
+}
+
+function animateLayout(spot) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.hasAttribute('data-reduced-motion');
+  clearTimeout(endTimer);
+  if (reduced || window.__spotNoPin) { // (__spotNoPin: the old way, for the frame-rate benchmark)
+    unpin();
+    applySpot(spot);
+    refit();
+    return;
+  }
+  // Sizes now (mid-animation sizes count) and at the end. The end is measured on
+  // the tiles (cheap) while the heavy content is already held at its current size;
+  // the content's end size = its size now + how much its tile grows.
+  if (pinned.length) unpin(); // a new change while animating: measure from where things are
+  const parts = heavyParts();
+  const tiles = parts.map((el) => el.closest('.ide-pane, .sidebar') || el.parentElement);
+  const before = parts.map((el) => el.getBoundingClientRect());
+  const tilesBefore = tiles.map((t) => t.getBoundingClientRect());
+  pinned = parts.map((el, i) => {
+    const saved = { el, w: el.style.width, h: el.style.height, flex: el.style.flex };
+    el.style.width = `${before[i].width}px`;
+    el.style.height = `${before[i].height}px`;
+    el.style.flex = 'none';
+    return saved;
+  });
+  body.classList.add('spot-animating');
+  const was = body.dataset.spot || null;
+  body.classList.add('spot-measure');
+  applySpot(spot);
+  const tilesAfter = tiles.map((t) => t.getBoundingClientRect());
+  applySpot(was);
+  void body.offsetWidth; // commit the old layout before transitions come back
+  body.classList.remove('spot-measure');
+
+  parts.forEach((el, i) => {
+    const w = before[i].width + Math.max(0, tilesAfter[i].width - tilesBefore[i].width);
+    const h = before[i].height + Math.max(0, tilesAfter[i].height - tilesBefore[i].height);
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+  });
+  applySpot(spot);
+  endTimer = setTimeout(() => {
+    unpin();
+    refit();
+  }, ANIM_MS + 40);
 }
 
 function schedule(spot, delay) {
@@ -134,9 +253,6 @@ export function initSpotlight() {
     else if (t.closest('#editor-pane')) schedule(null, 0);
   });
 
-  body.addEventListener('transitionend', (e) => {
-    if (e.target === body && /grid-template/.test(e.propertyName)) refit();
-  });
   window.addEventListener('blur', () => schedule(null, LEAVE_DELAY));
   window.addEventListener('resize', () => { quietSpotlight(800); setSpot(null); });
 }

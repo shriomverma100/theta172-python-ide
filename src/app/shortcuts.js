@@ -51,6 +51,13 @@ export const DEFAULT_SHORTCUTS = {
   'move-editor-right': { ctrl: true,  shift: false, alt: true,  key: 'ArrowRight' },
   'move-editor-left':  { ctrl: true,  shift: false, alt: true,  key: 'ArrowLeft' },
   'focus-other-group': { ctrl: true,  shift: false, alt: false, key: 'k' },
+  // Files and tabs
+  'save-all':          { ctrl: true,  shift: false, alt: true,  key: 's' },
+  'close-editor':      { ctrl: true,  shift: false, alt: false, key: 'w' },
+  'reopen-closed':     { ctrl: true,  shift: true,  alt: false, key: 't' },
+  'next-tab':          { ctrl: true,  shift: false, alt: false, key: 'Tab' },
+  'prev-tab':          { ctrl: true,  shift: true,  alt: false, key: 'Tab' },
+  'go-to-line':        { ctrl: true,  shift: false, alt: false, key: 'g' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -95,6 +102,12 @@ export const SHORTCUT_LABELS = {
   'move-editor-right': 'Move Editor to the Right Group',
   'move-editor-left':  'Move Editor to the Left Group',
   'focus-other-group': 'Focus the Other Editor Group',
+  'save-all':          'Save All',
+  'close-editor':      'Close Editor',
+  'reopen-closed':     'Reopen Closed Editor',
+  'next-tab':          'Next Tab',
+  'prev-tab':          'Previous Tab',
+  'go-to-line':        'Go to Line',
 };
 
 const KEY_NAMES = {

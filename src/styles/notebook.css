@@ -107,9 +107,6 @@
   content: 'Text · Markdown'; position: absolute; bottom: 6px; right: 10px; pointer-events: none;
   font: 600 10px/1 var(--font-ui); letter-spacing: .04em; color: var(--panel-text-2);
 }
-.nb-cell__run--done { color: var(--lime); }
-.nb-cell__run--done:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
-.nb-cell--rendered .nb-cell__run--done { visibility: hidden; }
 .nb-cell--markdown .nb-cell__count {
   font: 700 10px/1 var(--font-ui); letter-spacing: .04em; text-transform: uppercase; color: var(--panel-text-2);
 }

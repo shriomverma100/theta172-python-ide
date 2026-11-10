@@ -15,6 +15,7 @@ if (process.env.THETA_SMOKE === '1') app.commandLine.appendSwitch('disable-featu
 
 const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
+const { validRelayUrl } = require('./classroom-relay.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
@@ -793,6 +794,14 @@ ipcMain.on('repl-kill', () => {
 
 // ── IPC: File System ────────────────────────────────────────────
 
+/** Title and file types for Save As, from the suggested name. */
+function saveDialogKind(name = '') {
+  const all = { name: 'All Files', extensions: ['*'] };
+  if (/\.ipynb$/i.test(name)) return { title: 'Save Notebook', filters: [{ name: 'Jupyter Notebooks', extensions: ['ipynb'] }, all] };
+  if (/\.html?$/i.test(name)) return { title: 'Save Report', filters: [{ name: 'Web Page', extensions: ['html'] }, all] };
+  return { title: 'Save Python File', filters: [{ name: 'Python Files', extensions: ['py'] }, all] };
+}
+
 // Open file dialog → returns { filePath, content, fileName } or null
 ipcMain.handle('file-open', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -840,11 +849,8 @@ ipcMain.handle('file-save', async (_, filePath, content) => {
 // Save-As dialog → returns { filePath, fileName } or null
 ipcMain.handle('file-save-as', async (_, content, defaultName) => {
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: /\.ipynb$/i.test(defaultName || '') ? 'Save Notebook' : 'Save Python File',
+    ...saveDialogKind(defaultName),
     defaultPath: defaultName || 'main.py',
-    filters: /\.ipynb$/i.test(defaultName || '')
-      ? [{ name: 'Jupyter Notebooks', extensions: ['ipynb'] }, { name: 'All Files', extensions: ['*'] }]
-      : [{ name: 'Python Files', extensions: ['py'] }, { name: 'All Files', extensions: ['*'] }],
   });
 
   if (result.canceled || !result.filePath) return null;
@@ -869,58 +875,40 @@ ipcMain.on('set-title', (_, title) => {
 
 // ── IPC: Classroom (Teacher) ────────────────────────────────────
 
-ipcMain.handle('classroom-start-server', (_, teacherName) => {
-  const result = classroomServer.start(teacherName);
+/** Send an event to the window (if it is still open). */
+const toWindow = (channel, ...args) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args);
+};
 
-  if (result.success) {
-    classroomServer.onStudentJoin = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-student-joined', info);
-      }
-    };
-    classroomServer.onStudentLeave = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-student-left', info);
-      }
-    };
-    classroomServer.onHelpRequest = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-help-request', info);
-      }
-    };
-    classroomServer.onStudentCode = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-student-code', info);
-      }
-    };
-    classroomServer.onStudentCodeLive = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-student-code-live', info);
-      }
-    };
-    classroomServer.onStudentOutputLive = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-student-output-live', info);
-      }
-    };
-    classroomServer.onEditGrant = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-edit-grant', info);
-      }
-    };
-    classroomServer.onEditRevoke = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-edit-revoke', info);
-      }
-    };
-    classroomServer.onChatMessage = (info) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('classroom-chat-message-received', info);
-      }
-    };
-  }
+/** The internet relay to use: the one set in Settings, else THETA_RELAY_URL, else none. */
+const relayUrlFor = (fromSettings) => {
+  const url = typeof fromSettings === 'string' && fromSettings.trim() ? fromSettings.trim() : process.env.THETA_RELAY_URL || '';
+  return validRelayUrl(url) ? url : '';
+};
 
-  return result;
+ipcMain.handle('classroom-start-server', async (_, teacherName, opts = {}) => {
+  classroomServer.onStudentJoin = (info) => toWindow('classroom-student-joined', info);
+  classroomServer.onStudentLeave = (info) => toWindow('classroom-student-left', info);
+  classroomServer.onStudentStatus = (info) => toWindow('classroom-student-status', info);
+  classroomServer.onRelayStatus = (info) => toWindow('classroom-relay-status', info);
+  classroomServer.onHelpRequest = (info) => toWindow('classroom-help-request', info);
+  classroomServer.onStudentCode = (info) => toWindow('classroom-student-code', info);
+  classroomServer.onStudentCodeLive = (info) => toWindow('classroom-student-code-live', info);
+  classroomServer.onStudentOutputLive = (info) => toWindow('classroom-student-output-live', info);
+  classroomServer.onEditGrant = (info) => toWindow('classroom-edit-grant', info);
+  classroomServer.onEditRevoke = (info) => toWindow('classroom-edit-revoke', info);
+  classroomServer.onChatMessage = (info) => toWindow('classroom-chat-message-received', info);
+  classroomServer.onStudentEvent = (who, msg) => toWindow('classroom-student-event', who, msg);
+  return classroomServer.start(teacherName, { relayUrl: relayUrlFor(opts?.relayUrl) });
+});
+
+ipcMain.handle('classroom-status', () => (classroomServer.running ? classroomServer.getStatus() : classroomDiscovery.getStatus()));
+
+/** Teacher → one student or everyone ('*'): pulse, help routing, predictions … */
+ipcMain.on('classroom-send-event', (_, target, msg, key) => {
+  if (!classroomServer.running || !msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
+  if (typeof target !== 'string' || (key !== undefined && typeof key !== 'string')) return;
+  classroomServer.sendEvent(target, msg, key);
 });
 
 ipcMain.handle('classroom-stop-server', () => {
@@ -982,87 +970,46 @@ ipcMain.on('classroom-send-chat-message', (_, text, target, senderName) => {
 
 // ── IPC: Classroom (Student) ────────────────────────────────────
 
-ipcMain.on('classroom-start-discovery', (_, name, roll) => {
-  classroomDiscovery.onTeacherFound = (info) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-teacher-found', info);
-    }
-  };
-  classroomDiscovery.onConnected = (info) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-connected', info);
-    }
-  };
-  classroomDiscovery.onDisconnected = () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-disconnected');
-    }
-  };
-  classroomDiscovery.onCodeSync = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-code-sync', data);
-    }
-  };
-  classroomDiscovery.onCodeChange = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-code-change', data);
-    }
-  };
-  classroomDiscovery.onTerminal = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-terminal', data);
-    }
-  };
-  classroomDiscovery.onCursor = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-cursor', data);
-    }
-  };
-  classroomDiscovery.onSelection = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-selection', data);
-    }
-  };
-  classroomDiscovery.onViewRequest = () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-view-request');
-    }
-  };
-  classroomDiscovery.onEditRequest = () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-edit-request');
-    }
-  };
-  classroomDiscovery.onEditCode = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-edit-code', data);
-    }
-  };
-  classroomDiscovery.onEditLive = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-edit-live', data);
-    }
-  };
-  classroomDiscovery.onSessionEnd = () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-session-end');
-    }
-  };
-  classroomDiscovery.onChatMessage = (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('classroom-chat-message-received', data);
-    }
-  };
+ipcMain.on('classroom-start-discovery', (_, name, roll, opts = {}) => {
+  const d = classroomDiscovery;
+  d.onTeacherFound = (info) => toWindow('classroom-teacher-found', info);
+  d.onConnected = (info) => toWindow('classroom-connected', info);
+  d.onDisconnected = () => toWindow('classroom-disconnected');
+  d.onLinkStatus = (info) => toWindow('classroom-link-status', info);
+  d.onJoinError = (message) => toWindow('classroom-join-error', message);
+  d.onCodeSync = (data) => toWindow('classroom-code-sync', data);
+  d.onCodeChange = (data) => toWindow('classroom-code-change', data);
+  d.onTerminal = (data) => toWindow('classroom-terminal', data);
+  d.onCursor = (data) => toWindow('classroom-cursor', data);
+  d.onSelection = (data) => toWindow('classroom-selection', data);
+  d.onViewRequest = () => toWindow('classroom-view-request');
+  d.onEditRequest = () => toWindow('classroom-edit-request');
+  d.onEditCode = (data) => toWindow('classroom-edit-code', data);
+  d.onEditLive = (data) => toWindow('classroom-edit-live', data);
+  d.onSessionEnd = () => toWindow('classroom-session-end');
+  d.onChatMessage = (data) => toWindow('classroom-chat-message-received', data);
+  d.onClassEvent = (msg) => toWindow('classroom-class-event', msg);
+  const relayUrl = relayUrlFor(opts?.relayUrl);
+  d.startDiscovery(name, roll, { code: opts?.code, relayUrl });
+  // A code needs the internet relay; without one only this network is searched
+  if (opts?.code && !relayUrl) {
+    toWindow('classroom-join-error', 'A class code needs an internet relay server. Add its address under "Students on other networks", or join on the teacher\'s Wi-Fi.');
+  }
+});
 
-  classroomDiscovery.startDiscovery(name, roll);
+/** Student → teacher: run results, predictions, mastery … (`key` = latest wins) */
+ipcMain.on('classroom-student-send-event', (_, msg, key) => {
+  if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
+  if (key !== undefined && typeof key !== 'string') return;
+  classroomDiscovery.sendEvent(msg, key);
 });
 
 ipcMain.on('classroom-stop-discovery', () => {
   classroomDiscovery.stopDiscovery();
 });
 
-ipcMain.on('classroom-send-help', (_, message) => {
-  classroomDiscovery.sendHelpRequest(message);
+ipcMain.on('classroom-send-help', (_, message, error) => {
+  classroomDiscovery.sendHelpRequest(message, error && typeof error === 'object' ? error : null);
 });
 
 ipcMain.on('classroom-send-code', (_, code, fileName) => {

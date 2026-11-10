@@ -26,6 +26,10 @@ import { bracketMatching } from '@codemirror/language';
 import { python } from '@codemirror/lang-python';
 import { currentCodeTheme } from '../editor.js';
 import { fx, screenTransition } from '../fx/moments.js';
+import {
+  initClassLive, teacherStarted, teacherStopped, noteJoin, noteLeave, noteActivity, noteHelp, liveInfo,
+  studentJoined as liveStudentJoined, studentLeft as liveStudentLeft, setDone, isDone, helpError, getRelayUrl, setRelayUrl,
+} from './class-live.js';
 
 // ── State ─────────────────────────────────────────────────────────
 let panelOpen = false;
@@ -149,6 +153,11 @@ export function initClassroomPanel({ editorGetters, onLiveChange }) {
 
   buildPanel();
   setupIPCListeners();
+  initClassLive({
+    teacherCode: () => _getCode(),
+    studentCode: (id) => studentCodeMap[id]?.code || '',
+    studentsChanged: () => renderStudentList(),
+  });
 }
 
 function buildPanel() {
@@ -258,6 +267,7 @@ function injectEditorToolbar() {
     : {
         onRevoke: () => handleRevokeEdit(),
         onRaiseHand: () => handleRaiseHand('HELP_REQ'),
+        onDone: () => setDone(!isDone()),
         onOpenPanel: () => openClassroomPanel(),
         onDisconnect: () => handleStudentDisconnect(),
       };
@@ -314,6 +324,8 @@ function handleRoleSelect(selectedRole) {
     });
     interactiveArea.appendChild(teacherPanel);
 
+    const relayBox = document.getElementById('cr-relay-url');
+    if (relayBox) relayBox.value = getRelayUrl();
     // Restore saved name
     const savedName = localStorage.getItem('theta-classroom-teacher-name');
     if (savedName) {
@@ -327,8 +339,11 @@ function handleRoleSelect(selectedRole) {
       onDisconnect: handleStudentDisconnect,
       onBack: goBackToRoleSelector,
       onClosePanel: closeClassroomPanel,
+      onDone: () => setDone(!isDone()),
     });
     interactiveArea.appendChild(studentPanel);
+    const relayBox = document.getElementById('cr-relay-url-student');
+    if (relayBox) relayBox.value = getRelayUrl();
 
     // Restore saved name/roll
     const savedName = localStorage.getItem('theta-classroom-student-name');
@@ -362,7 +377,9 @@ async function handleGoLive(name) {
   teacherName = name;
   localStorage.setItem('theta-classroom-teacher-name', name);
 
-  const result = await window.electronAPI.classroomStartServer(name);
+  const relayInput = document.getElementById('cr-relay-url');
+  if (relayInput) setRelayUrl(relayInput.value);
+  const result = await window.electronAPI.classroomStartServer(name, { relayUrl: getRelayUrl() });
   if (!result.success) {
     showToast(`Failed to go live: ${result.error}`, 'error', 3000);
     return;
@@ -380,7 +397,12 @@ async function handleGoLive(name) {
   if (setup) setup.classList.add('hidden');
   if (liveView) liveView.classList.remove('hidden');
   if (liveName) liveName.textContent = name;
-  if (status) status.textContent = `Live on ${result.ip}`;
+  if (status) status.textContent = result.lan ? `Live on ${result.ip}` : 'Live over the internet';
+  teacherStarted(result);
+  document.getElementById('cr-join-code-copy')?.addEventListener('click', () => {
+    const code = document.querySelector('#cr-join-code .cr-join-code__value')?.textContent || '';
+    if (code) navigator.clipboard.writeText(code).then(() => showToast(`Copied the code ${code}`, 'success', 1600)).catch(() => {});
+  });
 
   // Inject in-editor toolbar
   injectEditorToolbar();
@@ -388,7 +410,7 @@ async function handleGoLive(name) {
   // Send initial code sync
   broadcastCurrentCode();
 
-  showToast(`Live on ${result.ip}:${result.port}`, 'success', 3000);
+  showToast(result.lan ? `Live on ${result.ip}:${result.port}` : 'Live: students join with the class code', 'success', 3000);
 
   // Setup student search
   const searchInput = document.getElementById('cr-student-search');
@@ -420,6 +442,7 @@ async function handleStopLive() {
   if (!window.electronAPI?.classroomStopServer) return;
 
   await window.electronAPI.classroomStopServer();
+  teacherStopped();
   isLive = false;
   students = [];
   if (_onLiveChange) _onLiveChange(false);
@@ -506,6 +529,7 @@ function renderStudentList() {
   students.forEach((s) => {
     const card = buildStudentCard({
       ...s,
+      ...liveInfo(s.id),
       onViewCode: (id, name, roll) => handleViewStudentCode(id, name, roll),
     });
     list.appendChild(card);
@@ -658,7 +682,7 @@ function handleViewStudentCode(studentId, name, roll) {
 // STUDENT MODE
 // ══════════════════════════════════════════════════════════════════
 
-function handleStudentJoin(name, roll) {
+function handleStudentJoin(name, roll, code = '') {
   if (!window.electronAPI?.classroomStartDiscovery) {
     showToast('Classroom requires Electron', 'error', 3000);
     return;
@@ -673,7 +697,15 @@ function handleStudentJoin(name, roll) {
   if (setup) setup.classList.add('hidden');
   if (discovery) discovery.classList.remove('hidden');
 
-  window.electronAPI.classroomStartDiscovery(name, roll);
+  const relayBox = document.getElementById('cr-relay-url-student');
+  if (relayBox) setRelayUrl(relayBox.value);
+  const discoveryText = document.getElementById('cr-discovery-text');
+  if (discoveryText) {
+    discoveryText.textContent = code
+      ? 'Joining with the class code (and looking on this network)…'
+      : "Looking for a class on this network… Not on your teacher's Wi-Fi? Go back and type the class code.";
+  }
+  window.electronAPI.classroomStartDiscovery(name, roll, { code, relayUrl: getRelayUrl() });
 
   // Setup Chat
   const sendBtn = document.getElementById('cr-student-chat-send');
@@ -706,7 +738,7 @@ function handleRaiseHand(message) {
   }
 
   _raiseHandCooldown = true;
-  window.electronAPI.classroomSendHelp(message);
+  window.electronAPI.classroomSendHelp(message, helpError());
   showToast('Help request sent to teacher', 'success', 2000);
 
   // Visual feedback — disable button during cooldown
@@ -741,6 +773,7 @@ function handleRaiseHand(message) {
 function handleStudentDisconnect() {
   if (!window.electronAPI?.classroomStopDiscovery) return;
   window.electronAPI.classroomStopDiscovery();
+  liveStudentLeft();
 
   isLive = false;
   editPermissionGranted = false;
@@ -800,7 +833,8 @@ function setupIPCListeners() {
   // ── Teacher events ──
   if (api.onStudentJoined) {
     api.onStudentJoined((info) => {
-      students.push({ id: info.id, name: info.name, roll: info.roll, helpRequested: false, editPermission: false });
+      students.push({ id: info.id, name: info.name, roll: info.roll, helpRequested: false, editPermission: false, via: info.via });
+      noteJoin(info);
       renderStudentList();
       showToast(`${info.name} joined`, 'success', 2000);
     });
@@ -809,6 +843,7 @@ function setupIPCListeners() {
   if (api.onStudentLeft) {
     api.onStudentLeft((info) => {
       students = students.filter((s) => s.id !== info.id);
+      noteLeave(info.id);
       delete studentCodeMap[info.id];
       delete studentOutputMap[info.id];
       renderStudentList();
@@ -820,6 +855,7 @@ function setupIPCListeners() {
     api.onHelpRequest((info) => {
       const s = students.find((s) => s.id === info.id);
       if (s) s.helpRequested = true;
+      noteHelp(info);
       renderStudentList();
       showToast(`${info.name} needs help!`, 'error', 4000);
     });
@@ -839,6 +875,7 @@ function setupIPCListeners() {
   if (api.onStudentCodeLive) {
     api.onStudentCodeLive((info) => {
       studentCodeMap[info.id] = { code: info.code, fileName: info.fileName };
+      noteActivity(info.id);
       // Update viewer if viewing this student
       if (viewingStudentId === info.id && studentViewerInstance) {
         setCMContent(studentViewerInstance, info.code);
@@ -983,7 +1020,8 @@ function setupIPCListeners() {
       injectEditorToolbar();
       updateToolbarTeacherName(info.teacher);
 
-      showToast(`Connected to ${info.teacher}`, 'success', 2000);
+      liveStudentJoined();
+      showToast(`Connected to ${info.teacher}${info.via === 'lan' ? '' : ' over the internet'}`, 'success', 2000);
     });
   }
 

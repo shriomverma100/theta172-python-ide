@@ -76,7 +76,7 @@ export function buildRoleSelector(onSelectRole) {
   wrap.innerHTML = `
     <div class="cr-intro">
       <h1 class="cr-title">Classroom</h1>
-      <p class="cr-lead">Teach a class or join one. Everyone needs to be on the same Wi-Fi or LAN.</p>
+      <p class="cr-lead">Teach a class or join one. On the same Wi-Fi it just works; from anywhere else, join with the class code.</p>
     </div>
     <div class="cr-role-grid">
       <button class="cr-role-btn" type="button" data-role="teacher">
@@ -128,12 +128,20 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
   setup.innerHTML = `
     <button class="cr-setup-back" id="cr-teacher-back" type="button">${BACK_ICON}<span>Back</span></button>
     <h2 class="cr-setup-title">Start a class</h2>
-    <p class="cr-setup-lead">Students on this network will see your class and can join it.</p>
+    <p class="cr-setup-lead">Students on this network see your class and join it. Students anywhere else join with the code you get.</p>
     <div class="cr-input-group">
       <label class="cr-label" for="cr-teacher-name">Your name</label>
       <input type="text" class="cr-input" id="cr-teacher-name" placeholder="e.g. Ms. Sharma" autocomplete="off" spellcheck="false" maxlength="64" />
       <span class="cr-hint">Students see this name when they join.</span>
     </div>
+    <details class="cr-advanced">
+      <summary>Students on other networks</summary>
+      <div class="cr-input-group">
+        <label class="cr-label" for="cr-relay-url">Internet relay server</label>
+        <input type="url" class="cr-input" id="cr-relay-url" placeholder="wss://relay.your-school.in" autocomplete="off" spellcheck="false" maxlength="300" />
+        <span class="cr-hint">With a relay, anyone can join with the class code from any network, and the class keeps going if the Wi-Fi drops. Without one, only students on the same Wi-Fi can join.</span>
+      </div>
+    </details>
     <button class="cr-action-btn" id="cr-go-live-btn" type="button">Go live</button>
   `;
 
@@ -146,12 +154,15 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
         <span class="cr-live-label">Live</span>
         <span id="cr-live-teacher-name"></span>
         <span class="cr-student-count-badge" title="Students connected"><span id="cr-student-count-badge">0</span> joined</span>
+        <span class="cr-join-code hidden" id="cr-join-code" title="Students on other networks type this code"><span class="cr-join-code__label">Join code</span><span class="cr-join-code__value"></span><button class="cr-join-code__copy" id="cr-join-code-copy" type="button">Copy</button></span>
+        <span class="cr-routes" id="cr-routes" role="status"></span>
       </div>
       <div class="cr-panel-actions">
         <button class="cr-close-panel-btn" id="cr-teacher-to-editor" type="button">Back to editor</button>
         <button class="cr-stop-btn" id="cr-stop-live-btn" type="button">End class</button>
       </div>
     </div>
+    <div class="cr-pulse" id="cr-pulse" aria-label="Class pulse"></div>
     <div class="cr-live-grid">
       <div class="cr-students-col">
         <div class="cr-search-bar">
@@ -206,7 +217,7 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
 }
 
 // ── Student ───────────────────────────────────────────────────────
-export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, onClosePanel }) {
+export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, onClosePanel, onDone }) {
   const panel = el('div', 'cr-student-panel');
 
   const setup = el('section', 'cr-setup');
@@ -214,7 +225,7 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
   setup.innerHTML = `
     <button class="cr-setup-back" id="cr-student-back" type="button">${BACK_ICON}<span>Back</span></button>
     <h2 class="cr-setup-title">Join a class</h2>
-    <p class="cr-setup-lead">We look for a class on this network and connect you to it.</p>
+    <p class="cr-setup-lead">On your teacher's Wi-Fi we find the class by ourselves. Anywhere else, type the class code.</p>
     <div class="cr-input-group">
       <label class="cr-label" for="cr-student-name">Your name</label>
       <input type="text" class="cr-input" id="cr-student-name" placeholder="e.g. Aarav Gupta" autocomplete="off" spellcheck="false" maxlength="64" />
@@ -223,6 +234,18 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
       <label class="cr-label" for="cr-student-roll">Roll number</label>
       <input type="text" class="cr-input" id="cr-student-roll" placeholder="e.g. 12" autocomplete="off" spellcheck="false" maxlength="32" />
     </div>
+    <div class="cr-input-group">
+      <label class="cr-label" for="cr-join-code-input">Class code <span class="cr-label__opt">only if you are not on the teacher's Wi-Fi</span></label>
+      <input type="text" class="cr-input cr-input--code" id="cr-join-code-input" placeholder="e.g. K7M-4QX" autocomplete="off" spellcheck="false" maxlength="9" />
+    </div>
+    <details class="cr-advanced">
+      <summary>Students on other networks</summary>
+      <div class="cr-input-group">
+        <label class="cr-label" for="cr-relay-url-student">Internet relay server</label>
+        <input type="url" class="cr-input" id="cr-relay-url-student" placeholder="wss://relay.your-school.in" autocomplete="off" spellcheck="false" maxlength="300" />
+        <span class="cr-hint">With a relay, anyone can join with the class code from any network, and the class keeps going if the Wi-Fi drops. Without one, only students on the same Wi-Fi can join.</span>
+      </div>
+    </details>
     <button class="cr-action-btn" id="cr-join-btn" type="button">Find my class</button>
   `;
 
@@ -241,8 +264,10 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
         <span class="cr-live-indicator" aria-hidden="true"></span>
         <span class="cr-live-label">Live</span>
         <span id="cr-connected-teacher"></span>
+        <span class="cr-link-status" id="cr-link-status" role="status"></span>
       </div>
       <div class="cr-panel-actions">
+        <button class="cr-action-btn cr-action-btn--sm cr-done-btn" id="cr-done-btn" data-done-btn type="button" aria-pressed="false" title="Tell your teacher you have finished the task">I'm done</button>
         <button class="cr-action-btn cr-action-btn--sm cr-action-btn--hand" id="cr-raise-hand-btn" type="button"><span class="px-mark" aria-hidden="true"></span><span class="cr-hand-label">Ask for help</span></button>
         <button class="cr-close-panel-btn" id="cr-student-to-editor" type="button">Back to editor</button>
         <button class="cr-stop-btn" id="cr-disconnect-btn" type="button">Leave class</button>
@@ -281,13 +306,15 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
     const join = () => {
       const name = document.getElementById('cr-student-name')?.value?.trim();
       const roll = document.getElementById('cr-student-roll')?.value?.trim();
-      if (name && roll) onJoin(name, roll);
+      if (name && roll) onJoin(name, roll, document.getElementById('cr-join-code-input')?.value?.trim() || '');
       else document.getElementById(name ? 'cr-student-roll' : 'cr-student-name')?.focus();
     };
     document.getElementById('cr-student-back')?.addEventListener('click', onBack);
     document.getElementById('cr-join-btn')?.addEventListener('click', join);
     document.getElementById('cr-raise-hand-btn')?.addEventListener('click', () => onRaiseHand('HELP_REQ'));
     document.getElementById('cr-disconnect-btn')?.addEventListener('click', onDisconnect);
+    document.getElementById('cr-done-btn')?.addEventListener('click', () => onDone?.());
+    document.getElementById('cr-join-code-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
     document.getElementById('cr-student-to-editor')?.addEventListener('click', onClosePanel);
     document.getElementById('cr-student-roll')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') join();
@@ -298,8 +325,8 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
 }
 
 // ── Student card (teacher's list) ─────────────────────────────────
-export function buildStudentCard({ id, name, roll, helpRequested, editPermission, onViewCode }) {
-  const card = el('div', 'cr-student-item' + (helpRequested ? ' help' : ''));
+export function buildStudentCard({ id, name, roll, helpRequested, editPermission, onViewCode, state, error, online = true, via, progress }) {
+  const card = el('div', 'cr-student-item' + (helpRequested ? ' help' : '') + (state ? ' is-' + state : '') + (online ? '' : ' is-away'));
   card.dataset.studentId = id;
 
   const info = el('div', 'cr-student-info');
@@ -308,6 +335,12 @@ export function buildStudentCard({ id, name, roll, helpRequested, editPermission
   const badges = el('div', 'cr-student-badges');
   if (helpRequested) badges.append(textEl('span', 'cr-badge cr-badge--alert', 'Needs help'));
   if (editPermission) badges.append(textEl('span', 'cr-badge cr-badge--edit', 'You can edit'));
+  if (!online) badges.append(textEl('span', 'cr-badge cr-badge--away', 'Reconnecting…'));
+  else if (state === 'done') badges.append(textEl('span', 'cr-badge cr-badge--done', 'Done'));
+  else if (state === 'stuck' && !helpRequested) badges.append(textEl('span', 'cr-badge cr-badge--stuck', 'Stuck'));
+  if (error?.type && state !== 'done') badges.append(textEl('span', 'cr-badge cr-badge--error', error.type + (error.line ? ' · L' + error.line : '')));
+  if (progress) { const p = textEl('span', 'cr-badge cr-badge--progress', progress.label); p.title = progress.title; badges.append(p); }
+  if (via) badges.append(textEl('span', 'cr-badge cr-badge--via', via === 'lan' ? 'Wi-Fi' : 'Internet'));
 
   const view = textEl('button', 'cr-view-btn cr-view-code-btn', 'View code');
   view.type = 'button';
@@ -350,6 +383,7 @@ export function buildEditorToolbar(role, callbacks) {
       <div class="cr-toolbar-right">
         <button class="cr-toolbar-btn cr-toolbar-btn--revoke hidden" id="cr-toolbar-revoke" type="button">Stop teacher editing</button>
         <button class="cr-toolbar-btn" id="cr-toolbar-raise-hand" type="button">Ask for help</button>
+        <button class="cr-toolbar-btn cr-done-btn" id="cr-toolbar-done" data-done-btn type="button" aria-pressed="false">I'm done</button>
         <button class="cr-toolbar-btn" id="cr-toolbar-open-panel" type="button">Class</button>
         <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-disconnect" type="button">Leave</button>
       </div>
@@ -357,6 +391,7 @@ export function buildEditorToolbar(role, callbacks) {
     setTimeout(() => {
       document.getElementById('cr-toolbar-revoke')?.addEventListener('click', () => callbacks.onRevoke?.());
       document.getElementById('cr-toolbar-raise-hand')?.addEventListener('click', () => callbacks.onRaiseHand?.());
+      document.getElementById('cr-toolbar-done')?.addEventListener('click', () => callbacks.onDone?.());
       document.getElementById('cr-toolbar-open-panel')?.addEventListener('click', () => callbacks.onOpenPanel?.());
       document.getElementById('cr-toolbar-disconnect')?.addEventListener('click', () => callbacks.onDisconnect?.());
     }, 0);

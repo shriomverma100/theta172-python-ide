@@ -9,7 +9,9 @@ import { $ } from '../core/dom.js';
 import {
   addNewTab, getActiveFilePath, getActiveFileName, getActiveTab,
   markActiveTabSaved, updateActiveTab, tabText, isNotebookTab,
+  getTabs, currentText, markTabSaved, revertTab, onTabsChanged,
 } from './tabs.js';
+import { getPrefs, setPrefs } from './session.js';
 
 /** What Save writes for the active tab: the editor text, or a notebook's .ipynb. */
 function activeText() {
@@ -154,4 +156,82 @@ export function initFileInputs(dropTarget) {
       showToast('Only .py, .pyw, .txt and .ipynb files are supported', 'info', 2000);
     }
   });
+}
+
+// ── Save All, Revert, Auto Save ──────────────────────────────────
+
+/**
+ * Write every edited file that already has a place on disk.
+ * @param {{ quiet?: boolean }} [opts]  quiet: no messages (auto save)
+ * @returns {Promise<{ saved: number, untitled: number, failed: number }>}
+ */
+export async function saveAll({ quiet = false } = {}) {
+  const api = window.electronAPI;
+  const out = { saved: 0, untitled: 0, failed: 0 };
+  if (!api?.saveFile) {
+    if (!quiet) await saveToFile();
+    return out;
+  }
+  for (const tab of getTabs()) {
+    if (!tab.unsaved || tab.readOnly || tab.libraryUri) continue;
+    if (!tab.filePath) { out.untitled++; continue; }
+    const res = await api.saveFile(tab.filePath, currentText(tab.id));
+    if (res?.error) { out.failed++; continue; }
+    markTabSaved(tab.id);
+    out.saved++;
+  }
+  if (out.saved) clearUnsavedDot();
+  if (!quiet) {
+    const parts = [];
+    parts.push(out.saved ? `Saved ${out.saved} file${out.saved === 1 ? '' : 's'}` : 'Nothing to save');
+    if (out.untitled) parts.push(`${out.untitled} new file${out.untitled === 1 ? '' : 's'} need Save As`);
+    if (out.failed) parts.push(`${out.failed} failed`);
+    showToast(parts.join(' · '), out.failed ? 'error' : 'save', 2400);
+  }
+  return out;
+}
+
+/** Throw away the active file's edits and load it again from disk. */
+export async function revertFile() {
+  const tab = getActiveTab();
+  const api = window.electronAPI;
+  if (!tab?.filePath || !api?.readFile) {
+    showToast('Only a file that is saved on disk can be reverted', 'info', 2200);
+    return;
+  }
+  if (tab.unsaved && !window.confirm(`Discard your changes to "${tab.name}" and load it from disk again?`)) return;
+  const res = await api.readFile(tab.filePath);
+  if (!res?.ok) {
+    showToast(`Could not read the file: ${res?.error || 'unknown error'}`, 'error', 3000);
+    return;
+  }
+  revertTab(tab.id, res.value);
+  clearUnsavedDot();
+  showToast(`Reverted: ${tab.name}`, 'info', 1800);
+}
+
+// Auto Save: 'off' | 'delay' (a second after you stop typing) | 'focus' (when you leave the window)
+const AUTO_SAVE_DELAY_MS = 1000;
+let autoTimer = null;
+
+export const getAutoSave = () => {
+  const v = getPrefs().autoSave;
+  return v === 'delay' || v === 'focus' ? v : 'off';
+};
+
+export function setAutoSave(mode) {
+  setPrefs({ autoSave: mode === 'delay' || mode === 'focus' ? mode : 'off' });
+  clearTimeout(autoTimer);
+  if (mode === 'delay') scheduleAutoSave();
+}
+
+function scheduleAutoSave() {
+  clearTimeout(autoTimer);
+  if (!getTabs().some((t) => t.unsaved && t.filePath)) return;
+  autoTimer = setTimeout(() => { saveAll({ quiet: true }); }, AUTO_SAVE_DELAY_MS);
+}
+
+export function initAutoSave() {
+  onTabsChanged(() => { if (getAutoSave() === 'delay') scheduleAutoSave(); });
+  window.addEventListener('blur', () => { if (getAutoSave() !== 'off') saveAll({ quiet: true }); });
 }
