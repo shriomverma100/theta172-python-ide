@@ -16,6 +16,8 @@ if (process.env.THETA_SMOKE === '1') app.commandLine.appendSwitch('disable-featu
 const { ClassroomServer } = require('./classroom-server.cjs');
 const { ClassroomDiscovery } = require('./classroom-discovery.cjs');
 const { validRelayUrl } = require('./classroom-relay.cjs');
+const { PackageCache } = require('./package-mesh.cjs');
+const { GpuPool } = require('./gpu-pool.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { initAutoUpdates } = require('./updater.cjs');
@@ -37,6 +39,8 @@ let lspIpc = null;       // set in app.whenReady
 let debugIpc = null;     // set in app.whenReady
 let studyWindow = null;  // set in app.whenReady
 let notebookIpc = null;  // set in app.whenReady
+let packageCache = null; // class package folder (teacher), set in app.whenReady
+let gpuPool = null;      // class GPU pool (teacher), set in app.whenReady
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -887,8 +891,8 @@ const relayUrlFor = (fromSettings) => {
 };
 
 ipcMain.handle('classroom-start-server', async (_, teacherName, opts = {}) => {
-  classroomServer.onStudentJoin = (info) => toWindow('classroom-student-joined', info);
-  classroomServer.onStudentLeave = (info) => toWindow('classroom-student-left', info);
+  classroomServer.onStudentJoin = (info) => { toWindow('classroom-student-joined', info); sendCaps(info.id); };
+  classroomServer.onStudentLeave = (info) => { toWindow('classroom-student-left', info); gpuPool?.studentLeft(info.id); };
   classroomServer.onStudentStatus = (info) => toWindow('classroom-student-status', info);
   classroomServer.onRelayStatus = (info) => toWindow('classroom-relay-status', info);
   classroomServer.onHelpRequest = (info) => toWindow('classroom-help-request', info);
@@ -898,9 +902,54 @@ ipcMain.handle('classroom-start-server', async (_, teacherName, opts = {}) => {
   classroomServer.onEditGrant = (info) => toWindow('classroom-edit-grant', info);
   classroomServer.onEditRevoke = (info) => toWindow('classroom-edit-revoke', info);
   classroomServer.onChatMessage = (info) => toWindow('classroom-chat-message-received', info);
-  classroomServer.onStudentEvent = (who, msg) => toWindow('classroom-student-event', who, msg);
-  return classroomServer.start(teacherName, { relayUrl: relayUrlFor(opts?.relayUrl) });
+  classroomServer.onStudentEvent = (who, msg) => {
+    // GPU jobs are handled here (they run in this process); the rest is for the window
+    if (msg.type === 'gpu-job') { gpuPool?.submit(who, msg); return; }
+    if (msg.type === 'gpu-cancel') { gpuPool?.cancelFromStudent(who.id, String(msg.jobId || '')); return; }
+    toWindow('classroom-student-event', who, msg);
+  };
+  const result = await classroomServer.start(teacherName, { relayUrl: relayUrlFor(opts?.relayUrl) });
+  // Share the class package folder on this network
+  if (result.success && result.lan) {
+    try { await packageCache?.serve(); } catch (err) { console.error('[CLASSROOM] package server:', err.message); }
+  }
+  return result;
 });
+
+/** Tell students what this class shares: packages (local network) and the GPU. */
+function sendCaps(target = '*') {
+  if (!classroomServer.running) return;
+  const files = packageCache?.port ? packageCache.list().length : 0;
+  classroomServer.sendEvent(target, {
+    type: 'class-caps',
+    packages: packageCache?.port && files ? { port: packageCache.port } : null,
+    gpu: gpuPool?.caps() || null,
+  }, 'caps');
+}
+
+// ── Class packages (teacher) ──
+ipcMain.handle('class-packages-summary', () => packageCache?.summary() || null);
+ipcMain.handle('class-packages-prepare', async (_e, specs) => {
+  if (!packageCache || !Array.isArray(specs) || specs.length > 50) throw new Error('Invalid package list.');
+  const code = await packageCache.prepare(specs.map(String), (t) => toWindow('class-packages-log', t));
+  sendCaps();
+  return { code, summary: packageCache.summary() };
+});
+ipcMain.handle('class-packages-clear', () => { packageCache?.clear(); sendCaps(); return packageCache?.summary() || null; });
+
+// ── Class GPU pool (teacher) ──
+ipcMain.handle('gpu-share', async (_e, on, opts = {}) => {
+  const caps = await gpuPool?.setSharing(!!on, {
+    autoAccept: typeof opts?.autoAccept === 'boolean' ? opts.autoAccept : undefined,
+    limitMin: Number.isInteger(opts?.limitMin) ? opts.limitMin : undefined,
+  });
+  sendCaps();
+  return { caps, state: gpuPool?.state() };
+});
+ipcMain.handle('gpu-state', () => gpuPool?.state() || null);
+ipcMain.on('gpu-accept', (_e, id) => { if (typeof id === 'string') gpuPool?.accept(id); });
+ipcMain.on('gpu-decline', (_e, id) => { if (typeof id === 'string') gpuPool?.decline(id); });
+ipcMain.on('gpu-stop', (_e, id) => { if (typeof id === 'string') gpuPool?.stop(id); });
 
 ipcMain.handle('classroom-status', () => (classroomServer.running ? classroomServer.getStatus() : classroomDiscovery.getStatus()));
 
@@ -912,6 +961,8 @@ ipcMain.on('classroom-send-event', (_, target, msg, key) => {
 });
 
 ipcMain.handle('classroom-stop-server', () => {
+  gpuPool?.dispose();
+  packageCache?.stop();
   classroomServer.stop();
   return { success: true };
 });
@@ -997,6 +1048,9 @@ ipcMain.on('classroom-start-discovery', (_, name, roll, opts = {}) => {
   }
 });
 
+/** Student: what the teacher shares (packages mirror, GPU). */
+ipcMain.handle('classroom-caps', () => ({ ...(classroomDiscovery.caps || {}), mirror: classroomDiscovery.getPackageMirror() }));
+
 /** Student → teacher: run results, predictions, mastery … (`key` = latest wins) */
 ipcMain.on('classroom-student-send-event', (_, msg, key) => {
   if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
@@ -1067,6 +1121,20 @@ app.whenReady().then(() => {
     debugpyDir: tools.debugpy,
     onLog: isDev ? (t) => process.stderr.write(`[debug] ${t}`) : null,
   });
+  packageCache = new PackageCache({
+    dir: path.join(app.getPath('userData'), 'class-packages'),
+    spawn,
+    getPython: () => tools.python || pythonIpc?.active?.path || null, // the bundled Python has pip
+  });
+  gpuPool = new GpuPool({
+    spawn, execFile,
+    getPython: () => pythonIpc?.active?.path || null,
+    getEnv: (base) => pythonIpc?.shellEnv(base) ?? base,
+    sendTo: (studentId, msg) => classroomServer.sendEvent(studentId, msg),
+    onState: (state) => toWindow('gpu-state-changed', state),
+  });
+  // Students in a class that shares packages install from the teacher first
+  pythonIpc.envs.getMirror = () => classroomDiscovery.getPackageMirror();
   notebookIpc = registerNotebookIpc({
     ipcMain, spawn,
     getWindow: () => mainWindow,
@@ -1095,6 +1163,8 @@ app.on('before-quit', () => {
   lspIpc?.dispose();
   debugIpc?.dispose();
   notebookIpc?.dispose();
+  gpuPool?.dispose();
+  packageCache?.stop();
   pythonRunner.dispose();
   if (replProcess) { try { replProcess.kill('SIGTERM'); } catch (_) {} }
   classroomServer.stop();

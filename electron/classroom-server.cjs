@@ -461,7 +461,8 @@ class ClassroomServer {
         if (typeof msg.type === 'string' && /^[a-z][a-z-]{1,40}$/.test(msg.type)) {
           let size = 0;
           try { size = JSON.stringify(msg).length; } catch (_) { return; }
-          if (size <= 64 * 1024) this.onStudentEvent?.(who, msg);
+          // A hand-in carries the code and its edit history; everything else is small
+          if (size <= (msg.type === 'submission' ? 1_000_000 : 64 * 1024)) this.onStudentEvent?.(who, msg);
         }
     }
   }

@@ -36,6 +36,12 @@ const readOnlyCompartment = new Compartment();
 const programmatic = Annotation.define();
 /** Marks edits copied between the two halves of the split editor. */
 const splitSync = Annotation.define();
+/** Who made an edit that is not plain typing: 'a' AI Fix, 'r' the teacher (live class). */
+export const editOrigin = Annotation.define();
+/** True for the copy of an edit made in the other split group (the same tab, already counted). */
+export const isMirrorEdit = (tr) => !!tr.annotation(splitSync);
+/** True for text the app loaded itself (open, reload), not an edit. */
+export const isLoadEdit = (tr) => !!tr.annotation(programmatic);
 
 // Current view settings, re-applied to every tab's state and to the split view
 const viewConfig = { fontSize: 15, wrap: false, tabSize: 4, assist: 'basic' };
@@ -671,9 +677,10 @@ export function getValue() {
 }
 
 /** Set editor content as a user edit (examples, reset, AI fix): marks the tab unsaved. */
-export function setValue(code) {
+export function setValue(code, origin) {
   if (!editorView) return;
   editorView.dispatch({
+    ...(origin ? { annotations: editOrigin.of(origin) } : {}),
     changes: { from: 0, to: editorView.state.doc.length, insert: code },
   });
 }

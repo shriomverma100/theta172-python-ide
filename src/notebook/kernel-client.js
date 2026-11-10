@@ -47,6 +47,7 @@ export class KernelSession {
 
   execute(runId, code) { return api().nbExecute(this.id, runId, code); }
   input(value) { api().nbInput(this.id, value); }
+  lens(runId, parts) { return api().nbLens(this.id, runId, parts); }
   interrupt() { api().nbInterrupt(this.id); }
 
   async shutdown() {

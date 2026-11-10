@@ -1,0 +1,43 @@
+/* ═══ Chain Lens: the data after each step of a chain ═══════════════ */
+
+.lens-card {
+  flex: none; margin: 0 12px 10px; padding: 10px 12px; max-height: 50%; overflow: auto;
+  background: var(--surface-1); color: var(--text);
+  border: var(--border-w) solid var(--ink); border-left: 6px solid var(--sky); border-radius: 14px; box-shadow: var(--shadow-control);
+  animation: explainIn 220ms var(--ease-out);
+}
+.lens-card.hidden { display: none; }
+:root[data-theme="pro"] .lens-card { margin: 0; border: none; border-bottom: 1px solid var(--line); border-left: 3px solid var(--sky); border-radius: 0; box-shadow: none; }
+
+/* Inside a notebook cell (dark panel) */
+.nb-lens {
+  margin: 8px 2px 0; padding: 10px 12px; border-radius: var(--radius-control);
+  border: 1px solid color-mix(in srgb, var(--sky) 55%, transparent); border-left: 3px solid var(--sky);
+  background: color-mix(in srgb, var(--sky) 7%, var(--panel)); color: var(--panel-text);
+  --lens-dim: var(--panel-text-2); --lens-code-bg: var(--panel-2);
+}
+.lens { --lens-dim: var(--text-3); --lens-code-bg: var(--surface-3); display: flex; flex-direction: column; gap: 8px; }
+.nb-lens.lens { --lens-dim: var(--panel-text-2); --lens-code-bg: var(--panel-2); }
+
+.lens__head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lens__title { font: 700 var(--fs-xs)/1 var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--lens-dim); white-space: nowrap; }
+.lens__expr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px/1.4 var(--font-code); color: var(--lens-dim); }
+.lens__close { width: 24px; height: 24px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: inherit; font-size: 16px; cursor: pointer; flex: none; }
+.lens__close:hover { border-color: currentColor; }
+.lens__steps { list-style: none; margin: 0; padding: 0 0 0 10px; display: flex; flex-direction: column; gap: 6px; border-left: 2px solid color-mix(in srgb, var(--sky) 60%, transparent); }
+.lens__step { position: relative; display: flex; flex-direction: column; gap: 3px; }
+.lens__step::before { content: ''; position: absolute; left: -15px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--sky); }
+.lens__row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.lens__op { font: 600 13px/1.4 var(--font-code); padding: 1px 6px; border-radius: 5px; background: var(--lens-code-bg); max-width: 100%; overflow-wrap: anywhere; }
+.lens__type { font: 600 var(--fs-xs)/1.4 var(--font-ui); color: var(--lens-dim); }
+.lens__size { font: 700 13px/1.4 var(--font-code); }
+.lens__change { font: 700 var(--fs-xs)/1.4 var(--font-ui); padding: 1px 7px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--sky) 22%, transparent); }
+.lens__change.is-less { background: color-mix(in srgb, var(--red) 22%, transparent); }
+.lens__change.is-more { background: color-mix(in srgb, var(--lime) 30%, transparent); }
+.lens__cols { font: 12px/1.4 var(--font-code); color: var(--lens-dim); overflow-wrap: anywhere; }
+.lens__preview > summary { cursor: pointer; font-size: var(--fs-xs); color: var(--lens-dim); width: max-content; }
+.lens__preview pre { margin: 4px 0 0; max-height: 220px; overflow: auto; padding: 6px 8px; border-radius: 6px; background: var(--lens-code-bg); font: 12px/1.45 var(--font-code); white-space: pre; }
+.lens__error { font: 600 13px/1.5 var(--font-code); color: var(--accent-text); overflow-wrap: anywhere; }
+.nb-lens .lens__error { color: #FF8A7A; }
+.lens__note { font-size: var(--fs-sm); color: var(--lens-dim); }
+.nb-tool--lens { font-family: var(--font-ui); letter-spacing: 0; }

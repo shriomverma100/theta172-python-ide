@@ -249,6 +249,71 @@ def execute(msg_id, code, ns):
         _current["id"] = None
 
 
+# ── Chain Lens ───────────────────────────────────────────────────────
+
+def summarize(value):
+    """What a value is, for one step of a chain: type, shape, columns, a short preview."""
+    t = type(value)
+    info = {"type": t.__name__, "module": (t.__module__ or "").split(".")[0]}
+    if info["module"] == "builtins":
+        info["module"] = ""
+    shape = getattr(value, "shape", None)
+    if isinstance(shape, tuple) and all(isinstance(x, int) for x in shape):
+        info["shape"] = list(shape)
+    elif not isinstance(value, (str, bytes)) and hasattr(value, "__len__"):
+        try:
+            info["len"] = len(value)
+        except Exception:
+            pass
+    ngroups = getattr(value, "ngroups", None)
+    if isinstance(ngroups, int):
+        info["groups"] = ngroups
+    cols = getattr(value, "columns", None)
+    if cols is not None:
+        try:
+            info["columns"] = [str(c) for c in list(cols)[:20]]
+        except Exception:
+            pass
+    dtype = getattr(value, "dtype", None)
+    if dtype is not None and not callable(dtype):
+        info["dtype"] = str(dtype)
+    info["callable"] = callable(value) and not hasattr(value, "shape")
+    info["preview"] = preview(value)
+    return info
+
+
+def preview(value):
+    try:
+        head = getattr(value, "head", None)
+        if callable(head) and hasattr(value, "to_string"):
+            text = value.head(5).to_string(max_cols=8, max_colwidth=18)
+        elif hasattr(value, "ngroups") and hasattr(value, "groups"):
+            keys = list(value.groups.keys())[:6]
+            text = f"{value.ngroups} groups: " + ", ".join(repr(k) for k in keys) + (" …" if value.ngroups > 6 else "")
+        elif type(value).__module__.startswith("numpy") and hasattr(value, "shape"):
+            import numpy  # already imported by the user's code
+            text = numpy.array2string(value, threshold=24, edgeitems=3, max_line_width=100)
+        else:
+            text = repr(value)
+    except Exception as err:
+        text = f"<could not show: {err}>"
+    return text[:2000]
+
+
+def lens(msg_id, parts, ns):
+    """Evaluate each step of a chain (a, a.b(), a.b().c() …) and describe it. Nothing is stored."""
+    steps = []
+    error = None
+    for expr in parts[:30]:
+        try:
+            value = eval(compile(str(expr), "<lens>", "eval"), ns)
+        except BaseException as exc:  # noqa: BLE001
+            error = {"expr": str(expr), "ename": type(exc).__name__, "evalue": str(exc)[:300]}
+            break
+        steps.append({"expr": str(expr), **summarize(value)})
+    send({"type": "lens-result", "id": msg_id, "steps": steps, "error": error})
+
+
 def reader(commands, control):
     """Read the app's messages: interrupts and input replies act at once, the rest queue up."""
     for line in control:
@@ -315,6 +380,19 @@ def main():
             continue
         if msg.get("type") == "shutdown":
             break
+        if msg.get("type") == "lens":
+            _current["id"] = msg.get("id")
+            _running.set()
+            try:
+                parts = msg.get("parts") if isinstance(msg.get("parts"), list) else []
+                lens(msg.get("id"), parts, ns)
+            except KeyboardInterrupt:
+                send({"type": "lens-result", "id": msg.get("id"), "steps": [], "error": {"expr": "", "ename": "KeyboardInterrupt", "evalue": "Stopped"}})
+            finally:
+                flush_streams()
+                _running.clear()
+                _current["id"] = None
+            continue
         if msg.get("type") == "execute":
             while not _inputs.empty():  # stale input from an earlier cell
                 _inputs.get_nowait()

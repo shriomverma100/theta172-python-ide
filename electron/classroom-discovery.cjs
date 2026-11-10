@@ -159,6 +159,13 @@ class ClassroomDiscovery {
   /** Classroom events (run results, predictions, pulse …); `key` makes it latest-wins. */
   sendEvent(msg, key) { this._send(msg, key); }
 
+  /** The teacher's package folder (find-links URL) when connected on the same network, else null. */
+  getPackageMirror() {
+    const port = this.caps?.packages?.port;
+    if (!this.connected || this.via !== 'lan' || !port || !this.lanEndpoint?.ip) return null;
+    return `http://${this.lanEndpoint.ip}:${port}/simple/`;
+  }
+
   getStatus() {
     return {
       inClass: this.discovering, connected: this.connected, via: this.via, code: this.code,
@@ -368,6 +375,14 @@ class ClassroomDiscovery {
       case 'cursor': this.onCursor?.(msg); break;
       case 'selection': this.onSelection?.(msg); break;
       case 'chat-message': this.onChatMessage?.(msg); break;
+      case 'class-caps':
+        // What the teacher shares: packages (on this network only) and a GPU
+        this.caps = {
+          packages: Number.isInteger(msg.packages?.port) && msg.packages.port > 0 && msg.packages.port < 65536 ? { port: msg.packages.port } : null,
+          gpu: msg.gpu && typeof msg.gpu === 'object' ? { name: String(msg.gpu.name || 'GPU').slice(0, 80), gpu: !!msg.gpu.gpu, limitMin: Number(msg.gpu.limitMin) || 20 } : null,
+        };
+        this.onClassEvent?.({ type: 'class-caps', ...this.caps, mirror: !!this.getPackageMirror() });
+        break;
       default:
         if (typeof msg?.type === 'string' && /^[a-z][a-z-]{1,40}$/.test(msg.type)) this.onClassEvent?.(msg);
     }

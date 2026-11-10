@@ -149,7 +149,7 @@ export async function fixCode() {
 
     const fixed = stripCodeFences(raw);
     if (fixed !== code.trim()) {
-      setValue(fixed + '\n');
+      setValue(fixed + '\n', 'a'); // counted as AI-written in the authorship record
       markActiveTabUnsaved();
       scheduleAutoSave();
       showToast('Code fixed successfully', 'success', 2000);

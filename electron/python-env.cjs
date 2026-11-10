@@ -311,14 +311,29 @@ class PythonEnvironments {
       : { file: python, args: ['-m', 'pip', ...args] };
   }
 
+  /**
+   * In a class whose teacher shares packages, try the teacher's laptop first
+   * (no internet needed); whatever is not there comes from the internet.
+   */
+  async _fromMirrorFirst(python, installArgs, onLog, opts) {
+    const mirror = this.getMirror?.();
+    if (mirror) {
+      onLog?.("Installing from your teacher's laptop…\n");
+      const m = this._pip(python, ['install', ...installArgs, '--no-index', '--find-links', mirror]);
+      const code = await this._stream(m.file, m.args, onLog, opts);
+      if (code === 0) return 0;
+      onLog?.("Not everything is on your teacher's laptop: getting the rest from the internet…\n");
+    }
+    const { file, args } = this._pip(python, ['install', ...installArgs]);
+    return this._stream(file, args, onLog, opts);
+  }
+
   install(python, specs, onLog, { cwd } = {}) {
-    const { file, args } = this._pip(python, ['install', ...specs]);
-    return this._stream(file, args, onLog, { cwd });
+    return this._fromMirrorFirst(python, specs, onLog, { cwd });
   }
 
   installRequirements(python, requirementsFile, onLog) {
-    const { file, args } = this._pip(python, ['install', '-r', requirementsFile]);
-    return this._stream(file, args, onLog, { cwd: this._path.dirname(requirementsFile) });
+    return this._fromMirrorFirst(python, ['-r', requirementsFile], onLog, { cwd: this._path.dirname(requirementsFile) });
   }
 
   uninstall(python, name, onLog) {

@@ -15,6 +15,9 @@ import { explainError } from '../learn/explain/errors.js';
 import { conceptLabel } from '../learn/concepts.js';
 import { onLearnRun, showExplanation, getLastError, getExplainLang, getMasterySummary } from '../learn/learn-ui.js';
 import { setClassHeat } from '../editor.js';
+import { openViva, openReplay, recordingFor } from '../learn/viva-ui.js';
+import { initClassShare, shareStarted, shareStopped, handleShareEvent, shareLeft } from './class-share.js';
+import { validRecording, describeStats } from '../learn/authorship.js';
 import { showToast } from '../toast.js';
 
 const api = () => window.electronAPI;
@@ -53,6 +56,8 @@ let teacherOn = false;
 let pulseTimer = null;
 let getTeacherCode = () => '';
 let getStudentCode = () => '';
+let getCurrentFile = () => ({ tabId: null, code: '', fileName: 'main.py' });
+const submissions = new Map(); // student id -> latest hand-in
 let onStudentsChanged = () => {};
 let relay = { state: 'off', code: null };
 let lan = false;
@@ -63,9 +68,10 @@ let lan = false;
  * @param {(id: string) => string} deps.studentCode  a student's latest code
  * @param {() => void} deps.studentsChanged   re-render the student list (states changed)
  */
-export function initClassLive({ teacherCode, studentCode, studentsChanged }) {
+export function initClassLive({ teacherCode, studentCode, studentsChanged, currentFile }) {
   getTeacherCode = teacherCode;
   getStudentCode = studentCode;
+  if (currentFile) getCurrentFile = currentFile;
   onStudentsChanged = studentsChanged;
   const a = api();
   if (!a) return;
@@ -85,11 +91,13 @@ export function initClassLive({ teacherCode, studentCode, studentsChanged }) {
     if (t) t.textContent = `${message} Check the code with your teacher.`;
   });
   a.onClassEvent?.((msg) => studentEvent(msg));
+  initClassShare();
   onLearnRun((run) => studentRan(run));
 }
 
 export function teacherStarted(result) {
   teacherOn = true;
+  shareStarted();
   lan = !!result?.lan;
   renderRoutes();
   renderPulse();
@@ -99,10 +107,12 @@ export function teacherStarted(result) {
 
 export function teacherStopped() {
   teacherOn = false;
+  shareStopped();
   clearInterval(pulseTimer);
   pulse.students.clear();
   hands.clear();
   routes.clear();
+  submissions.clear();
   setClassHeat(null);
   relay = { state: 'off', code: null };
 }
@@ -182,6 +192,20 @@ function teacherEvent(who, msg) {
     case 'mastery':
       applyEvent(pulse, who.id, who.name, { type: 'mastery', summary: msg.summary });
       break;
+    case 'submission': {
+      const str = (v, n) => String(v ?? '').slice(0, n);
+      const questions = Array.isArray(msg.questions) ? msg.questions.slice(0, 5).map((q) => ({
+        en: str(q?.en, 400), line: Number.isInteger(q?.line) ? q.line : null, lineText: str(q?.lineText, 300),
+      })) : [];
+      const answers = Array.isArray(msg.answers) ? msg.answers.slice(0, 5).map((a) => str(a, 2000)) : [];
+      const recording = validRecording(msg.recording) ? msg.recording : null;
+      submissions.set(who.id, {
+        name: who.name, at: Date.now(), fileName: str(msg.fileName, 128) || 'main.py', code: str(msg.code, 200_000),
+        questions, answers, recording, stats: recording?.stats || null,
+      });
+      showToast(`${who.name} handed in their work`, 'success', 2400);
+      break;
+    }
     case 'peer-hint': {
       // Only to the classmate this helper was asked to help
       const to = routes.get(who.id);
@@ -321,6 +345,23 @@ function renderPulse() {
     queue.append(r);
   }
   row.append(queue);
+
+  const subs = el('div', 'cr-hands cr-subs');
+  subs.append(el('span', 'cr-bug__kicker', `Handed in · ${submissions.size}`));
+  if (!submissions.size) subs.append(el('span', 'cr-hands__empty', 'Students hand in with a short viva about their code.'));
+  for (const [, sub] of [...submissions.entries()].sort((a, b) => b[1].at - a[1].at).slice(0, 6)) {
+    const r = el('div', 'cr-hand');
+    const who = el('div', 'cr-hand__who');
+    who.append(el('b', '', sub.name), el('span', 'cr-hand__when', ago(sub.at)));
+    r.append(who, el('span', 'cr-sub__stats', sub.stats ? describeStats(sub.stats) : sub.fileName));
+    const actions = el('div', 'cr-hand__actions');
+    actions.append(btn('cr-view-btn', 'Open', () => openReplay({
+      title: `${sub.name} · ${sub.fileName}`, recording: sub.recording, code: sub.code, questions: sub.questions, answers: sub.answers,
+    }), 'See the viva answers and replay how the file was written'));
+    r.append(actions);
+    subs.append(r);
+  }
+  row.append(subs);
   box.append(row);
 }
 
@@ -354,6 +395,7 @@ export function studentJoined() {
 
 export function studentLeft() {
   inClass = false;
+  shareLeft();
   document.getElementById('cr-help-card')?.remove();
 }
 
@@ -366,6 +408,26 @@ function studentRan(run) {
   });
   api()?.classroomStudentSendEvent?.({ type: 'mastery', summary: run.summary }, 'mastery');
   if (done && !run.ok) setDone(false); // working again
+}
+
+/** Hand in the open file: the viva first, then the code, the answers and how it was written. */
+export async function handIn() {
+  if (!inClass) return;
+  const f = getCurrentFile();
+  if (!f.code.trim()) { showToast('Write some code before handing in', 'info', 2000); return; }
+  const res = await openViva({ code: f.code, fileName: f.fileName, mode: 'class' });
+  if (!res) return;
+  const payload = {
+    type: 'submission', fileName: f.fileName, code: f.code.slice(0, 200_000), lang: getExplainLang(),
+    questions: res.questions.map((q) => ({ en: q.en, line: q.line, lineText: q.lineText })),
+    answers: res.answers.map((a) => a.slice(0, 2000)),
+    recording: recordingFor(f.tabId, f.code),
+  };
+  // Very long edit histories do not fit in one message: send the totals only
+  if (JSON.stringify(payload).length > 900_000) payload.recording = { ...payload.recording, events: [], truncated: true };
+  api()?.classroomStudentSendEvent?.(payload);
+  setDone(true);
+  showToast(getExplainLang() === 'hi' ? 'आपका काम जमा हो गया' : 'Handed in', 'success', 2200);
 }
 
 export function setDone(on) {
@@ -389,6 +451,7 @@ export function helpError() {
 }
 
 function studentEvent(msg) {
+  if (handleShareEvent(msg)) return;
   switch (msg.type) {
     case 'explain':
       if (msg.error?.type) showExplanation({ ...msg.error, code: '' }, { fromTeacher: true });

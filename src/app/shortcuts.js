@@ -58,6 +58,7 @@ export const DEFAULT_SHORTCUTS = {
   'next-tab':          { ctrl: true,  shift: false, alt: false, key: 'Tab' },
   'prev-tab':          { ctrl: true,  shift: true,  alt: false, key: 'Tab' },
   'go-to-line':        { ctrl: true,  shift: false, alt: false, key: 'g' },
+  'chain-lens':        { ctrl: true,  shift: false, alt: true,  key: 'l' },
 };
 
 export const SHORTCUT_LABELS = {
@@ -108,6 +109,7 @@ export const SHORTCUT_LABELS = {
   'next-tab':          'Next Tab',
   'prev-tab':          'Previous Tab',
   'go-to-line':        'Go to Line',
+  'chain-lens':        'Chain Lens',
 };
 
 const KEY_NAMES = {

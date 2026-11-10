@@ -28,8 +28,9 @@ import { currentCodeTheme } from '../editor.js';
 import { fx, screenTransition } from '../fx/moments.js';
 import {
   initClassLive, teacherStarted, teacherStopped, noteJoin, noteLeave, noteActivity, noteHelp, liveInfo,
-  studentJoined as liveStudentJoined, studentLeft as liveStudentLeft, setDone, isDone, helpError, getRelayUrl, setRelayUrl,
+  studentJoined as liveStudentJoined, studentLeft as liveStudentLeft, setDone, isDone, helpError, getRelayUrl, setRelayUrl, handIn,
 } from './class-live.js';
+import { runOnClassGpu } from './class-share.js';
 
 // ── State ─────────────────────────────────────────────────────────
 let panelOpen = false;
@@ -157,6 +158,7 @@ export function initClassroomPanel({ editorGetters, onLiveChange }) {
     teacherCode: () => _getCode(),
     studentCode: (id) => studentCodeMap[id]?.code || '',
     studentsChanged: () => renderStudentList(),
+    currentFile: () => ({ tabId: editorGetters.getTabId?.() ?? null, code: _getCode(), fileName: _getFileName() }),
   });
 }
 
@@ -268,6 +270,8 @@ function injectEditorToolbar() {
         onRevoke: () => handleRevokeEdit(),
         onRaiseHand: () => handleRaiseHand('HELP_REQ'),
         onDone: () => setDone(!isDone()),
+        onHandIn: () => handIn(),
+        onGpu: () => runOnClassGpu({ code: _getCode(), fileName: _getFileName() }),
         onOpenPanel: () => openClassroomPanel(),
         onDisconnect: () => handleStudentDisconnect(),
       };
@@ -340,6 +344,7 @@ function handleRoleSelect(selectedRole) {
       onBack: goBackToRoleSelector,
       onClosePanel: closeClassroomPanel,
       onDone: () => setDone(!isDone()),
+      onHandIn: () => handIn(),
     });
     interactiveArea.appendChild(studentPanel);
     const relayBox = document.getElementById('cr-relay-url-student');

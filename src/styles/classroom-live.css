@@ -44,7 +44,9 @@
 .cr-pulse__seg.is-stuck { background: var(--red); }
 .cr-pulse__seg.is-idle { background: var(--line-strong); }
 .cr-pulse__empty { font-size: var(--fs-sm); color: var(--text-3); }
-.cr-pulse__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; }
+.cr-pulse__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; }
+.cr-sub__stats { grid-column: 1; font-size: var(--fs-xs); color: var(--text-3); }
+@media (max-width: 1200px) { .cr-pulse__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .cr-subs { grid-column: 1 / -1; } }
 .cr-bug, .cr-hands {
   display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; min-width: 0;
   border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface-1);
@@ -87,7 +89,7 @@
 
 /* A classmate to help, or a hint from one (floats over the IDE) */
 .cr-help-card {
-  position: fixed; right: 20px; bottom: 96px; z-index: 1250; width: min(380px, calc(100vw - 32px));
+  position: fixed; right: 20px; bottom: 96px; z-index: 2050; width: min(380px, calc(100vw - 32px));
   max-height: min(70vh, 560px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 14px;
   background: var(--surface-2); color: var(--text);
   border: var(--border-w) solid var(--ink); border-radius: 16px; box-shadow: var(--shadow-tile);
@@ -104,6 +106,28 @@
 .cr-help-card .cr-action-btn { align-self: flex-end; }
 :root[data-theme="pro"] .cr-help-card { border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
 :root[data-theme="pro"] .cr-help-card__title { font-family: var(--font-ui); }
+
+/* Shared with the class: packages and the GPU (teacher) */
+.cr-share { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.cr-share:empty { display: none; }
+.cr-share__item { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; }
+.cr-share__label { flex: none; width: 120px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-3); }
+.cr-share__value { flex: 1; min-width: 200px; font-size: var(--fs-sm); color: var(--text-2); }
+.cr-share__check { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; }
+.cr-share__queue { display: flex; flex-direction: column; gap: 4px; margin-left: 132px; }
+.cr-job { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: var(--radius-control); background: var(--surface-1); border: 1px solid var(--line-soft); font-size: var(--fs-sm); }
+.cr-job__file { font: 12px/1.4 var(--font-code); color: var(--text-3); }
+.cr-job__state { flex: 1; font-size: var(--fs-xs); font-weight: 700; color: var(--text-3); }
+.cr-job.is-running .cr-job__state { color: var(--sky); }
+.cr-job.is-queued .cr-job__state { color: var(--warn-text); }
+.cr-job.is-done .cr-job__state { color: var(--ok-text); }
+.cr-job.is-failed .cr-job__state, .cr-job.is-declined .cr-job__state { color: var(--accent-text); }
+.cr-share-status { font-size: var(--fs-sm); color: var(--ok-text); }
+.cr-pkg-row { display: flex; gap: 8px; }
+.cr-pkg-row .cr-input { flex: 1; font-family: var(--font-code); }
+.cr-pkg-log { margin: 0; min-height: 60px; max-height: 240px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--panel); color: var(--panel-text); font: 12px/1.5 var(--font-code); white-space: pre-wrap; }
+.cr-pkg-log:empty { display: none; }
+@media (max-width: 900px) { .cr-share__queue { margin-left: 0; } .cr-share__label { width: auto; } }
 
 /* Teacher's editor: how many students are stuck on a line */
 .cm-class-heat-gutter { min-width: 0; }

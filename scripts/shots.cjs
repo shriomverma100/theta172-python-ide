@@ -39,7 +39,7 @@ const files = {
 for (const [f, c] of Object.entries(files)) fs.writeFileSync(path.join(project, f), c);
 // The notebook tour needs pandas and matplotlib: use the local test environment as the project's .venv
 const nbenv = path.join(root, 'tmp', 'nbenv');
-if (process.env.THETA_SHOTS_SET === 'notebook' && fs.existsSync(nbenv)) {
+if (['notebook', 'p10'].includes(process.env.THETA_SHOTS_SET) && fs.existsSync(nbenv)) {
   try { fs.symlinkSync(nbenv, path.join(project, '.venv'), 'junction'); } catch (err) { console.log('no .venv link:', err.message); }
 }
 

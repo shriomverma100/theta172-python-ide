@@ -669,8 +669,147 @@ const CLASS_SCENES = [
   { name: 'c14-student-back', node: async () => { await sleepMs(3500); }, js: 'void 0', wait: 200 },
 ];
 
+// Phase 10b/10c: THETA_SHOTS_SET=p10 (Chain Lens, Viva, replay, hand-in, packages, GPU pool)
+const P10_PANDAS = 'import pandas as pd\\n\\ndf = pd.DataFrame({\\n    "name": ["Aarav", "Diya", "Kabir", "Meera", "Rohan", "Asha"],\\n    "cls": ["A", "B", "A", "B", "A", "B"],\\n    "score": [91, 78, None, 88, 52, 67],\\n})\\nsummary = df.dropna().groupby("cls").score.mean().round(1)\\nprint(summary)\\n';
+const P10_VIVA = 'marks = {"maths": 90, "science": 80}\\ntotal = 0\\nfor subject in marks:\\n    total += marks[subject]\\nprint("average", total / len(marks))\\n';
+const P10_SCENES = [
+  { name: 'p01-picker', node: () => classRelay(), wait: 4500 },
+  { name: 'p02-pro-chain-lens-file', js: `(async () => {
+    document.querySelector('[data-pick="pro"]').click();
+    await new Promise(r => setTimeout(r, 900));
+    window.__thetaTest.setCode('${P10_PANDAS}');
+    window.__thetaTest.cursorTo('summary = df', 14);
+    window.__thetaTest.action('chain-lens');
+    for (let i = 0; i < 200 && !document.querySelector('#lens-card .lens__steps, #lens-card .lens__error'); i++) await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 300));
+  })()`, wait: 300 },
+  { name: 'p03-pro-viva-practice', js: `(async () => {
+    document.querySelector('#lens-card .lens__close')?.click();
+    window.__thetaTest.setCode('${P10_VIVA}');
+    window.__thetaTest.action('viva-practice');
+    await new Promise(r => setTimeout(r, 300));
+    const boxes = document.querySelectorAll('.viva-q__answer');
+    if (boxes[0]) boxes[0].value = 'Each subject has a mark, so I can look it up by name instead of remembering positions.';
+  })()`, wait: 300 },
+  { name: 'p04-pro-replay', js: `(async () => {
+    document.querySelector('.viva-modal .viva-modal__close')?.click();
+    const v = window.__thetaTest.view();
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: '' }, userEvent: 'delete' });
+    const typed = 'total = 0\\nfor n in range(5):\\n    total += n\\n';
+    for (const ch of typed) { v.dispatch({ changes: { from: v.state.doc.length, insert: ch }, userEvent: 'input.type' }); await new Promise(r => setTimeout(r, 8)); }
+    v.dispatch({ changes: { from: v.state.doc.length, insert: 'print("total is", total)\\nprint("average", total / 5)\\n' }, userEvent: 'input.paste' });
+    window.__thetaTest.action('replay-file');
+    await new Promise(r => setTimeout(r, 300));
+    const s = document.querySelector('.replay__slider');
+    if (s) { s.value = String(Math.round(Number(s.max) * 0.6)); s.dispatchEvent(new Event('input')); }
+  })()`, wait: 300 },
+  { name: 'p05-pro-notebook-lens', js: `(async () => {
+    document.querySelector('.viva-modal .viva-modal__close')?.click();
+    const row = (name) => [...document.querySelectorAll('#ws-tree .ws-row')].find((r) => r.dataset.path.endsWith(name));
+    row('notebooks')?.click();
+    for (let i = 0; i < 30 && !row('explore.ipynb'); i++) await new Promise(r => setTimeout(r, 100));
+    row('explore.ipynb')?.click();
+    for (let i = 0; i < 40 && !document.querySelector('.nb'); i++) await new Promise(r => setTimeout(r, 100));
+    const nb = window.__thetaTest.notebook();
+    const cell = nb.insertAt(3, 'code', false);
+    nb.cellViews.get(cell.id).editor.dispatch({ changes: { from: 0, insert: 'scores.sort_values("score").head(3).score.mean()' } });
+    nb.runUpTo(cell.id);
+    for (let i = 0; i < 300 && (nb.running || nb.queue.length || nb.kernelState !== 'idle'); i++) await new Promise(r => setTimeout(r, 100));
+    nb.lensCell(cell.id);
+    for (let i = 0; i < 100 && !document.querySelector('.nb-lens .lens__steps'); i++) await new Promise(r => setTimeout(r, 100));
+    document.querySelector('.nb-lens')?.scrollIntoView({ block: 'center' });
+  })()`, wait: 400 },
+  // Teacher: share packages and the GPU; a student's job and hand-in arrive
+  { name: 'p06-teacher-share', js: `(async () => {
+    document.getElementById('rail-classroom')?.click();
+    await new Promise(r => setTimeout(r, 1700));
+    document.querySelector('[data-role="teacher"]').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.getElementById('cr-teacher-name').value = 'Ms. Rao';
+    document.getElementById('cr-go-live-btn').click();
+    for (let i = 0; i < 60 && !document.querySelector('#cr-join-code:not(.hidden)'); i++) await new Promise(r => setTimeout(r, 100));
+    await window.electronAPI.gpuShare(true, {});
+    await new Promise(r => setTimeout(r, 400));
+  })()`, node: async (win) => {
+    await sleepMs(2500);
+    const st = await win.webContents.executeJavaScript('window.electronAPI.classroomStatus()');
+    const asha = fakeStudent('Asha Verma', '7', { port: st.port });
+    for (let i = 0; i < 60 && !asha.connected; i++) await sleepMs(100);
+    asha.sendEvent({ type: 'gpu-job', jobId: 'job-asha1', fileName: 'train.py', code: 'import time\nfor epoch in range(3):\n    print("epoch", epoch, "loss", round(1 / (epoch + 1), 3))\n    time.sleep(0.2)\n' });
+    asha.sendEvent({
+      type: 'submission', fileName: 'marks.py', code: 'marks = {"maths": 90}\nprint(marks["maths"])\n', lang: 'en',
+      questions: [{ en: 'Why did you use a dictionary for marks on line 1? What would be harder with a list?', line: 1, lineText: 'marks = {"maths": 90}' }],
+      answers: ['So I can find a mark by the subject name.'],
+      recording: { v: 1, base: '', start: 0, truncated: false, stats: { t: 22, p: 21, a: 0, r: 0, l: 0, total: 43 },
+        events: [{ t: 0, k: 't', at: 0, del: 0, ins: 'marks = {"maths": 90}\n' }, { t: 4000, k: 'p', at: 22, del: 0, ins: 'print(marks["maths"])\n' }] },
+    });
+    await sleepMs(1200);
+  }, wait: 600 },
+  { name: 'p07-teacher-gpu-running', js: `(async () => {
+    [...document.querySelectorAll('.cr-job .cr-action-btn')].find((b) => b.textContent === 'Accept')?.click();
+    await new Promise(r => setTimeout(r, 1500));
+  })()`, wait: 200 },
+  { name: 'p08-teacher-submission', js: `(async () => {
+    [...document.querySelectorAll('.cr-subs .cr-view-btn')].find((b) => b.textContent === 'Open')?.click();
+    await new Promise(r => setTimeout(r, 300));
+    const s = document.querySelector('.replay__slider');
+    if (s) { s.value = '1'; s.dispatchEvent(new Event('input')); }
+  })()`, wait: 300 },
+  { name: 'p09-teacher-packages', js: `(async () => {
+    document.querySelector('.viva-modal .viva-modal__close')?.click();
+    [...document.querySelectorAll('.cr-share .cr-view-btn')].find((b) => b.textContent === 'Manage')?.click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#cr-pkg-modal .cr-input').value = 'pandas numpy matplotlib';
+  })()`, wait: 300 },
+  // Student: run on the teacher's GPU (a test teacher in this process)
+  { name: 'p10-student-class-gpu', node: async (win) => {
+    await win.webContents.executeJavaScript(`(async () => {
+      document.querySelector('#cr-pkg-modal .viva-modal__close')?.click();
+      document.getElementById('cr-stop-live-btn')?.click();
+      await new Promise(r => setTimeout(r, 600));
+    })()`);
+    for (const s of cls.students) s.stopDiscovery();
+    cls.students = [];
+    const { ClassroomServer } = require('./classroom-server.cjs');
+    const t = new ClassroomServer({ udp: false, lan: false });
+    cls.teacher = t;
+    let job = null;
+    t.onStudentEvent = (who, msg) => {
+      if (msg.type === 'gpu-job') job = { who, msg };
+    };
+    await t.start('Mr. Das', { relayUrl: cls.relay });
+    for (let i = 0; i < 50 && !t.relayState.code; i++) await sleepMs(100);
+    await win.webContents.executeJavaScript(`(async () => {
+      document.getElementById('cr-global-back')?.click();
+      await new Promise(r => setTimeout(r, 400));
+      document.querySelector('[data-role="student"]')?.click();
+      await new Promise(r => setTimeout(r, 300));
+      document.getElementById('cr-student-name').value = 'Aarav Gupta';
+      document.getElementById('cr-student-roll').value = '12';
+      document.getElementById('cr-join-code-input').value = '${t.relayState.code}';
+      document.getElementById('cr-join-btn').click();
+      for (let i = 0; i < 80 && document.getElementById('cr-connected-view')?.classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 100));
+      document.getElementById('cr-student-to-editor')?.click();
+      await new Promise(r => setTimeout(r, 300));
+    })()`);
+    await sleepMs(1500);
+    const id = t.getStudents()[0]?.id;
+    t.sendEvent(id, { type: 'class-caps', packages: null, gpu: { name: 'NVIDIA RTX 3060', gpu: true, limitMin: 20 } }, 'caps');
+    await sleepMs(600);
+    await win.webContents.executeJavaScript(`[...document.querySelectorAll('.editor-tab')].find((t) => t.textContent.startsWith('main.py'))?.click(); window.__thetaTest.setCode('import time\\nfor epoch in range(3):\\n    print("epoch", epoch)\\n'); window.__thetaTest.action('run-class-gpu');`);
+    for (let i = 0; i < 50 && !job; i++) await sleepMs(100);
+    if (job) {
+      const jid = job.msg.jobId;
+      t.sendEvent(id, { type: 'gpu-status', jobId: jid, state: 'running', message: 'Running on NVIDIA RTX 3060' });
+      for (let e = 0; e < 3; e++) t.sendEvent(id, { type: 'gpu-output', jobId: jid, stream: 'stdout', text: `epoch ${e} loss ${(1 / (e + 1)).toFixed(3)}\n` });
+      t.sendEvent(id, { type: 'gpu-status', jobId: jid, state: 'done', message: 'Finished in 4 s', exitCode: 0 });
+    }
+    await sleepMs(1200);
+  }, js: 'void 0', wait: 300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

@@ -21,6 +21,8 @@ import {
 } from './model.js';
 import { renderMarkdown } from './markdown.js';
 import { KernelSession, kernelsAvailable } from './kernel-client.js';
+import { chainAt } from '../learn/chain.js';
+import { renderLens, askKernel } from '../learn/lens-ui.js';
 
 const ICONS = {
   run: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>',
@@ -93,6 +95,7 @@ export class NotebookView {
     this.kernelState = 'off'; // off | starting | idle | busy | dead
     this.kernel = null;
     this.pendingDelete = 0;
+    this.lensListeners = new Set();
     this.build();
   }
 
@@ -173,6 +176,11 @@ export class NotebookView {
     down.addEventListener('click', (e) => { e.stopPropagation(); this.moveCell(cell.id, 1); });
     const del = button('nb-tool nb-tool--del', 'Delete cell', ICONS.trash);
     del.addEventListener('click', (e) => { e.stopPropagation(); this.deleteCell(cell.id); });
+    if (cell.type === 'code') {
+      const lens = el('button', 'nb-tool nb-tool--lens', { type: 'button', title: 'Chain Lens: see the data after each step of the chain under the cursor', text: 'Lens' });
+      lens.addEventListener('click', (e) => { e.stopPropagation(); this.select(cell.id); this.lensCell(cell.id); });
+      tools.append(lens);
+    }
     if (cell.type === 'markdown') {
       const edit = button('nb-tool nb-tool--edit', 'Edit this text (or double-click it)', ICONS.edit);
       edit.addEventListener('click', (e) => { e.stopPropagation(); this.select(cell.id); this.editMarkdown(cell.id); });
@@ -635,6 +643,7 @@ export class NotebookView {
   }
 
   onKernelMessage(msg) {
+    if (msg.type === 'lens-result') { this.lensListeners.forEach((fn) => fn(msg)); return; }
     const run = this.running;
     if (!run || msg.id !== run.runId) {
       // Output from a background thread after its cell finished: show it under the last cell that ran
@@ -773,6 +782,30 @@ export class NotebookView {
     this.$status.title = this.kernel?.info?.executable || 'The notebook runs on the Python chosen in the status bar';
     this.el.dataset.kernel = s;
     this.$interrupt.disabled = s !== 'busy';
+  }
+
+  // ── Chain Lens ───────────────────────────────────────────────────
+
+  /** The data after each step of the chain under the cursor, using this notebook's variables. */
+  async lensCell(id = this.selected) {
+    const cell = this.cell(id);
+    const view = this.cellViews.get(id);
+    if (!cell || cell.type !== 'code' || !view) return;
+    const line = view.editor.state.doc.lineAt(view.editor.state.selection.main.head).number;
+    const at = chainAt(cell.source, line);
+    if (!at) { this.notify('Put the cursor on a chain like df.dropna().groupby("x").mean()', 'info'); return; }
+    if (!this.kernel?.info || this.kernelState === 'dead') {
+      this.notify('Run the cells that create your data first, then use the Lens', 'info');
+      return;
+    }
+    view.lens?.remove();
+    const panel = el('div', 'nb-lens');
+    view.lens = panel;
+    panel.append(el('div', 'lens__note', { text: 'Looking at each step…' }));
+    view.outputs.before(panel);
+    const res = await askKernel(this.kernel, at.steps, (fn) => { this.lensListeners.add(fn); return () => this.lensListeners.delete(fn); });
+    if (!panel.isConnected) return;
+    renderLens(panel, { ...res, expr: at.expr }, () => { panel.remove(); view.lens = null; });
   }
 
   // ── Tab life cycle ───────────────────────────────────────────────

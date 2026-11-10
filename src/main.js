@@ -27,7 +27,7 @@
  */
 import {
   createEditor, setAppTheme, layout as editorLayout, STARTER_CODE, getValue, setValue, focusEditor, getCursorPosition,
-  onContentChange, onCursorChange, openFindReplace, getView,
+  onContentChange, onCursorChange, openFindReplace, getView, editOrigin,
 } from './editor.js';
 import { TerminalManager } from './terminal.js';
 import { ReplManager } from './repl.js';
@@ -82,6 +82,9 @@ import { initShortcuts } from './app/shortcuts.js';
 import { initCommandPalette, toggleCommandPalette, openCommandPalette, isPaletteOpen, closeCommandPalette } from './app/commands.js';
 import { initModals, openExamples, openShortcuts, closeAllModals } from './app/modals.js';
 import { ideActions } from './app/ide-actions.js';
+import { initAuthorship, openViva, openReplay, recordingFor } from './learn/viva-ui.js';
+import { lensInFile } from './learn/lens-ui.js';
+import { runOnClassGpu } from './classroom/class-share.js';
 import { initMenubar } from './app/menubar.js';
 import { APP_MENUS } from './app/app-menus.js';
 import { fixCode } from './app/ai-fix.js';
@@ -137,6 +140,21 @@ const actions = {
   'new-tab': () => addNewTab(null, '# New file\n'),
   'new-notebook': newNotebook,
   'predict': startPrediction,
+  'run-class-gpu': () => runOnClassGpu({ code: getValue(), fileName: getActiveFileName() }),
+  'chain-lens': () => {
+    const nb = activeNotebook();
+    if (nb) { nb.lensCell(); return; }
+    lensInFile({ code: getValue(), line: getCursorPosition().lineNumber, filePath: getActiveTab()?.filePath || null });
+  },
+  'viva-practice': () => {
+    if (getActiveTab()?.kind === 'notebook') { showToast('Viva works on .py files', 'info', 2000); return; }
+    openViva({ code: getValue(), fileName: getActiveFileName(), mode: 'practice' });
+  },
+  'replay-file': () => {
+    const tab = getActiveTab();
+    if (!tab || tab.kind === 'notebook') { showToast('Replay works on .py files', 'info', 2000); return; }
+    openReplay({ title: `How ${tab.name} was written`, recording: recordingFor(tab.id, getValue()), code: getValue() });
+  },
   'my-progress': openProgress,
   'explain-error': () => {
     const err = getLastError();
@@ -328,9 +346,10 @@ function initClassroom() {
         return { line: pos?.lineNumber || 1, col: pos?.column || 1 };
       },
       getFileName: getActiveFileName,
-      setValue: (code) => setValue(code),
+      getTabId: () => getActiveTab()?.id ?? null,
+      setValue: (code) => setValue(code, 'r'),
       // Teacher edits; ranges are validated in classroom/edit-guard.js first
-      applyEdit: (from, to, insert) => getView()?.dispatch({ changes: { from, to, insert } }),
+      applyEdit: (from, to, insert) => getView()?.dispatch({ changes: { from, to, insert }, annotations: editOrigin.of('r') }),
       getDocLength: () => getView()?.state.doc.length ?? 0,
     },
   });
@@ -395,6 +414,8 @@ async function initIDE() {
       setCode: (code) => setValue(code),
       notebook: () => activeNotebook(),
       spotBench: (rounds) => benchSpot(rounds),
+      view: () => getView(),
+      action: (id) => actions[id]?.(),
       // Language intelligence (Phase 4)
       lspReady: () => isLanguageServerReady(),
       problems: () => problemSummary(),
@@ -475,6 +496,7 @@ async function initIDE() {
   }
 
   initLearn({ onRunFinish, onRunStart, runCode }); // explanations, predictions, progress
+  initAuthorship(); // who wrote what, for Viva Mode and replays
   await initRuntime();
   // Language intelligence needs local Python (desktop); it starts in the background
   if (state.useLocalPython) initLanguageServer().catch((err) => console.error('[THETA] language server', err));

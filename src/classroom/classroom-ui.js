@@ -162,6 +162,7 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
         <button class="cr-stop-btn" id="cr-stop-live-btn" type="button">End class</button>
       </div>
     </div>
+    <div class="cr-share" id="cr-share" aria-label="Shared with the class"></div>
     <div class="cr-pulse" id="cr-pulse" aria-label="Class pulse"></div>
     <div class="cr-live-grid">
       <div class="cr-students-col">
@@ -217,7 +218,7 @@ export function buildTeacherPanel({ onGoLive, onStopLive, onBack, onClosePanel }
 }
 
 // ── Student ───────────────────────────────────────────────────────
-export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, onClosePanel, onDone }) {
+export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, onClosePanel, onDone, onHandIn }) {
   const panel = el('div', 'cr-student-panel');
 
   const setup = el('section', 'cr-setup');
@@ -265,8 +266,10 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
         <span class="cr-live-label">Live</span>
         <span id="cr-connected-teacher"></span>
         <span class="cr-link-status" id="cr-link-status" role="status"></span>
+        <span class="cr-share-status" id="cr-share-status"></span>
       </div>
       <div class="cr-panel-actions">
+        <button class="cr-action-btn cr-action-btn--sm" id="cr-handin-btn" type="button" title="Answer a short viva about your code and hand it in">Hand in</button>
         <button class="cr-action-btn cr-action-btn--sm cr-done-btn" id="cr-done-btn" data-done-btn type="button" aria-pressed="false" title="Tell your teacher you have finished the task">I'm done</button>
         <button class="cr-action-btn cr-action-btn--sm cr-action-btn--hand" id="cr-raise-hand-btn" type="button"><span class="px-mark" aria-hidden="true"></span><span class="cr-hand-label">Ask for help</span></button>
         <button class="cr-close-panel-btn" id="cr-student-to-editor" type="button">Back to editor</button>
@@ -314,6 +317,7 @@ export function buildStudentPanel({ onJoin, onRaiseHand, onDisconnect, onBack, o
     document.getElementById('cr-raise-hand-btn')?.addEventListener('click', () => onRaiseHand('HELP_REQ'));
     document.getElementById('cr-disconnect-btn')?.addEventListener('click', onDisconnect);
     document.getElementById('cr-done-btn')?.addEventListener('click', () => onDone?.());
+    document.getElementById('cr-handin-btn')?.addEventListener('click', () => onHandIn?.());
     document.getElementById('cr-join-code-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
     document.getElementById('cr-student-to-editor')?.addEventListener('click', onClosePanel);
     document.getElementById('cr-student-roll')?.addEventListener('keydown', (e) => {
@@ -383,6 +387,8 @@ export function buildEditorToolbar(role, callbacks) {
       <div class="cr-toolbar-right">
         <button class="cr-toolbar-btn cr-toolbar-btn--revoke hidden" id="cr-toolbar-revoke" type="button">Stop teacher editing</button>
         <button class="cr-toolbar-btn" id="cr-toolbar-raise-hand" type="button">Ask for help</button>
+        <button class="cr-toolbar-btn hidden" id="cr-toolbar-gpu" data-gpu-btn type="button" title="Run this file on the GPU your teacher shares">Run on class GPU</button>
+        <button class="cr-toolbar-btn" id="cr-toolbar-handin" type="button" title="Answer a short viva and hand in this file">Hand in</button>
         <button class="cr-toolbar-btn cr-done-btn" id="cr-toolbar-done" data-done-btn type="button" aria-pressed="false">I'm done</button>
         <button class="cr-toolbar-btn" id="cr-toolbar-open-panel" type="button">Class</button>
         <button class="cr-toolbar-btn cr-toolbar-btn--stop" id="cr-toolbar-disconnect" type="button">Leave</button>
@@ -392,6 +398,8 @@ export function buildEditorToolbar(role, callbacks) {
       document.getElementById('cr-toolbar-revoke')?.addEventListener('click', () => callbacks.onRevoke?.());
       document.getElementById('cr-toolbar-raise-hand')?.addEventListener('click', () => callbacks.onRaiseHand?.());
       document.getElementById('cr-toolbar-done')?.addEventListener('click', () => callbacks.onDone?.());
+      document.getElementById('cr-toolbar-handin')?.addEventListener('click', () => callbacks.onHandIn?.());
+      document.getElementById('cr-toolbar-gpu')?.addEventListener('click', () => callbacks.onGpu?.());
       document.getElementById('cr-toolbar-open-panel')?.addEventListener('click', () => callbacks.onOpenPanel?.());
       document.getElementById('cr-toolbar-disconnect')?.addEventListener('click', () => callbacks.onDisconnect?.());
     }, 0);

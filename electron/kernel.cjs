@@ -112,6 +112,9 @@ class Kernel {
     return this._send({ type: 'execute', id, code });
   }
 
+  /** Chain Lens: evaluate each prefix of a chain; answered by a lens-result message. */
+  lens(id, parts) { return this._send({ type: 'lens', id, parts }); }
+
   input(value) { return this._send({ type: 'input_reply', value: String(value) }); }
   interrupt() { return this._send({ type: 'interrupt' }); }
 
@@ -179,6 +182,11 @@ function registerNotebookIpc({ ipcMain, spawn, getWindow, getPython, getEnv, get
   ipcMain.handle('nb-execute', (_e, id, runId, code) => {
     if (typeof runId !== 'string' || runId.length > 80 || typeof code !== 'string' || code.length > 2_000_000) throw new Error('Invalid cell.');
     return kernelFor(id).execute(runId, code);
+  });
+  ipcMain.handle('nb-lens', (_e, id, runId, parts) => {
+    if (typeof runId !== 'string' || runId.length > 80 || !Array.isArray(parts) || parts.length > 30
+      || !parts.every((p) => typeof p === 'string' && p.length <= 4000)) throw new Error('Invalid chain.');
+    return kernelFor(id).lens(runId, parts);
   });
   ipcMain.on('nb-input', (_e, id, value) => { if (validId(id)) kernels.get(id)?.input(String(value ?? '').slice(0, 65536)); });
   ipcMain.on('nb-interrupt', (_e, id) => { if (validId(id)) kernels.get(id)?.interrupt(); });
