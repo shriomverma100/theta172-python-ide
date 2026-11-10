@@ -83,7 +83,6 @@
       "artifactName": "Python-by-THETA172-Setup-${version}.${ext}"
     },
     "nsis": {
-      "useZip": true,
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
@@ -158,6 +157,10 @@
           "!**/tests/**",
           "!**/idle_test/**"
         ]
+      },
+      {
+        "from": "build-assets/icon.png",
+        "to": "icon.png"
       },
       {
         "from": "vendor/${os}-${arch}/uv",

@@ -111,7 +111,8 @@ function createWindow() {
     trafficLightPosition: isMac ? { x: 14, y: 14 } : undefined,
     backgroundColor: '#000000',
     show:            false,
-    icon:            path.join(__dirname, '../public/favicon.svg'),
+    // Windows needs a bitmap icon (the installed app also has it in its .exe)
+    icon:            [path.join(__dirname, '../build-assets/icon.png'), path.join(process.resourcesPath || '', 'icon.png')].find((f) => fs.existsSync(f)),
     webPreferences: {
       preload:             path.join(__dirname, 'preload.cjs'),
       contextIsolation:    true,
