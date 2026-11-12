@@ -59,12 +59,6 @@ const STOPS = [
     keys: ['Ctrl', 'Shift', 'O'],
   },
   {
-    at: ['#btn-progress'],
-    kicker: 'Grow',
-    title: 'My progress',
-    body: 'Built from the code you actually run: loops, functions, data and more, each from "Not yet" to "Confident". Save a report to share with your teacher.',
-  },
-  {
     at: ['.class-tile', '#rail-classroom', '#btn-classroom'],
     kicker: 'Together',
     title: 'Classroom',
@@ -244,3 +238,95 @@ export function startTour({ force = false } = {}) {
 
 /** Test hook: jump to a stop. */
 export const _tourShow = (n) => open?.show(n);
+
+// ═══ First program: the moment the platform proves itself ═══
+// After the welcome, the editor holds the user's own first program and Run
+// is lit. When it runs, a short celebration offers the tour (never forced).
+
+const FIRST_CODE = {
+  learn: (n) => `# Your first program${n ? `, ${n}` : ''}\nname = "${n || 'friend'}"\nprint(f"Namaste, {name}! Welcome to Python.")\n\n# Change the name above and press Run again.\n`,
+  teach: (n) => `# A first program for your class${n ? `, ${n}` : ''}\nstudents = ["Aarav", "Diya", "Kabir"]\nfor s in students:\n    print(f"Welcome to class, {s}!")\n\n# Open Classroom to share your code live with every student.\n`,
+  build: (n) => `# A quick start${n ? `, ${n}` : ''}\nscores = [72, 85, 91, 64, 88]\naverage = sum(scores) / len(scores)\nprint(f"{len(scores)} scores, average {average:.1f}, best {max(scores)}")\n\n# Open a folder (Ctrl+Shift+O) to work on a whole project.\n`,
+};
+
+/**
+ * @param {{ name?: string, role?: 'learn'|'teach'|'build', setCode: (code: string) => void, onRun: (fn: (run: { ok: boolean }) => void) => (() => void) }} opts
+ */
+export function startFirstProgram({ name = '', role = 'learn', setCode, onRun }) {
+  const safe = String(name).replace(/["\\]/g, '');
+  setCode((FIRST_CODE[role] || FIRST_CODE.learn)(safe));
+  const runBtn = find(['.ide-topbar #btn-run', '#btn-run-rail', '#btn-run']);
+  if (!runBtn) return;
+
+  const root = elm('div', 'tour tour--coach is-on');
+  const spot = elm('div', 'tour__spot tour__spot--pulse');
+  const card = elm('section', 'tour__card is-in');
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-labelledby', 'coach-title');
+  const kicker = elm('span', 'tour__kicker', 'Your first program');
+  const title = elm('h2', 'tour__title', 'Press Run');
+  title.id = 'coach-title';
+  const body = elm('p', 'tour__body', 'We wrote a tiny program for you. Run it and see the result below.');
+  const keys = elm('p', 'tour__keys');
+  keys.append(elm('kbd', '', 'Ctrl'), elm('span', 'tour__plus', '+'), elm('kbd', '', 'Enter'));
+  const actions = elm('div', 'tour__actions');
+  const later = elm('button', 'tour__btn tour__btn--quiet', 'Not now');
+  later.type = 'button';
+  actions.append(later);
+  card.append(kicker, title, body, keys, actions);
+  root.append(spot, card);
+  document.body.append(root);
+
+  const place = () => {
+    const r = runBtn.getBoundingClientRect();
+    const pad = 6;
+    spot.style.cssText = `left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
+    const cw = card.offsetWidth;
+    const ch = card.offsetHeight;
+    const below = r.bottom + 16 + ch < window.innerHeight;
+    const top = below ? r.bottom + 16 : r.top - ch - 16;
+    const left = Math.max(12, Math.min(window.innerWidth - cw - 12, r.left + r.width / 2 - cw / 2));
+    card.style.left = `${Math.round(left)}px`;
+    card.style.top = `${Math.round(Math.max(12, top))}px`;
+  };
+  place();
+  window.addEventListener('resize', place);
+
+  let off = null;
+  const close = () => {
+    window.removeEventListener('resize', place);
+    off?.();
+    root.classList.add('is-out');
+    setTimeout(() => root.remove(), 260);
+  };
+  later.addEventListener('click', close);
+
+  off = onRun((run) => {
+    if (!run.ok) {
+      title.textContent = 'Almost';
+      body.textContent = 'Something in the code changed. The card below the output explains what went wrong; fix it and press Run again.';
+      return;
+    }
+    // The peak: say it plainly, then offer more
+    spot.remove();
+    card.classList.remove('is-in');
+    void card.offsetWidth;
+    card.classList.add('is-in', 'tour__card--done');
+    kicker.textContent = 'Done';
+    title.textContent = name ? `You just ran Python, ${name}.` : 'You just ran Python.';
+    body.textContent = role === 'teach'
+      ? 'Next: a one-minute tour of the IDE, including the Classroom where your students join.'
+      : 'Next: a one-minute tour of the main parts, so you know where everything is.';
+    keys.hidden = true;
+    actions.replaceChildren();
+    const skip = elm('button', 'tour__btn tour__btn--quiet', 'Start coding');
+    const go = elm('button', 'tour__btn tour__btn--go', 'Show me around');
+    skip.type = 'button';
+    go.type = 'button';
+    actions.append(skip, elm('span', 'tour__spacer'), go);
+    skip.addEventListener('click', () => { storageSet(SEEN_KEY, '1'); close(); });
+    go.addEventListener('click', () => { close(); setTimeout(() => startTour({ force: true }), 300); });
+    place();
+    go.focus({ preventScroll: true });
+  });
+}

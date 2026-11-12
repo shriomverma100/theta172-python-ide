@@ -53,11 +53,11 @@
       <div class="topbar-left">
         <div class="topbar-brand" aria-label="Python by THETA172">
           <svg class="brand-mark" width="34" height="29" viewBox="0 0 210 180" aria-hidden="true">
-            <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/>
-            <rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
-            <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/>
-            <rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
-            <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
+            <rect x="0" y="60" width="130" height="40" fill="#E3262D"/>
+            <rect x="45" y="100" width="45" height="80" fill="#E3262D"/>
+            <rect x="135" y="100" width="38" height="80" fill="#E3262D"/>
+            <rect x="141" y="36" width="24" height="24" fill="#E3262D"/>
+            <rect x="173" y="0" width="32" height="32" fill="#E3262D"/>
           </svg>
           <span class="brand-word">theta172</span>
           <span class="brand-tag">python</span>
@@ -290,7 +290,6 @@
           <div class="pane-header__actions">
             <button id="btn-split" class="pane-action-btn" type="button" title="Split editor (Ctrl+\)" aria-pressed="false">Split</button>
             <button id="btn-copy-code" class="pane-action-btn" type="button" title="Copy all code">Copy</button>
-            <button id="btn-fix-indent" class="pane-action-btn" type="button" title="Fix this code with AI">AI Fix</button>
             <div class="font-stepper" role="group" aria-label="Editor font size">
               <button id="btn-font-dec" class="pane-action-btn" type="button" title="Smaller text" aria-label="Smaller text">A−</button>
               <button id="btn-font-inc" class="pane-action-btn" type="button" title="Larger text" aria-label="Larger text">A+</button>
@@ -345,7 +344,6 @@
             <button id="tab-shell" class="pane-tab" data-pane="shell" type="button" role="tab" title="System terminal (PowerShell)">Shell</button>
             <button id="tab-problems" class="pane-tab" data-pane="problems" type="button" role="tab" aria-label="Problems" title="Problems: errors and warnings in open files (Ctrl+Shift+M)"><svg class="pane-tab__icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5 13 12H1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="10.2" r=".9" fill="currentColor"/></svg><span class="pane-tab__label">Problems</span><span id="problems-count" class="problems-count"></span></button>
           </div>
-          <span class="mascot" aria-hidden="true"><span class="mascot__px"></span></span>
           <div class="pane-header__actions">
             <span class="exec-time-wrap" title="Run time">
               <span class="exec-mark" aria-hidden="true"><span></span><span></span></span>
@@ -414,7 +412,6 @@
       <ol id="run-history" class="run-history" aria-label="Run history">
         <li class="run-history__empty">Runs appear here</li>
       </ol>
-      <button class="btn-progress" id="btn-progress" type="button" title="My progress: what you can do, from your own runs"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 12V8M5.5 12V5M9 12V7M12.5 12V2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>My progress</span></button>
       <button class="runbar-runtime" id="runbar-runtime" type="button" data-interpreter><span data-logo="python" aria-hidden="true"></span>Python</button>
     </footer>
 
@@ -444,30 +441,20 @@
     <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Starting Python by THETA172">
       <div class="loading-content">
         <div class="boot-stage" id="boot-stage">
-          <svg class="boot-mark" width="105" height="90" viewBox="0 0 210 180" aria-hidden="true">
-            <rect class="bm bm1" x="0" y="60" width="130" height="40"/>
-            <rect class="bm bm2" x="45" y="100" width="45" height="80"/>
-            <rect class="bm bm3" x="135" y="100" width="38" height="80"/>
-            <rect class="bm bm4" x="141" y="36" width="24" height="24"/>
-            <rect class="bm bm5" x="173" y="0" width="32" height="32"/>
+          <svg class="boot-sketch" width="132" height="116" viewBox="-8 -8 226 196" aria-hidden="true">
+            <rect class="bk-ink" style="--i:0" x="0" y="60" width="130" height="40"/><path class="bk-pen" style="--i:0" pathLength="1" d="M-3.6 62.3 L129.3 59.1 L130.7 100.1 L-0.5 100.8 L1.8 58.1"/>
+            <rect class="bk-ink" style="--i:1" x="45" y="100" width="45" height="80"/><path class="bk-pen" style="--i:1" pathLength="1" d="M43.6 101.4 L91 99.2 L89.6 180.7 L45.6 178.6 L46.6 97.9"/>
+            <rect class="bk-ink" style="--i:2" x="135" y="100" width="38" height="80"/><path class="bk-pen" style="--i:2" pathLength="1" d="M134.4 102 L171.8 100 L174.4 180.6 L135.5 180.2 L137.3 99.3"/>
+            <rect class="bk-ink" style="--i:3" x="141" y="36" width="24" height="24"/><path class="bk-pen" style="--i:3" pathLength="1" d="M138.6 36.5 L166.1 35.5 L163.9 59.4 L140.8 59.3 L143.4 34.2"/>
+            <rect class="bk-ink" style="--i:4" x="173" y="0" width="32" height="32"/><path class="bk-pen" style="--i:4" pathLength="1" d="M171.7 2.2 L203.6 -0.7 L205.2 32 L172.7 31 L175.3 -3.4"/>
           </svg>
         </div>
+        <svg class="boot-word" width="220" height="24" viewBox="-1 -1 145 16" fill="none" aria-hidden="true"><g class="bk-word-fg"><path pathLength="1" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(19 0)" d="M.6 0V14M9.4 0V14M.6 7H9.4"/><path pathLength="1" transform="translate(38 0)" d="M10 .6H.6V13.4H10M.6 7H9"/><path pathLength="1" transform="translate(57 0)" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(76 0)" d="M0 14L5 .5L10 14"/></g><g class="bk-word-red"><path pathLength="1" transform="translate(95 0)" d="M2.6 3.2L6.2 .6V14"/><path pathLength="1" transform="translate(114 0)" d="M.3 .6H9.6L3.8 14"/><path pathLength="1" transform="translate(133 0)" d="M.9 3.6C1.3 1.7 3 .6 5 .6c2.4 0 4.2 1.5 4.2 3.7 0 1.8-1 2.9-2.7 4.2L.8 13.4H10"/></g></svg>
         <div class="loading-text">
-          <span class="loading-brand">
-            <svg class="loading-brand__mark" width="28" height="24" viewBox="0 0 210 180" aria-hidden="true">
-              <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/>
-              <rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
-              <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/>
-              <rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
-              <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
-            </svg>
-            <span class="loading-brand__word">theta<span>172</span></span>
-          </span>
           <span class="loading-sub">Python</span>
         </div>
-        <div class="loading-bar-wrap" aria-hidden="true">
-          <div class="loading-bar" id="loading-bar"></div>
-        </div>
+        <div class="boot-progress" aria-hidden="true"><span class="boot-progress__fill" id="boot-progress"></span></div>
+        <p class="boot-status" id="boot-status">Loading the editor</p>
         <ol class="loading-steps">
           <li class="loading-step" id="lstep-0">Loading the editor</li>
           <li class="loading-step" id="lstep-1">Setting up the terminal</li>
@@ -679,14 +666,14 @@
     <section class="tp-half tp-half--play" aria-labelledby="tp-play">
       <div class="tp-top">
         <svg width="36" height="31" viewBox="0 0 210 180" aria-hidden="true">
-          <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/><rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
-          <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/><rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
-          <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/>
+          <rect x="0" y="60" width="130" height="40" fill="#E3262D"/><rect x="45" y="100" width="45" height="80" fill="#E3262D"/>
+          <rect x="135" y="100" width="38" height="80" fill="#E3262D"/><rect x="141" y="36" width="24" height="24" fill="#E3262D"/>
+          <rect x="173" y="0" width="32" height="32" fill="#E3262D"/>
         </svg>
         <span class="tp-kicker">Choose your environment</span>
       </div>
       <h2 id="tp-play" class="tp-title">Playground</h2>
-      <p class="tp-lead">Bright tiles, a pixel buddy that reacts to every run, and pixel effects. Made for learning and for class.</p>
+      <p class="tp-lead">Bright tiles, big buttons and gentle pixel effects. Made for learning and for class.</p>
       <div class="tp-preview tp-preview--play" aria-hidden="true">
         <div class="tpp-col"><span class="tpp-tile"></span><span class="tpp-tile tpp-tile--red"></span></div>
         <div class="tpp-editor"><span></span><span></span><span></span><span></span><span></span></div>
@@ -694,7 +681,7 @@
       </div>
       <ul class="tp-points">
         <li>Your output in a big tile, next to your code</li>
-        <li>Theta the pixel buddy cheers clean runs</li>
+        <li>Errors explained in English and हिंदी</li>
         <li>Easy to read on a classroom projector</li>
       </ul>
       <button class="tp-pick tp-pick--play" type="button" data-pick="playground">Use Playground</button>

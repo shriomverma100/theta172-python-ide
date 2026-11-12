@@ -1,6 +1,6 @@
 /**
  * Draws the app icon and the installer pictures from the THETA172 brand
- * (the Ti mark, the THETA172 wordmark, #070505 and #f4473a) into build-assets/.
+ * (the Ti mark, the THETA172 wordmark, #070505 and #E3262D) into build-assets/.
  *
  *   node scripts/make-brand-assets.cjs
  *
@@ -16,7 +16,7 @@ const sharp = require('sharp');
 
 const out = path.join(__dirname, '..', 'build-assets');
 const BG = '#070505';
-const RED = '#f4473a';
+const RED = '#E3262D';
 const FG = '#f4ede9';
 
 const MARK = '<rect x="0" y="60" width="134" height="40"/><rect x="51" y="100" width="48" height="83"/><rect x="134" y="100" width="35" height="83"/><rect x="141" y="35" width="26" height="26"/><rect x="173" y="0" width="35" height="34"/>';

@@ -125,7 +125,7 @@ function onEvent(ev) {
 // ── Showing ────────────────────────────────────────────────────────
 
 export function showTests() {
-  document.querySelector('.ide-body')?.classList.remove('sidebar-hidden');
+  document.querySelector('.ide-body')?.classList.remove('sidebar-hidden-pro', 'sidebar-hidden-play');
   showSidebarView('tests');
   if (!pytest) refreshTests();
 }

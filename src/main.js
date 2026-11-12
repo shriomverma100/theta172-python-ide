@@ -11,7 +11,6 @@
  *   shortcuts.js     editable keyboard shortcuts
  *   commands.js      command palette
  *   modals.js        examples + shortcuts modals
- *   ai-fix.js        AI Fix (user's own Groq key)
  *   window-chrome.js window buttons + unsaved-changes flow
  *   context-menu.js  editor right-click menu
  *   a11y.js          accessibility wiring
@@ -56,7 +55,7 @@ import {
 import { $ } from './core/dom.js';
 import { storageGet } from './core/storage.js';
 import { xtermTheme } from './core/terminal-theme.js';
-import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker } from './app/theme.js';
+import { initThemeControls, onThemeChange, toggleTheme, hasChosenTheme, showThemePicker, applyTheme } from './app/theme.js';
 import { state } from './app/state.js';
 import {
   initTabs, addNewTab, getActiveFileName, hasUnsavedTabs, markActiveTabUnsaved, onTabsChanged, getTabs, getActiveTab,
@@ -73,7 +72,7 @@ import { saveToFile, saveAsFile, openFile, initFileInputs, initAutoSave } from '
 import { updateCodeStats, markUnsaved, scheduleAutoSave, saveCode } from './app/autosave.js';
 import { initRuntime, runCode, stopCode, onRunFinish, onRunStart } from './app/runtime.js';
 import {
-  initLearn, openProgress, startPrediction, showExplanation, getLastError, getExplainLang, setExplainLang,
+  initLearn, openProgress, startPrediction, showExplanation, getLastError, getExplainLang, setExplainLang, onLearnRun,
 } from './learn/learn-ui.js';
 import { startBoot, setBootStep } from './app/boot.js';
 import { initSettings, openSettings, closeSettings, toggleFx, applyEditorPrefs } from './app/settings.js';
@@ -91,14 +90,13 @@ import { initPlugins } from './plugins/plugin-host.js';
 import { openPluginsManager } from './plugins/plugins-ui.js';
 import { initMenubar } from './app/menubar.js';
 import { APP_MENUS } from './app/app-menus.js';
-import { fixCode } from './app/ai-fix.js';
 import { initWindowControls, initUnsavedHandling } from './app/window-chrome.js';
 import { initContextMenu, showMenu } from './app/context-menu.js';
 import { initAccessibility } from './app/a11y.js';
 import { fillLogoSlots } from './core/tech-logos.js';
 import { initUpdates, checkForUpdates, showAbout, showWhatsNew, _simulateStatus, _openUpdateScreen, _closeUpdateScreen } from './app/update-ui.js';
 import { playWelcome } from './app/welcome.js';
-import { startTour, _tourShow } from './app/tour.js';
+import { startTour, startFirstProgram, _tourShow } from './app/tour.js';
 
 // ── Global error reporting ───────────────────────────────────────
 window.onerror = (message, source, line, col, error) => {
@@ -150,7 +148,7 @@ const actions = {
   'about': () => showAbout(),
   'whats-new': () => showWhatsNew(),
   'tour': () => startTour({ force: true }),
-  'welcome': () => playWelcome({ force: true, onName: rememberName }),
+  'welcome': () => playWelcome({ force: true, onName: rememberName, onTheme: (t) => applyTheme(t) }),
   'run': runCode,
   'stop': stopCode,
   'clear': clearOutput,
@@ -206,7 +204,6 @@ const actions = {
   'nb-clear': () => withNotebook((nb) => nb.clearOutputs()),
   'nb-export-py': () => withNotebook((nb) => addNewTab(getActiveFileName().replace(/\.ipynb$/i, '.py'), toPythonScript(nb.nb))),
   'find-replace': openFindReplace,
-  'fix-code': fixCode,
   'font-inc': () => adjustFontSize(1),
   'font-dec': () => adjustFontSize(-1),
   'focus-editor': focusEditor,
@@ -265,11 +262,15 @@ function relayout() {
   });
 }
 
+/** Each theme remembers its own side bar: hiding it in Pro leaves Playground's Files tile alone. */
+const sidebarHiddenClass = () => (document.documentElement.dataset.theme === 'pro' ? 'sidebar-hidden-pro' : 'sidebar-hidden-play');
+const sidebarHidden = () => document.querySelector('.ide-body')?.classList.contains(sidebarHiddenClass());
+
 /** Show or hide the project sidebar (Ctrl+B). Pass true to force it open. */
 function showSidebar(force) {
   const body = document.querySelector('.ide-body');
-  const hidden = force === true ? false : !body.classList.contains('sidebar-hidden');
-  body.classList.toggle('sidebar-hidden', hidden);
+  const hidden = force === true ? false : !sidebarHidden();
+  body.classList.toggle(sidebarHiddenClass(), hidden);
   relayout();
 }
 
@@ -292,7 +293,7 @@ function initButtons() {
   $('rail-files')?.addEventListener('click', () => {
     const body = document.querySelector('.ide-body');
     const onFiles = !$('files-view')?.classList.contains('hidden');
-    if (onFiles && !body.classList.contains('sidebar-hidden')) showSidebar(); // second click hides
+    if (onFiles && !sidebarHidden()) showSidebar(); // second click hides
     else { showSidebar(true); showSidebarView('files'); }
   });
   $('rail-search')?.addEventListener('click', () => { showSidebar(true); focusSearch(); });
@@ -308,7 +309,6 @@ function initButtons() {
   $('btn-run')?.addEventListener('click', runCode);
   $('btn-clear')?.addEventListener('click', clearOutput);
   $('btn-copy-code')?.addEventListener('click', copyCode);
-  $('btn-fix-indent')?.addEventListener('click', fixCode);
   $('btn-save-file')?.addEventListener('click', saveAll);
   $('btn-import-file')?.addEventListener('click', openFile);
   $('btn-font-inc')?.addEventListener('click', () => adjustFontSize(1));
@@ -456,6 +456,7 @@ async function initIDE() {
       updateScreen: (opts) => { _openUpdateScreen(opts); },
       updateClose: () => _closeUpdateScreen(),
       tourShow: (n) => _tourShow(n),
+      firstProgram: (name, role) => startFirstProgram({ name, role, setCode: setValue, onRun: onLearnRun }),
       // Language intelligence (Phase 4)
       lspReady: () => isLanguageServerReady(),
       problems: () => problemSummary(),
@@ -527,17 +528,25 @@ async function initIDE() {
 
   // First launch: choose Playground or Pro straight away; Python keeps
   // loading behind the picker. Pro starts with pixel effects off.
-  if (new URLSearchParams(location.search).get('welcome') === '1') playWelcome({ force: true, onName: rememberName });
+  const firstLook = (theme) => {
+    if (theme === 'pro' && storageGet('theta-fx') === null) fx.setUserEnabled(false);
+  };
+  if (new URLSearchParams(location.search).get('welcome') === '1') playWelcome({ force: true, onName: rememberName, onTheme: chooseLook });
   else if (!hasChosenTheme()) {
-    // The very first start: the welcome plays over the theme choice, then reveals it
-    if (!window.electronAPI?.isSmokeTest) playWelcome({ onName: rememberName });
-    showThemePicker({
-      onChosen: (theme) => {
-        if (theme === 'pro' && storageGet('theta-fx') === null) fx.setUserEnabled(false);
-        // The startup guide, once, when the IDE first appears
-        if (!window.electronAPI?.isSmokeTest) setTimeout(() => startTour(), 1400);
-      },
-    });
+    if (window.electronAPI?.isSmokeTest) {
+      // Tests use the plain theme chooser
+      showThemePicker({ onChosen: firstLook });
+    } else {
+      // The very first start: introduction → your name → your look → hello → the startup guide
+      // …then their own first program with Run lit; the tour is offered after it runs
+      playWelcome({ onName: rememberName, onTheme: chooseLook }).then((r) => {
+        if (r) setTimeout(() => startFirstProgram({ name: r.name, role: r.role, setCode: setValue, onRun: onLearnRun }), 600);
+      });
+    }
+  }
+  function chooseLook(theme) {
+    applyTheme(theme);
+    firstLook(theme);
   }
 
   fillLogoSlots(); // official logos next to Python, Git, Ruff …

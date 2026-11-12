@@ -46,3 +46,12 @@
 .tour [hidden] { display: none !important; }
 .tour :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .tour__spot, .tour__card, .tour__fill { transition: none; } .tour__card.is-in { animation: none; } }
+
+/* First program: the page stays usable; only Run is lit, softly pulsing */
+.tour--coach .tour__shade { display: none; }
+.tour--coach .tour__spot { box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-soft); }
+.tour__spot--pulse { animation: coachPulse 1.8s ease-in-out infinite; }
+@keyframes coachPulse { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 10px transparent; } }
+.tour--coach .tour__card { width: min(320px, calc(100vw - 24px)); }
+.tour__card--done .tour__kicker { color: var(--ok-text); }
+@media (prefers-reduced-motion: reduce) { .tour__spot--pulse { animation: none; } }

@@ -1067,8 +1067,69 @@ const P13_REAL = [
   })()`, wait: 300 },
 ];
 
+// Fixes tour: THETA_SHOTS_SET=fix (top bar at many widths, study mode in Pro, files per theme, welcome steps)
+const size = (w, h = 820) => async (win) => { win.unmaximize?.(); win.setSize(w, h); win.center(); await sleep(500); };
+const FIX_SCENES = [
+  { name: 'f00-picker', wait: 4500, noShot: true },
+  { name: 'f00b-ready', noShot: true, js: `(async () => { document.querySelector('[data-pick="pro"]').click(); for (let i = 0; i < 400 && !document.getElementById('loading-overlay')?.classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 800)); })()`, wait: 0 },
+  { name: 'f01-pro-1440', node: size(1440), wait: 400 },
+  { name: 'f02-pro-1280', node: size(1280), wait: 400 },
+  { name: 'f03-pro-1100', node: size(1100), wait: 400 },
+  { name: 'f04-pro-1000', node: size(1000), wait: 400 },
+  { name: 'f05-pro-900', node: size(900), wait: 400 },
+  { name: 'f06-pro-760', node: size(760), wait: 400 },
+  { name: 'f07-pro-study-half', node: size(1280), js: `(async () => { await window.__thetaTest.study('half', 'right'); await new Promise(r => setTimeout(r, 1800)); })()`, wait: 400 },
+  { name: 'f08-play-study-half', js: `(async () => { document.querySelector('.ide-topbar [data-theme-choice="playground"]')?.click(); await new Promise(r => setTimeout(r, 1900)); })()`, wait: 400 },
+  { name: 'f09-play-study-quarter', js: `(async () => { await window.__thetaTest.study('quarter', 'right'); await new Promise(r => setTimeout(r, 1600)); })()`, wait: 400 },
+  { name: 'f10-play-1280', js: `(async () => { await window.__thetaTest.study(null); await new Promise(r => setTimeout(r, 1200)); })()`, node: size(1280), wait: 600 },
+  { name: 'f11-play-900', node: size(900), wait: 400 },
+  { name: 'f12-play-760', node: size(760), wait: 400 },
+  { name: 'f13-pro-files-hidden', node: size(1280), js: `(async () => { document.querySelector('.ide-topbar [data-theme-choice="pro"]').click(); await new Promise(r => setTimeout(r, 1900)); window.__thetaTest.action('toggle-sidebar'); await new Promise(r => setTimeout(r, 400)); })()`, wait: 300 },
+  { name: 'f14-play-files-still-there', js: `(async () => { document.querySelector('.ide-topbar [data-theme-choice="playground"]').click(); await new Promise(r => setTimeout(r, 1900)); })()`, wait: 300 },
+  { name: 'f15-play-output-run', js: `(async () => { window.__thetaTest.setCode('print("hello")\\n'); ${RUN} })()`, wait: 600 },
+  { name: 'f16-welcome-intro', js: `void window.__thetaTest.action('welcome')`, wait: 3600 },
+  { name: 'f17-welcome-presents', wait: 4200 },
+  { name: 'f18-welcome-name', js: `document.querySelector('.th-skip')?.click()`, wait: 900 },
+  { name: 'f19-welcome-look', js: `(async () => { document.getElementById('th-name-input').value = 'Aarav'; document.querySelector('.th-name .th-btn--go').click(); await new Promise(r => setTimeout(r, 900)); })()`, wait: 300 },
+  { name: 'f20-welcome-look-pro', js: `document.querySelector('.th-look-card[data-look="pro"]').click()`, wait: 300 },
+  { name: 'f21-welcome-hello', js: `document.querySelector('.th-look .th-btn--go').click()`, wait: 1800 },
+  { name: 'f22-after', wait: 4000 },
+];
+
+// Study strips in both themes: THETA_SHOTS_SET=studybar
+const studyStrip = (theme, mode) => ({ name: `sb-${theme}-${mode}`, js: `(async () => { await window.__thetaTest.study('${mode}', 'right'); await new Promise(r => setTimeout(r, 1500)); })()`, wait: 300 });
+const STUDYBAR_SCENES = [
+  { name: 'sb00', wait: 4500, noShot: true },
+  { name: 'sb01', noShot: true, js: `(async () => { document.querySelector('[data-pick="pro"]').click(); for (let i = 0; i < 400 && !document.getElementById('loading-overlay')?.classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 800)); })()`, wait: 0 },
+  ...['duo', 'half', 'third', 'quarter', 'mini'].map((m) => studyStrip('pro', m)),
+  { name: 'sb02', noShot: true, js: `(async () => { await window.__thetaTest.study(null); await new Promise(r => setTimeout(r, 1200)); document.querySelector('.ide-topbar [data-theme-choice="playground"]').click(); await new Promise(r => setTimeout(r, 1900)); })()`, wait: 0 },
+  ...['duo', 'half', 'third', 'quarter', 'mini'].map((m) => studyStrip('play', m)),
+];
+
+// Onboarding tour: THETA_SHOTS_SET=onb
+const ONB_SCENES = [
+  { name: 'o01-boot-sketch', wait: 700 },
+  { name: 'o02-boot-inked', wait: 900 },
+  { name: 'o03-boot-word', wait: 1100 },
+  { name: 'o04', noShot: true, js: `(async () => { document.querySelector('[data-pick="pro"]')?.click(); for (let i = 0; i < 400 && !document.getElementById('loading-overlay')?.classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 600)); void window.__thetaTest.action('welcome'); await new Promise(r => setTimeout(r, 400)); document.querySelector('.th-skip')?.click(); await new Promise(r => setTimeout(r, 900)); })()`, wait: 0 },
+  { name: 'o05-name', js: `document.getElementById('th-name-input').value = 'Aarav'`, wait: 300 },
+  { name: 'o06-role', js: `document.querySelector('.th-name .th-btn--go').click()`, wait: 900 },
+  { name: 'o07-role-build', js: `document.querySelector('.th-role-card[data-role="build"]').click()`, wait: 300 },
+  { name: 'o08-look-recommended', js: `document.querySelector('.th-role .th-btn--go').click()`, wait: 900 },
+  { name: 'o09-hello', js: `document.querySelector('.th-look .th-btn--go').click()`, wait: 2000 },
+  { name: 'o10-first-program', js: `(async () => { await new Promise(r => setTimeout(r, 3600)); window.__thetaTest.firstProgram('Aarav', 'build'); await new Promise(r => setTimeout(r, 700)); })()`, wait: 200 },
+  { name: 'o11-first-run-done', js: `(async () => { ${RUN} await new Promise(r => setTimeout(r, 900)); })()`, wait: 300 },
+  { name: 'o12-update-downloading', js: `(async () => { document.querySelector('.tour--coach .tour__btn--quiet')?.click(); await new Promise(r => setTimeout(r, 300)); window.__thetaTest.updateScreen({ manual: true }); window.__thetaTest.updateSim({ state: 'downloading', version: '1.2.0', percent: 46, transferred: 38 * 1048576, total: 83 * 1048576, bytesPerSecond: 4.2 * 1048576 }, { version: '1.1.1' }); await new Promise(r => setTimeout(r, 2600)); })()`, wait: 200 },
+  { name: 'o13-update-installing', js: `window.__thetaTest.updateSim({ state: 'installing', version: '1.2.0' })`, wait: 1500 },
+  { name: 'o14', noShot: true, js: `window.__thetaTest.updateClose()`, wait: 400 },
+  ...['half', 'third', 'quarter', 'mini'].map((m) => studyStrip('pro', m)),
+  { name: 'o20-boot-replay', js: `(async () => { const o = document.getElementById('loading-overlay'); const c = o.querySelector('.loading-content'); if (0 === 0) { o.classList.remove('hidden', 'fade-out'); c.classList.remove('is-drawing'); void c.offsetWidth; c.classList.add('is-drawing'); } })()`, wait: 550 },
+  { name: 'o21-boot-replay', js: `(async () => { const o = document.getElementById('loading-overlay'); const c = o.querySelector('.loading-content'); if (1 === 0) { o.classList.remove('hidden', 'fade-out'); c.classList.remove('is-drawing'); void c.offsetWidth; c.classList.add('is-drawing'); } })()`, wait: 600 },
+  { name: 'o22-boot-replay', js: `(async () => { const o = document.getElementById('loading-overlay'); const c = o.querySelector('.loading-content'); if (2 === 0) { o.classList.remove('hidden', 'fade-out'); c.classList.remove('is-drawing'); void c.offsetWidth; c.classList.add('is-drawing'); } })()`, wait: 1300 },
+];
+
 function attachShots(win, dir) {
-  const scenes = { p13: P13_SCENES, p13real: P13_REAL, relay: RELAY_SCENES, python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES, p12: P12_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
+  const scenes = { onb: ONB_SCENES, studybar: STUDYBAR_SCENES, fix: FIX_SCENES, p13: P13_SCENES, p13real: P13_REAL, relay: RELAY_SCENES, python: PY_SCENES, lsp: LSP_SCENES, debug: DEBUG_SCENES, study: STUDY_SCENES, git: GIT_SCENES, groups: GROUP_SCENES, notebook: NB_SCENES, spot: SPOT_SCENES, learn: LEARN_SCENES, class: CLASS_SCENES, p10: P10_SCENES, p11: P11_SCENES, p12: P12_SCENES }[process.env.THETA_SHOTS_SET] || SCENES;
   fs.mkdirSync(dir, { recursive: true });
   const scale = process.env.THETA_SCALE || '1';
   win.webContents.on('console-message', (...args) => {

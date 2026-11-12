@@ -262,24 +262,6 @@
 .pip-package-item__uninstall { height: 26px; padding: 0 10px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 600; border: var(--border-w) solid currentColor; border-radius: var(--r-md); }
 .pip-package-item__uninstall:hover { background: var(--red-tint); }
 
-/* ── Theta, the pixel buddy (Playground) ── */
-.mascot { position: relative; flex: none; width: 35px; height: 25px; margin: 0 6px 0 auto; pointer-events: none; animation: mascotBob 2s ease-in-out infinite; }
-.mascot__px {
-  position: absolute; left: 0; top: 0; width: 5px; height: 5px;
-  box-shadow: 10px 0 #FF4A36, 15px 0 #FF4A36, 20px 0 #FF4A36, 5px 5px #FF4A36, 10px 5px #FF4A36, 15px 5px #FF4A36, 20px 5px #FF4A36, 25px 5px #FF4A36, 0 10px #FF4A36, 5px 10px #FF4A36, 10px 10px #FFFFFF, 15px 10px #FF4A36, 20px 10px #FFFFFF, 25px 10px #FF4A36, 30px 10px #FF4A36, 0 15px #FF4A36, 5px 15px #FF4A36, 10px 15px #FF4A36, 15px 15px #FF4A36, 20px 15px #FF4A36, 25px 15px #FF4A36, 30px 15px #FF4A36, 5px 20px #17142E, 25px 20px #17142E;
-}
-:root[data-run-state="done"] .mascot { animation: mascotBob 0.5s ease-in-out 6; }
-:root[data-run-state="done"] .mascot__px {
-  box-shadow: 10px 0 #FF4A36, 15px 0 #FF4A36, 20px 0 #FF4A36, 5px 5px #FF4A36, 10px 5px #17142E, 15px 5px #FF4A36, 20px 5px #17142E, 25px 5px #FF4A36, 0 10px #FF4A36, 5px 10px #FF4A36, 10px 10px #FF4A36, 15px 10px #FF4A36, 20px 10px #FF4A36, 25px 10px #FF4A36, 30px 10px #FF4A36, 0 15px #FF4A36, 5px 15px #FF4A36, 10px 15px #17142E, 15px 15px #17142E, 20px 15px #17142E, 25px 15px #FF4A36, 30px 15px #FF4A36, 5px 20px #17142E, 25px 20px #17142E;
-}
-:root[data-run-state="error"] .mascot { animation: mascotShake 0.25s 4; }
-:root[data-run-state="error"] .mascot__px {
-  box-shadow: 10px 0 #FF4A36, 15px 0 #FF4A36, 20px 0 #FF4A36, 5px 5px #FF4A36, 10px 5px #FF4A36, 15px 5px #FF4A36, 20px 5px #FF4A36, 25px 5px #FF4A36, 0 10px #FF4A36, 5px 10px #FFFFFF, 10px 10px #FFFFFF, 15px 10px #FF4A36, 20px 10px #FFFFFF, 25px 10px #FFFFFF, 30px 10px #FF4A36, 0 15px #FF4A36, 5px 15px #FF4A36, 10px 15px #FF4A36, 15px 15px #17142E, 20px 15px #FF4A36, 25px 15px #FF4A36, 30px 15px #FF4A36, 5px 20px #17142E, 25px 20px #17142E;
-}
-:root[data-run-state="running"] .mascot { animation: mascotBob 0.35s ease-in-out infinite; }
-@keyframes mascotBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes mascotShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
-:root[data-theme="pro"] .mascot { display: none; }
 
 /* ── Class tile (Playground) ── */
 .class-tile {
@@ -417,7 +399,7 @@
 .loading-content { display: flex; flex-direction: column; align-items: center; gap: 20px; width: min(380px, calc(100vw - 48px)); }
 .boot-stage { position: relative; display: flex; align-items: center; justify-content: center; width: 240px; height: 190px; }
 .boot-mark { display: block; }
-.boot-mark .bm { fill: var(--red); animation: bmIn 380ms steps(4) both; }
+.boot-mark .bm { fill: var(--brand-red); animation: bmIn 380ms steps(4) both; }
 .boot-mark .bm2 { animation-delay: 90ms; }
 .boot-mark .bm3 { animation-delay: 180ms; }
 .boot-mark .bm4 { animation-delay: 270ms; }
@@ -430,7 +412,7 @@
 .loading-brand__mark { display: none; flex: none; }
 .loading-content.has-fx .loading-brand__mark { display: block; }
 .loading-brand__word { font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
-.loading-brand__word span { color: var(--accent-text); }
+.loading-brand__word span { color: var(--brand-red); }
 .loading-sub { font-size: var(--fs-base); font-weight: 500; color: var(--text-2); }
 
 .loading-bar-wrap { position: relative; width: 100%; height: 12px; border: var(--border-w) solid var(--line-strong); border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-1); }
@@ -521,12 +503,11 @@
 :root:not([data-theme="pro"]) .pip-filter { order: 2; flex: 1 1 140px; }
 :root:not([data-theme="pro"]) #pip-check { order: 3; }
 
-/* Four output tabs fit the Playground tile: when it is narrow the mascot
+/* Four output tabs fit the Playground tile: when it is narrow the extras
    steps aside and Problems shows an icon with its count (Clear stays visible) */
 .ide-pane--terminal .pane-header { container-type: inline-size; }
 .pane-tab__icon { display: none; vertical-align: -2px; }
 @container (max-width: 470px) {
-  .ide-pane--terminal .mascot { display: none; }
   :root:not([data-theme="pro"]) #tab-problems .pane-tab__label { display: none; }
   :root:not([data-theme="pro"]) #tab-problems .pane-tab__icon { display: inline-block; }
   :root[data-theme="playground"] .ide-pane--terminal .pane-header__tabs .pane-tab { padding: 0 8px; }
@@ -535,3 +516,49 @@
 }
 
 .pip-package-item__left { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+
+/* ═══ Start-up screen: a pen sketches the mark, ink fills it, the name writes itself ═══ */
+.loading-overlay { transition: opacity 420ms ease; }
+.loading-content { gap: 0; width: min(320px, calc(100vw - 48px)); }
+.loading-steps, .loading-brand, .boot-mark, .loading-bar-wrap { display: none !important; }
+.boot-stage { width: auto; height: auto; margin-bottom: 28px; }
+.boot-sketch { display: block; overflow: visible; }
+.bk-pen {
+  fill: none; stroke: var(--text); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .9;
+}
+.bk-ink { fill: var(--brand-red); opacity: 0; }
+.loading-content.is-drawing .bk-pen {
+  animation: bkPen 520ms cubic-bezier(.5, .05, .3, 1) both calc(var(--i) * 170ms + 120ms),
+             bkPenOut 500ms ease both calc(1.5s + var(--i) * 60ms);
+}
+.loading-content.is-drawing .bk-ink { animation: bkInk 520ms ease both calc(var(--i) * 170ms + 520ms); }
+@keyframes bkPen { to { stroke-dashoffset: 0; } }
+@keyframes bkPenOut { to { opacity: 0; } }
+@keyframes bkInk { from { opacity: 0; transform: translate(1.5px, 1.5px); } to { opacity: 1; transform: none; } }
+.boot-word { display: block; margin-bottom: 10px; overflow: visible; }
+.boot-word path { stroke-width: .9; stroke-dasharray: 1; stroke-dashoffset: 1; stroke-linecap: round; }
+.bk-word-fg { stroke: var(--text); }
+.bk-word-red { stroke: var(--brand-red); }
+.loading-content.is-drawing .boot-word path { animation: bkPen 700ms cubic-bezier(.45, 0, .25, 1) both 1.15s; }
+.loading-content.is-drawing .bk-word-fg path:nth-child(2) { animation-delay: 1.23s; }
+.loading-content.is-drawing .bk-word-fg path:nth-child(3) { animation-delay: 1.31s; }
+.loading-content.is-drawing .bk-word-fg path:nth-child(4) { animation-delay: 1.39s; }
+.loading-content.is-drawing .bk-word-fg path:nth-child(5) { animation-delay: 1.47s; }
+.loading-content.is-drawing .bk-word-red path:nth-child(1) { animation-delay: 1.6s; }
+.loading-content.is-drawing .bk-word-red path:nth-child(2) { animation-delay: 1.68s; }
+.loading-content.is-drawing .bk-word-red path:nth-child(3) { animation-delay: 1.76s; }
+.loading-text { margin-bottom: 32px; }
+.loading-sub { font-size: var(--fs-sm); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); opacity: 0; }
+.loading-content.is-drawing .loading-sub { animation: bkFade 600ms ease both 1.9s; }
+@keyframes bkFade { to { opacity: 1; } }
+.boot-progress { width: 100%; height: 2px; overflow: hidden; border-radius: 1px; background: var(--line); }
+.boot-progress__fill { display: block; height: 100%; background: var(--text); transform-origin: left; transform: scaleX(0); transition: transform 600ms cubic-bezier(.2, .8, .2, 1); }
+.boot-status { margin: 12px 0 0; font-size: var(--fs-sm); color: var(--text-2); text-align: center; min-height: 20px; }
+.boot-detail { margin-top: 2px; text-align: center; color: var(--text-4); }
+@media (prefers-reduced-motion: reduce) {
+  .bk-pen { display: none; }
+  .bk-ink { opacity: 1; animation: none !important; }
+  .boot-word path { stroke-dashoffset: 0; animation: none !important; }
+  .loading-sub { opacity: 1; animation: none !important; }
+}

@@ -30,7 +30,7 @@ const MARK_BLOCKS = [
   { x: 173, y: 0, w: 35, h: 34, d: 600, dot: 'd2' },
 ];
 // The THETA172 wordmark (strokes), from the brand
-const WORD = `<g stroke="#f4ede9"><path pathLength="1" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(19 0)" d="M.6 0V14M9.4 0V14M.6 7H9.4"/><path pathLength="1" transform="translate(38 0)" d="M10 .6H.6V13.4H10M.6 7H9"/><path pathLength="1" transform="translate(57 0)" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(76 0)" d="M0 14L5 .5L10 14"/></g><g stroke="#f4473a"><path pathLength="1" transform="translate(95 0)" d="M2.6 3.2L6.2 .6V14"/><path pathLength="1" transform="translate(114 0)" d="M.3 .6H9.6L3.8 14"/><path pathLength="1" transform="translate(133 0)" d="M.9 3.6C1.3 1.7 3 .6 5 .6c2.4 0 4.2 1.5 4.2 3.7 0 1.8-1 2.9-2.7 4.2L.8 13.4H10"/></g>`;
+const WORD = `<g stroke="#f4ede9"><path pathLength="1" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(19 0)" d="M.6 0V14M9.4 0V14M.6 7H9.4"/><path pathLength="1" transform="translate(38 0)" d="M10 .6H.6V13.4H10M.6 7H9"/><path pathLength="1" transform="translate(57 0)" d="M0 .6H10M5 .6V14"/><path pathLength="1" transform="translate(76 0)" d="M0 14L5 .5L10 14"/></g><g stroke="#E3262D"><path pathLength="1" transform="translate(95 0)" d="M2.6 3.2L6.2 .6V14"/><path pathLength="1" transform="translate(114 0)" d="M.3 .6H9.6L3.8 14"/><path pathLength="1" transform="translate(133 0)" d="M.9 3.6C1.3 1.7 3 .6 5 .6c2.4 0 4.2 1.5 4.2 3.7 0 1.8-1 2.9-2.7 4.2L.8 13.4H10"/></g>`;
 const DIVISIONS = ['Food', 'Education', 'Security', 'ML', 'Research', 'Labs'];
 
 export const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -49,6 +49,18 @@ export function markSvg(cls = 'th-mark') {
     return `<g class="blk${b.dot ? ` ${b.dot}` : ''}" style="--d:${b.d}">${inner}</g>`;
   }).join('');
   return `<svg class="${cls}" viewBox="0 0 208 183" aria-hidden="true">${blocks}</svg>`;
+}
+
+/** The mark sketched in pen, then inked (the start-up screen and the updating screen). */
+export function sketchMarkSvg(cls = 'boot-sketch') {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647) * 2 - 1; };
+  const j = (v) => +(v + rnd() * 1.6).toFixed(1);
+  const parts = MARK_BLOCKS.map((b, i) => {
+    const d = `M${j(b.x - 2)} ${j(b.y + 1)} L${j(b.x + b.w)} ${j(b.y)} L${j(b.x + b.w)} ${j(b.y + b.h)} L${j(b.x)} ${j(b.y + b.h)} L${j(b.x + 1)} ${j(b.y - 2)}`;
+    return `<rect class="bk-ink" style="--i:${i}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/><path class="bk-pen" style="--i:${i}" pathLength="1" d="${d}"/>`;
+  }).join('');
+  return `<svg class="${cls}" viewBox="-8 -8 226 196" aria-hidden="true">${parts}</svg>`;
 }
 
 /** The protractor round the mark (ticks, the 172° mark, needle, sweep). */
@@ -86,9 +98,9 @@ export function arcPath(deg, r = 82) {
 
 /**
  * Play the first start. Resolves when the app should start.
- * @param {{ force?: boolean, onName?: (name: string) => void }} [opts]
+ * @param {{ force?: boolean, onName?: (name: string) => void, onTheme?: (theme: 'playground'|'pro') => void }} [opts]
  */
-export function playWelcome({ force = false, onName } = {}) {
+export function playWelcome({ force = false, onName, onTheme, onRole } = {}) {
   if (!force && welcomeSeen()) return Promise.resolve(false);
   storageSet(SEEN_KEY, '1');
   document.getElementById('welcome')?.remove();
@@ -122,9 +134,12 @@ export function playWelcome({ force = false, onName } = {}) {
         <p class="th-what">One Python IDE to learn, teach and build.</p>
       </div>
     </div>
-    <form class="th-act th-name" autocomplete="off" hidden>
+    <div class="th-setup" hidden>
       <div class="th-corner">${markSvg('th-mark th-mark--still')}</div>
-      <p class="th-eyebrow">Hello</p>
+      <div class="th-steps" aria-hidden="true"><i class="is-on"></i><i></i><i></i></div>
+    </div>
+    <form class="th-act th-name" autocomplete="off" hidden>
+      <p class="th-eyebrow">Step 1 of 3</p>
       <h2 class="th-ask"><label for="th-name-input">What should we call you?</label></h2>
       <input id="th-name-input" class="th-input" type="text" maxlength="40" spellcheck="false" placeholder="Your name" />
       <p class="th-hint">It stays on this computer. Your teacher sees it when you join a class.</p>
@@ -133,11 +148,55 @@ export function playWelcome({ force = false, onName } = {}) {
         <button class="th-btn th-btn--ghost" type="button" data-skip-name>Skip</button>
       </div>
     </form>
+    <form class="th-act th-role" hidden>
+      <p class="th-eyebrow">Step 2 of 3</p>
+      <h2 class="th-ask">What brings you here?</h2>
+      <p class="th-hint">We will set things up for you. You can use everything either way.</p>
+      <div class="th-roles" role="radiogroup" aria-label="What brings you here">
+        <button class="th-role-card" type="button" role="radio" aria-checked="true" data-role="learn">
+          <span class="th-role-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4z"/><path d="M7 9v5c0 1.5 2.2 3 5 3s5-1.5 5-3V9"/></svg></span>
+          <b>Learning Python</b><small>School, college or on my own</small>
+        </button>
+        <button class="th-role-card" type="button" role="radio" aria-checked="false" data-role="teach">
+          <span class="th-role-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/><path d="M7 9h6M7 12h4"/></svg></span>
+          <b>Teaching a class</b><small>Live classes, help requests, hand-ins</small>
+        </button>
+        <button class="th-role-card" type="button" role="radio" aria-checked="false" data-role="build">
+          <span class="th-role-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>
+          <b>Building and data</b><small>Projects, notebooks, tests, debugging</small>
+        </button>
+      </div>
+      <div class="th-actions">
+        <button class="th-btn th-btn--go" type="submit">Continue <span aria-hidden="true">→</span></button>
+        <button class="th-btn th-btn--ghost" type="button" data-back-role>Back</button>
+      </div>
+    </form>
+    <form class="th-act th-look" hidden>
+      <p class="th-eyebrow">Step 3 of 3</p>
+      <h2 class="th-ask">Choose your look</h2>
+      <p class="th-hint">We picked one for you. You can switch any time from the top bar.</p>
+      <div class="th-looks" role="radiogroup" aria-label="Look">
+        <button class="th-look-card" type="button" role="radio" aria-checked="true" data-look="playground">
+          <span class="th-look-prev th-look-prev--play" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <b>Playground <em class="th-rec" data-rec="playground">Recommended for you</em></b>
+          <small>Bright and friendly. Made for learning and for class.</small>
+        </button>
+        <button class="th-look-card" type="button" role="radio" aria-checked="false" data-look="pro">
+          <span class="th-look-prev th-look-prev--pro" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <b>Pro <em class="th-rec" data-rec="pro">Recommended for you</em></b>
+          <small>Quiet graphite, dense and keyboard-first. Made for data and ML work.</small>
+        </button>
+      </div>
+      <div class="th-actions">
+        <button class="th-btn th-btn--go" type="submit">Continue <span aria-hidden="true">→</span></button>
+        <button class="th-btn th-btn--ghost" type="button" data-back>Back</button>
+      </div>
+    </form>
     <div class="th-act th-hello" hidden aria-live="polite">
       <p class="th-eyebrow">Welcome</p>
       <h2 class="th-namaste"></h2>
-      <p class="th-hello-sub">You are all set in <b>Python by THETA172</b>.</p>
-      <p class="th-hello-sub th-hello-sub--2">Your first program is one click away.</p>
+      <p class="th-hello-sub">Your Python IDE is ready.</p>
+      <p class="th-hello-sub th-hello-sub--2">Let's run your first program.</p>
     </div>
     <button class="th-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
   `;
@@ -145,6 +204,9 @@ export function playWelcome({ force = false, onName } = {}) {
   const $ = (s) => stage.querySelector(s);
   const intro = $('.th-intro');
   const form = $('.th-name');
+  const look = $('.th-look');
+  const roleForm = $('.th-role');
+  const setup = $('.th-setup');
   const hello = $('.th-hello');
   const skipBtn = $('.th-skip');
   const timers = [];
@@ -197,28 +259,107 @@ export function playWelcome({ force = false, onName } = {}) {
       intro.classList.add('is-out');
       setTimeout(() => {
         intro.hidden = true;
+        setup.hidden = false;
         form.hidden = false;
         form.classList.add('is-in');
         input.focus({ preventScroll: true });
       }, reduce ? 0 : 500);
     }
+    let chosenName = '';
     const submit = (name) => {
       if (phase !== 'name') return;
-      phase = 'hello';
-      // eslint-disable-next-line no-control-regex
       const clean = String(name || '').replace(/[\u0000-\u001F<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (clean) storageSet(NAME_KEY, clean);
+      chosenName = clean;
       onName?.(clean);
-      toHello(clean);
+      swap(form, roleForm, 1, () => roleCards.find((c) => c.dataset.role === role).focus({ preventScroll: true }));
+      phase = 'role';
     };
+
+    /** Move from one step to the next (or back), with the progress line. */
+    function swap(from, to, step, after) {
+      from.classList.add('is-out');
+      setTimeout(() => {
+        from.hidden = true;
+        from.classList.remove('is-out', 'is-in');
+        dots().forEach((d, k) => d.classList.toggle('is-on', k <= step));
+        to.hidden = false;
+        to.classList.remove('is-out');
+        to.classList.add('is-in');
+        after?.();
+      }, reduce ? 0 : 380);
+    }
+
+    // ── Act 2a: what brings you here (it picks the recommended look) ──
+    const RECOMMEND = { learn: 'playground', teach: 'playground', build: 'pro' };
+    let role = storageGet('theta-user-role') || 'learn';
+    if (!RECOMMEND[role]) role = 'learn';
+    const roleCards = [...roleForm.querySelectorAll('.th-role-card')];
+    const paintRole = () => roleCards.forEach((c) => c.setAttribute('aria-checked', String(c.dataset.role === role)));
+    roleCards.forEach((c) => c.addEventListener('click', () => { role = c.dataset.role; paintRole(); }));
+    roleForm.querySelector('.th-roles').addEventListener('keydown', (e) => {
+      const keys = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+      if (!keys[e.key]) return;
+      e.preventDefault();
+      const order = roleCards.map((c) => c.dataset.role);
+      role = order[(order.indexOf(role) + keys[e.key] + order.length) % order.length];
+      paintRole();
+      roleCards.find((c) => c.dataset.role === role).focus();
+    });
+    paintRole();
+    roleForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (phase !== 'role') return;
+      storageSet('theta-user-role', role);
+      onRole?.(role);
+      theme = RECOMMEND[role];
+      paintLook();
+      look.querySelectorAll('.th-rec').forEach((r) => { r.hidden = r.dataset.rec !== theme; });
+      phase = 'look';
+      swap(roleForm, look, 2, () => cards.find((c) => c.dataset.look === theme).focus({ preventScroll: true }));
+    });
+    roleForm.querySelector('[data-back-role]').addEventListener('click', () => {
+      if (phase !== 'role') return;
+      phase = 'name';
+      swap(roleForm, form, 0, () => input.focus({ preventScroll: true }));
+    });
+
+    // ── Act 2b: your look ──
+    let theme = document.documentElement.dataset.theme === 'pro' ? 'pro' : 'playground';
+    const cards = [...look.querySelectorAll('.th-look-card')];
+    const paintLook = () => cards.forEach((c) => c.setAttribute('aria-checked', String(c.dataset.look === theme)));
+    cards.forEach((c) => c.addEventListener('click', () => { theme = c.dataset.look; paintLook(); }));
+    look.querySelector('.th-looks').addEventListener('keydown', (e) => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      e.preventDefault();
+      theme = theme === 'pro' ? 'playground' : 'pro';
+      paintLook();
+      cards.find((c) => c.dataset.look === theme).focus();
+    });
+    paintLook();
+    const dots = () => [...stage.querySelectorAll('.th-steps i')];
+    look.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (phase !== 'look') return;
+      phase = 'hello';
+      onTheme?.(theme);
+      toHello(chosenName);
+    });
+    look.querySelector('[data-back]').addEventListener('click', () => {
+      if (phase !== 'look') return;
+      phase = 'role';
+      swap(look, roleForm, 1, () => roleCards.find((c) => c.dataset.role === role).focus({ preventScroll: true }));
+    });
     form.addEventListener('submit', (e) => { e.preventDefault(); submit(input.value); });
     $('[data-skip-name]').addEventListener('click', () => submit(''));
 
     // ── Act 3 ──
     function toHello(name) {
-      form.classList.add('is-out');
+      look.classList.add('is-out');
+      setup.classList.add('is-out');
       setTimeout(() => {
-        form.hidden = true;
+        look.hidden = true;
+        setup.hidden = true;
         const h = $('.th-namaste');
         const words = name ? `Namaste, ${name}.` : 'Namaste.';
         h.innerHTML = [...words].map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : esc(ch)}</span>`).join('');
@@ -236,7 +377,7 @@ export function playWelcome({ force = false, onName } = {}) {
       cancelAnimationFrame(raf);
       document.removeEventListener('keydown', onKey, true);
       stage.classList.add('is-leaving');
-      setTimeout(() => { stage.remove(); resolve(true); }, 800);
+      setTimeout(() => { stage.remove(); resolve({ name: chosenName, role, theme }); }, 800);
     }
 
     const onKey = (e) => {

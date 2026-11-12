@@ -24,6 +24,7 @@ const { registerRelaySetupIpc } = require('./relay-setup.cjs');
 const { PythonRunner } = require('./python-runner.cjs');
 const { FileAccess } = require('./file-access.cjs');
 const { registerUpdater } = require('./updater.cjs');
+const { createGate } = require('./gate.cjs');
 const { registerWorkspaceIpc } = require('./workspace-ipc.cjs');
 const { registerPythonIpc, bundledPaths } = require('./python-ipc.cjs');
 const { registerLspIpc } = require('./lsp-ipc.cjs');
@@ -46,6 +47,8 @@ let packageCache = null; // class package folder (teacher), set in app.whenReady
 let gpuPool = null;      // class GPU pool (teacher), set in app.whenReady
 let testRunner = null;   // pytest, set in app.whenReady
 let relaySetup = null;   // "set up your own relay", set in app.whenReady
+let gate = null;         // the owner's remote gate (license / kill switch), set in app.whenReady
+let locked = false;      // true once the gate has locked this copy
 
 // Smoke tests use a throwaway profile so they never touch real saved code.
 if (process.env.THETA_SMOKE === '1') {
@@ -75,6 +78,39 @@ if (!isDev) {
 }
 
 let mainWindow = null;
+
+/** Show the owner's lock screen in place of the app. Once locked, it stays locked. */
+function loadLockScreen(decision) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  locked = true;
+  const data = JSON.stringify({ id: gate?.id || '', message: decision?.message || '', contact: decision?.contact || '' });
+  const fill = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Fill the lock screen from the main process (the page carries no script of its own)
+    mainWindow.webContents.executeJavaScript(`(function(d){
+      if (d.message) document.getElementById('msg').textContent = d.message;
+      if (d.contact) { var c = document.getElementById('contact'), s = String(d.contact).replace(/[<>]/g,'');
+        if (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(s)) { c.textContent = 'Contact '; var a = document.createElement('a'); a.href = 'mailto:' + s; a.textContent = s; c.appendChild(a); }
+        else c.textContent = s; c.hidden = false; }
+      if (d.id) document.getElementById('id').textContent = 'Device ' + d.id.slice(0,8).toUpperCase();
+      document.addEventListener('keydown', function(e){ if (e.key==='F12' || (e.ctrlKey&&e.shiftKey&&/[IJC]/.test(e.key))) e.preventDefault(); });
+      document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    })(${data});`).catch(() => {});
+  };
+  mainWindow.webContents.once('did-finish-load', fill);
+  mainWindow.loadFile(path.join(__dirname, 'lock.html'));
+}
+
+/** Check the gate in the background; if the owner has locked this copy, swap to the lock screen. */
+function startGateWatch() {
+  if (!gate || !gate.active) return;
+  const run = () => gate.check().then((d) => {
+    if (d.locked && !locked) { console.log('[gate] locked:', d.reason); loadLockScreen(d); }
+  }).catch(() => {});
+  setTimeout(run, 4000);
+  const timer = setInterval(run, gate.CHECK_INTERVAL_MS);
+  timer.unref?.();
+}
 
 function createWindow() {
   // Set COEP/COOP + CSP headers before any request
@@ -124,12 +160,19 @@ function createWindow() {
     },
   });
 
-  if (isDev) {
+  // The owner's gate decides what loads. An already-cached "disabled" locks at
+  // once (even offline); otherwise the app loads and the gate checks in the
+  // background, locking only if the owner has turned this copy off.
+  const startDecision = gate ? gate.cachedDecision() : { locked: false };
+  if (startDecision.locked) {
+    loadLockScreen(startDecision);
+  } else if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // THETA_SHOW_WELCOME=1 opens straight into the first-start welcome (for previews)
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), process.env.THETA_SHOW_WELCOME === '1' ? { query: { welcome: '1' } } : undefined);
   }
+  if (!startDecision.locked) startGateWatch();
 
   mainWindow.once('ready-to-show', () => {
     // Test runs open without taking focus: typing elsewhere must not land in
@@ -1109,6 +1152,8 @@ ipcMain.on('classroom-revoke-edit', () => {
 
 // ── App Lifecycle ───────────────────────────────────────────────
 app.whenReady().then(() => {
+  // The owner's gate: before anything, decide whether this copy may open
+  gate = createGate({ app, userData: app.getPath('userData') });
   workspaceIpc = registerWorkspaceIpc({
     ipcMain, dialog, shell, app, execFile, getWindow: () => mainWindow, fileAccess,
     shellEnv: (base) => pythonIpc?.shellEnv(base) ?? base,

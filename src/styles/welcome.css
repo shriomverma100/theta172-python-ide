@@ -10,7 +10,7 @@
   --th-line-hi: #4d3632;
   --th-fg: #f4ede9;
   --th-dim: #a3948f;
-  --th-red: #f4473a;
+  --th-red: #E3262D;
   --th-red-deep: #7d1a12;
   --th-display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
   --th-body: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
@@ -181,47 +181,91 @@
 .th--still *, .th--still *::before { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; }
 .th--still .th-mark .float { animation: none !important; }
 
-/* ═══ Polish: light, depth and the 172° moment (no particles) ═══ */
+/* ═══ Finish: pure black, no haze or glow; calm, exact motion ═══
+   Spacing on an 8-px grid; one ease (--th-ease); the red only on the mark,
+   the 172° reading and the one action on each step. */
 .th { opacity: 0; transition: opacity 900ms ease; }
 .th.is-on { opacity: 1; }
 .th.is-leaving { opacity: 0; transition-duration: 800ms; }
-/* A soft red light behind the mark that breathes, and a vignette for depth */
-.th::before {
-  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: radial-gradient(38vmax 30vmax at 50% 44%, rgba(244, 71, 58, .13), rgba(244, 71, 58, 0) 70%);
-  opacity: 0; transition: opacity 1.4s ease, transform 1.2s var(--th-ease);
-}
-.th.is-on::before { opacity: 1; animation: thBreathe 5s ease-in-out infinite 1s; }
-.th.is-brand::before { transform: translateY(-16vh) scale(.8); }
-.th.is-presents::before { transform: translateY(0) scale(1.25); opacity: .8; }
-@keyframes thBreathe { 50% { opacity: .65; } }
-.th::after {
-  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, .55) 100%);
-}
-.th-act, .th-skip { z-index: 3; }
+.th-act, .th-skip, .th-setup { z-index: 3; }
 
-/* The 172° moment: the mark lights and sends out a ring */
-.th-proto .goal-ping { fill: none; stroke: var(--th-red); stroke-width: .8; opacity: 0; transform-box: fill-box; transform-origin: center; }
-.th-hero.found .goal-ping { animation: thPing 1.4s cubic-bezier(.2, .7, .3, 1) 2; }
-@keyframes thPing { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(4.2); } }
-.th-hero.found .tick.goal, .th-hero.found .lbl.goal { filter: drop-shadow(0 0 2px rgba(244, 71, 58, .9)); }
-.th-hero.found .th-markbox { animation: thGlow 1.6s ease both; }
-@keyframes thGlow { 40% { filter: drop-shadow(0 0 18px rgba(244, 71, 58, .55)); } }
-
-/* The mark lands softly */
+/* The 172° moment: one thin ring from the mark, nothing glows */
+.th-proto .goal-ping { fill: none; stroke: var(--th-red); stroke-width: .6; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.th-hero.found .goal-ping { animation: thPing 1.2s cubic-bezier(.2, .7, .3, 1) 1; }
+@keyframes thPing { 0% { opacity: .8; transform: scale(.6); } 100% { opacity: 0; transform: scale(3.6); } }
 .th-mark.go .blk { animation-duration: .9s; }
 
-/* "Python" gets a red rule that draws itself */
-.th-rule { display: block; width: min(420px, 60vw); height: 2px; margin: 2px auto 4px; background: linear-gradient(90deg, transparent, var(--th-red) 18%, var(--th-red) 82%, transparent); transform: scaleX(0); }
-.th.is-presents .th-rule { animation: thRule 1.1s var(--th-ease) both 1.05s; }
+/* "Python" gets a thin rule that draws itself */
+.th-rule { display: block; width: min(400px, 56vw); height: 1px; margin: 8px auto; background: var(--th-line-hi); transform: scaleX(0); }
+.th.is-presents .th-rule { animation: thRule 1s var(--th-ease) both 1.05s; }
 @keyframes thRule { to { transform: scaleX(1); } }
 
-/* Namaste: a slow ring of light behind the greeting */
-.th-hello::before {
-  content: ''; position: absolute; left: 50%; top: 46%; width: 40vmin; height: 40vmin; border-radius: 50%;
-  border: 1px solid rgba(244, 71, 58, .5); transform: translate(-50%, -50%) scale(.4); opacity: 0;
-  animation: thHalo 2.4s cubic-bezier(.2, .7, .3, 1) .3s both;
+/* ── Setup steps (Google-style): the mark top left, a two-part progress line ── */
+.th-setup { position: absolute; inset: 0 0 auto; height: 96px; pointer-events: none; }
+.th-setup.is-out { opacity: 0; transition: opacity .4s ease; }
+.th-corner { position: absolute; left: 40px; top: 32px; width: 40px; }
+.th-steps { position: absolute; left: 50%; top: 48px; display: flex; gap: 8px; width: 160px; transform: translateX(-50%); }
+.th-steps i { flex: 1; height: 2px; background: var(--th-line-hi); transition: background .5s var(--th-ease); }
+.th-steps i.is-on { background: var(--th-fg); }
+
+.th-name, .th-look { align-content: center; justify-items: start; gap: 16px; width: min(640px, 84vw); margin: 0 auto; inset: 0; position: absolute; }
+.th-look.is-in > * { animation: thRise .7s var(--th-ease) both; }
+.th-look.is-in > :nth-child(2) { animation-delay: .05s; }
+.th-look.is-in > :nth-child(3) { animation-delay: .1s; }
+.th-look.is-in > :nth-child(4) { animation-delay: .16s; }
+.th-look.is-in > :nth-child(5) { animation-delay: .24s; }
+.th-look.is-out { opacity: 0; transform: translateY(-12px); transition: opacity .4s ease, transform .4s ease; }
+.th-eyebrow { color: var(--th-dim); }
+.th-name .th-actions, .th-look .th-actions { margin-top: 16px; }
+
+/* The two looks */
+.th-looks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; margin-top: 8px; }
+.th-look-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; text-align: left; cursor: pointer;
+  color: var(--th-fg); background: var(--th-raise); border: 1px solid var(--th-line); border-radius: 8px;
+  transition: border-color .2s ease, background .2s ease;
 }
-@keyframes thHalo { 0% { opacity: .8; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); } }
+.th-look-card:hover { border-color: var(--th-line-hi); }
+.th-look-card[aria-checked="true"] { border-color: var(--th-fg); background: #120d0c; }
+.th-look-card b { font: 400 20px/1.2 var(--th-display); margin-top: 8px; }
+.th-look-card small { font-size: 14px; line-height: 1.5; color: var(--th-dim); }
+.th-look-prev { display: grid; width: 100%; aspect-ratio: 16 / 9; gap: 6px; padding: 10px; border-radius: 4px; }
+.th-look-prev--play { grid-template-columns: 1fr 2fr 1.2fr; grid-template-rows: 1fr 1fr; background: #E9E6FB; }
+.th-look-prev--play i { border: 1.5px solid #17142E; border-radius: 8px; background: #fff; }
+.th-look-prev--play i:nth-child(2) { grid-row: span 2; background: #17142E; }
+.th-look-prev--play i:nth-child(3) { background: #C6F24E; }
+.th-look-prev--play i:nth-child(4) { background: #FF4A36; }
+.th-look-prev--pro { grid-template-columns: 10px 1fr; grid-template-rows: 1fr 32%; gap: 0; padding: 0; background: #1B1D22; border: 1px solid #30343C; overflow: hidden; }
+.th-look-prev--pro i:nth-child(1) { grid-row: span 2; background: #181A1F; border-right: 1px solid #30343C; }
+.th-look-prev--pro i:nth-child(2) { background: linear-gradient(#C69CF2, #C69CF2) 12px 12px / 40% 3px no-repeat, linear-gradient(#B4B9C3, #B4B9C3) 12px 22px / 62% 3px no-repeat, linear-gradient(#7FB0F5, #7FB0F5) 12px 32px / 34% 3px no-repeat; }
+.th-look-prev--pro i:nth-child(3) { background: #181A1F; border-top: 1px solid #30343C; }
+.th-look-prev--pro i:nth-child(4) { display: none; }
+@media (max-width: 640px) { .th-looks { grid-template-columns: 1fr; } }
+
+/* Namaste: words only */
 .th-hello { position: absolute; }
+
+/* ── Step 2: what brings you here ── */
+.th-role { align-content: center; justify-items: start; gap: 16px; width: min(640px, 84vw); margin: 0 auto; inset: 0; position: absolute; }
+.th-role.is-in > * { animation: thRise .7s var(--th-ease) both; }
+.th-role.is-in > :nth-child(2) { animation-delay: .05s; }
+.th-role.is-in > :nth-child(3) { animation-delay: .1s; }
+.th-role.is-in > :nth-child(4) { animation-delay: .16s; }
+.th-role.is-in > :nth-child(5) { animation-delay: .24s; }
+.th-role.is-out { opacity: 0; transform: translateY(-12px); transition: opacity .4s ease, transform .4s ease; }
+.th-role .th-actions { margin-top: 16px; }
+.th-roles { display: grid; gap: 8px; width: 100%; margin-top: 8px; }
+.th-role-card {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 16px; align-items: center;
+  min-height: 72px; padding: 12px 16px; text-align: left; cursor: pointer;
+  color: var(--th-fg); background: var(--th-raise); border: 1px solid var(--th-line); border-radius: 8px;
+  transition: border-color .2s ease, background .2s ease;
+}
+.th-role-card:hover { border-color: var(--th-line-hi); }
+.th-role-card[aria-checked="true"] { border-color: var(--th-fg); background: #120d0c; }
+.th-role-ico { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: #160f0e; color: var(--th-dim); }
+.th-role-card[aria-checked="true"] .th-role-ico { color: var(--th-fg); }
+.th-role-card b { font: 500 17px/1.3 var(--th-body); }
+.th-role-card small { font-size: 14px; color: var(--th-dim); }
+.th-rec { margin-left: 8px; padding: 2px 8px; font: 400 10px/1.6 var(--th-pixel); letter-spacing: .08em; text-transform: uppercase; color: var(--th-fg); border: 1px solid var(--th-line-hi); border-radius: 999px; vertical-align: 3px; font-style: normal; }
+.th-steps { width: 200px; }

@@ -1,21 +1,17 @@
 /**
- * Start-up screen: a checklist of real start-up steps, a one-line status
- * detail, and (when pixel effects are on) a spinning core that dissolves
- * into the IDE when Python is ready.
+ * Start-up screen: the THETA172 mark is sketched in pen, inked in red, and
+ * the wordmark writes itself; below, one quiet line says what is happening
+ * and a thin line shows how far start-up has got. When Python is ready the
+ * screen fades into the IDE.
  */
 import { $ } from '../core/dom.js';
-import { fx, startLoadingLoop, revealApp } from '../fx/moments.js';
 
-const STEP_COUNT = 5;
-let loop = null;
+const STEPS = ['Loading the editor', 'Setting up the terminal', 'Looking for Python on this computer', 'Starting the Python runtime', 'Ready'];
+const STEP_COUNT = STEPS.length;
 let finished = false;
 
 export function startBoot() {
-  const $content = document.querySelector('.loading-content');
-  if (fx.enabled) {
-    loop = startLoadingLoop($('boot-stage'));
-    if (loop) $content?.classList.add('has-fx');
-  }
+  document.querySelector('.loading-content')?.classList.add('is-drawing');
   setBootStep(0);
 }
 
@@ -27,6 +23,10 @@ export function setBootStep(index, detail) {
     $step.classList.toggle('done', i < index);
     $step.classList.toggle('active', i === index);
   }
+  const $status = $('boot-status');
+  if ($status) $status.textContent = STEPS[Math.min(index, STEP_COUNT - 1)];
+  const $bar = $('boot-progress');
+  if ($bar) $bar.style.transform = `scaleX(${Math.min(1, (index + 0.5) / STEP_COUNT).toFixed(3)})`;
   if (detail !== undefined) setBootDetail(detail);
 }
 
@@ -35,32 +35,23 @@ export function setBootDetail(text) {
   if ($detail) $detail.textContent = text || '';
 }
 
-/** Python is ready: tick the last step and reveal the IDE. */
+/** Python is ready: complete the line and fade into the IDE. */
 export function finishBoot(delayMs = 300) {
   if (finished) return;
   finished = true;
-  setBootStep(STEP_COUNT); // all done
+  setBootStep(STEP_COUNT);
   $(`lstep-${STEP_COUNT - 1}`)?.classList.add('done');
-
+  const $bar = $('boot-progress');
+  if ($bar) $bar.style.transform = 'scaleX(1)';
   setTimeout(() => {
-    loop?.stop();
-    loop = null;
     const $overlay = $('loading-overlay');
-    const hide = () => $overlay?.classList.add('hidden');
-    if (fx.enabled) {
-      // Hide the start-up screen a frame later, once the blinds are on screen
-      revealApp(() => requestAnimationFrame(() => requestAnimationFrame(hide)));
-    } else {
-      $overlay?.classList.add('fade-out');
-      setTimeout(hide, 340);
-    }
+    $overlay?.classList.add('fade-out');
+    setTimeout(() => $overlay?.classList.add('hidden'), 420);
   }, delayMs);
 }
 
 /** Start-up failed: get out of the way so the error in the terminal is visible. */
 export function failBoot() {
   finished = true;
-  loop?.cancel();
-  loop = null;
   $('loading-overlay')?.classList.add('hidden');
 }

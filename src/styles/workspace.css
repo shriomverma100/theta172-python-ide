@@ -19,8 +19,10 @@
     "rail files gutter"
     "rail files output";
 }
-.ide-body.sidebar-hidden { --files-w: 0px; }
-.ide-body.sidebar-hidden .sidebar { display: none; }
+:root[data-theme="pro"] .ide-body.sidebar-hidden-pro,
+:root:not([data-theme="pro"]) .ide-body.sidebar-hidden-play { --files-w: 0px; }
+:root[data-theme="pro"] .ide-body.sidebar-hidden-pro .sidebar,
+:root:not([data-theme="pro"]) .ide-body.sidebar-hidden-play .sidebar { display: none; }
 
 /* ── Sidebar shell ── */
 .sidebar {
@@ -203,7 +205,6 @@
 :root[data-theme="playground"] .ide-pane--terminal .pane-tab { padding: 0 11px; }
 :root[data-theme="playground"] .ide-pane--terminal .exec-mark { display: none; }
 :root[data-theme="playground"] .ide-pane--terminal .pane-header { gap: 6px; padding-right: 10px; }
-:root[data-theme="playground"] .mascot { margin: 0 2px 0 auto; }
 @media (max-width: 1360px) {
   :root[data-theme="playground"] .ide-body { --side-w: 370px; --files-w: 220px; }
 }

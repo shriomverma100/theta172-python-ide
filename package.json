@@ -23,6 +23,7 @@
     "shots": "vite build && node scripts/shots.cjs",
     "fetch:python": "node scripts/fetch-python.cjs",
     "release": "node scripts/release.cjs",
+    "license": "node scripts/license.cjs",
     "update-server": "node scripts/update-server.cjs"
   },
   "build": {

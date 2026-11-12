@@ -192,3 +192,109 @@
 @media (max-width: 1440px) { #btn-examples, #btn-shortcuts { display: none; } }
 @media (max-width: 1080px) { .brand-tag, .topbar-file { display: none; } }
 @media (max-width: 900px) { #btn-import-file, #btn-save-file { display: none; } .run-status { max-width: 30vw; } }
+
+/* ═══ Precise layout: nothing ever overlaps ═══
+   The bar is a row: left (brand, menus, file) can shrink and clips; the
+   centre takes what is left; the right keeps its size. As the window
+   narrows, items step down at fixed widths (8-px grid, 32-px Pro controls,
+   40-px Playground controls) instead of sliding over each other. */
+.ide-topbar { display: flex; align-items: center; gap: 12px; }
+.topbar-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.topbar-center { flex: 1 1 0; min-width: 0; }
+.topbar-right { flex: 0 0 auto; gap: 8px; }
+.topbar-left > * { flex: none; }
+.topbar-left .topbar-file { flex: 0 1 auto; min-width: 0; }
+
+/* Pro: every control in the bar is 32 px tall, 4 px corners, 8 px apart */
+:root[data-theme="pro"] .ide-topbar { gap: 8px; padding: 0 0 0 12px; }
+:root[data-theme="pro"] .topbar-left { gap: 8px; }
+:root[data-theme="pro"] .topbar-center { gap: 8px; }
+:root[data-theme="pro"] .cmd-bar { flex: 0 1 460px; width: auto; min-width: 0; height: 32px; }
+:root[data-theme="pro"] .cmd-bar kbd { flex: none; }
+:root[data-theme="pro"] .run-status { flex: none; height: 32px; max-width: 220px; }
+:root[data-theme="pro"] .theme-switch { flex: none; height: 32px; }
+:root[data-theme="pro"] .theme-switch button { height: 30px; padding: 0 12px; }
+:root[data-theme="pro"] .btn-predict--top { height: 32px; }
+:root[data-theme="pro"] .ide-topbar .btn-run { height: 32px; }
+
+/* Study mode in Pro: the one top-bar action Pro shows, as a 32-px icon button */
+:root[data-theme="pro"] .topbar-actions { display: flex; gap: 0; }
+:root[data-theme="pro"] .topbar-actions > :not(#btn-study) { display: none; }
+:root[data-theme="pro"] #btn-study {
+  width: 32px; height: 32px; padding: 0; gap: 0; color: var(--text-2);
+  background: transparent; border: 1px solid var(--line-strong); border-radius: var(--radius-control); box-shadow: none;
+}
+:root[data-theme="pro"] #btn-study:hover { color: var(--text); background: var(--surface-3); }
+:root[data-theme="pro"] #btn-study:active { transform: none; }
+:root[data-theme="pro"] #btn-study .topbar-btn__label { display: none; }
+
+/* The study bar sits in the row like any control (never over the logo) */
+.study-bar { flex: none; }
+
+/* Status: the dot always shows; the words go first when space is short (the text is in the tooltip) */
+.run-status { flex: 0 1 auto; }
+
+@media (max-width: 1280px) {
+  :root[data-theme="pro"] .cmd-bar kbd { display: none; }
+}
+@media (max-width: 1180px) {
+  :root[data-theme="pro"] .btn-predict--top .btn-predict__label,
+  :root[data-theme="pro"] .btn-predict--top > span:not([class*="icon"]) { display: none; }
+  :root[data-theme="pro"] .btn-predict--top { width: 32px; padding: 0; justify-content: center; }
+  :root[data-theme="pro"] .run-status { width: 32px; padding: 0; justify-content: center; }
+  :root[data-theme="pro"] #run-status-text { display: none; }
+}
+@media (max-width: 1040px) {
+  :root[data-theme="pro"] .ide-topbar .menubar__item { display: none; }
+  :root[data-theme="pro"] .ide-topbar .menubar__all { display: inline-flex; height: 32px; padding: 0 10px; color: var(--text-2); background: transparent; border: 1px solid var(--line-strong); border-radius: var(--radius-control); box-shadow: none; font: 500 var(--fs-sm) var(--font-ui); }
+  :root[data-theme="pro"] .ide-topbar .menubar__all:hover { color: var(--text); background: var(--surface-3); transform: none; box-shadow: none; }
+  :root[data-theme="pro"] .ide-topbar .menubar__all.is-open { background: var(--surface-3); }
+}
+@media (max-width: 920px) {
+  :root[data-theme="pro"] .cmd-bar { flex: none; width: 32px; padding: 0; justify-content: center; }
+  :root[data-theme="pro"] .cmd-bar__text { display: none; }
+  :root[data-theme="pro"] .theme-switch { display: none; }
+  :root[data-theme="pro"] .topbar-file { display: none; }
+}
+@media (max-width: 1100px) {
+  .run-status { gap: 8px; padding: 0 16px 0 14px; }
+}
+@media (max-width: 860px) {
+  :root:not([data-theme="pro"]) #run-status-text { display: none; }
+  :root:not([data-theme="pro"]) .run-status { flex: none; width: 40px; height: 40px; padding: 0; justify-content: center; }
+}
+@media (max-width: 760px) {
+  :root:not([data-theme="pro"]) .brand-word { display: none; }
+  :root:not([data-theme="pro"]) .theme-switch button { padding: 0 10px; }
+}
+
+/* Study strips in Playground: the status is a 40-px dot too, never squeezed */
+:root:not([data-theme="pro"])[data-study="third"] .run-status,
+:root:not([data-theme="pro"])[data-study="quarter"] .run-status,
+:root:not([data-theme="pro"])[data-study="mini"] .run-status { flex: none; width: 40px; height: 40px; padding: 0; justify-content: center; }
+:root:not([data-theme="pro"])[data-study="third"] #run-status-text,
+:root:not([data-theme="pro"])[data-study="quarter"] #run-status-text,
+:root:not([data-theme="pro"])[data-study="mini"] #run-status-text { display: none; }
+
+/* ═══ Study mode in Pro: the bar is rebuilt for each strip so it always fits ═══
+   Search is a 32-px icon (its words are hidden in study mode anyway); in the
+   narrow strips Run becomes a 32-px icon, Predict steps aside (it is in the
+   Run menu) and the window buttons tighten to 40 px. The logo never clips. */
+:root[data-study][data-theme="pro"] .cmd-bar { flex: none; width: 32px; padding: 0; justify-content: center; }
+:root[data-study][data-theme="pro"] .ide-topbar .menubar__item { display: none; }
+:root[data-study][data-theme="pro"] .ide-topbar .menubar__all { display: inline-flex; width: 32px; height: 32px; padding: 0; justify-content: center; color: var(--text-2); background: transparent; border: 1px solid var(--line-strong); border-radius: var(--radius-control); box-shadow: none; }
+:root[data-study][data-theme="pro"] .topbar-file { display: none; }
+:root[data-study][data-theme="pro"] .run-status { width: 32px; padding: 0; justify-content: center; }
+:root[data-study][data-theme="pro"] #run-status-text { display: none; }
+.topbar-brand { flex: none; }
+:root[data-study="third"][data-theme="pro"] .brand-word,
+:root[data-study="quarter"][data-theme="pro"] .brand-word,
+:root[data-study="mini"][data-theme="pro"] .brand-word { display: none; }
+:root[data-study="quarter"][data-theme="pro"] .btn-predict--top,
+:root[data-study="mini"][data-theme="pro"] .btn-predict--top { display: none; }
+:root[data-study="quarter"][data-theme="pro"] .ide-topbar .btn-run,
+:root[data-study="mini"][data-theme="pro"] .ide-topbar .btn-run { width: 32px; padding: 0; justify-content: center; }
+:root[data-study="quarter"][data-theme="pro"] .ide-topbar .btn-run .run-label,
+:root[data-study="mini"][data-theme="pro"] .ide-topbar .btn-run .run-label { display: none; }
+:root[data-study="quarter"][data-theme="pro"] .wc-btn,
+:root[data-study="mini"][data-theme="pro"] .wc-btn { width: 40px; }

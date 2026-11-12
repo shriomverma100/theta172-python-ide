@@ -130,7 +130,6 @@ export const APP_MENUS = [
       sep,
       { label: 'Explain the Last Error', action: 'explain-error' },
       { label: 'Explain Errors in Hindi / English', action: 'explain-language' },
-      { label: 'My Progress', action: 'my-progress' },
       sep,
       { label: 'Check for Updates…', action: 'check-updates' },
       { label: "What's New", action: 'whats-new' },

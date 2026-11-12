@@ -27,9 +27,9 @@ function textEl(tag, cls, text) {
 const BACK_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7 2L3 6L7 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>';
 const CLOSE_ICON = '<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.2"/></svg>';
 const MARK = `<svg class="cr-brand__mark" width="28" height="24" viewBox="0 0 210 180" aria-hidden="true">
-  <rect x="0" y="60" width="130" height="40" fill="#FF4A36"/><rect x="45" y="100" width="45" height="80" fill="#FF4A36"/>
-  <rect x="135" y="100" width="38" height="80" fill="#FF4A36"/><rect x="141" y="36" width="24" height="24" fill="#FF4A36"/>
-  <rect x="173" y="0" width="32" height="32" fill="#FF4A36"/></svg>`;
+  <rect x="0" y="60" width="130" height="40" fill="#E3262D"/><rect x="45" y="100" width="45" height="80" fill="#E3262D"/>
+  <rect x="135" y="100" width="38" height="80" fill="#E3262D"/><rect x="141" y="36" width="24" height="24" fill="#E3262D"/>
+  <rect x="173" y="0" width="32" height="32" fill="#E3262D"/></svg>`;
 
 // ── Base structure ────────────────────────────────────────────────
 export function buildBaseStructure(onBack) {

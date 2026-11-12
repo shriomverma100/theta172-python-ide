@@ -38,7 +38,9 @@ export function setRunState(runState, detail) {
   const $status = $('run-status');
   const $statusText = $('run-status-text');
   if ($status) $status.className = `run-status run-status--${runState}`;
-  if ($statusText) $statusText.textContent = detail || RUN_LABELS[runState] || runState;
+  const text = detail || RUN_LABELS[runState] || runState;
+  if ($statusText) $statusText.textContent = text;
+  if ($status) $status.title = text; // the words hide in narrow windows; the tooltip keeps them
   document.documentElement.dataset.runState = runState;
 
   const running = runState === 'running';

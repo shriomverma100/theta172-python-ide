@@ -128,12 +128,31 @@
 .upd-about dt { color: var(--text-3); }
 .upd-about dd { margin: 0; font-weight: 600; }
 
-/* The updating screen: the same calm light as the welcome, a ring when done */
-.upd::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(34vmax 28vmax at 24% 52%, rgba(244, 71, 58, .12), rgba(244, 71, 58, 0) 70%);
-  animation: thBreathe 5s ease-in-out infinite;
-}
+/* The updating screen: pure black like the welcome; the gauge ring turns red when done */
 .upd .th-proto .goal-ping { opacity: 0; }
-.upd.is-done .th-markbox { animation: thGlow 1.6s ease both; }
 .upd.is-done .th-proto .ring:first-child { stroke: var(--th-red); transition: stroke .6s ease; }
+
+/* ═══ Updating screen, refined: the pen-sketched mark, a big exact number, one thin line ═══ */
+.upd-main { display: block; }
+.upd-words { max-width: 520px; gap: 0; }
+.upd-mark { width: 64px; margin-bottom: 32px; }
+.upd-sketch { display: block; width: 100%; height: auto; overflow: visible; }
+.upd .bk-pen { fill: none; stroke: var(--th-fg); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.upd .bk-ink { fill: var(--th-red); opacity: 0; }
+.upd.is-drawing .bk-pen { animation: bkPen 520ms cubic-bezier(.5, .05, .3, 1) both calc(var(--i) * 170ms + 200ms), bkPenOut 500ms ease both calc(1.6s + var(--i) * 60ms); }
+.upd.is-drawing .bk-ink { animation: bkInk 520ms ease both calc(var(--i) * 170ms + 600ms); }
+.upd-eyebrow { margin-bottom: 12px; color: var(--th-dim); }
+.upd-title { margin-bottom: 8px; }
+.upd-sub { min-height: 0; margin-bottom: 32px; }
+.upd-pct { margin: 0 0 12px; font: 300 64px/1 var(--th-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--th-fg); }
+.upd-line { position: relative; height: 2px; margin-bottom: 16px; overflow: hidden; background: var(--th-line); }
+.upd-line__fill { position: absolute; inset: 0; background: var(--th-fg); transform-origin: left; transform: scaleX(0); transition: transform 600ms cubic-bezier(.2, .8, .2, 1), background .6s ease; }
+.upd.is-done .upd-line__fill { background: var(--th-red); }
+.upd.is-installing .upd-line__fill { background: linear-gradient(90deg, var(--th-red) 0 40%, #ff8a80 50%, var(--th-red) 60% 100%); background-size: 200% 100%; animation: updSweep 1.2s linear infinite; }
+@keyframes updSweep { to { background-position: -200% 0; } }
+.upd-steps { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .upd .bk-pen { display: none; }
+  .upd .bk-ink { opacity: 1; animation: none !important; }
+  .upd.is-installing .upd-line__fill { animation: none; }
+}

@@ -17,7 +17,7 @@ import { TIPS, KIND_LABEL } from './update-tips.js';
 import { showToast } from '../toast.js';
 import { getExplainLang, setExplainLang } from '../learn/learn-ui.js';
 import { hasUnsavedTabs } from './tabs.js';
-import { markSvg, dialSvg, arcPath, reducedMotion } from './welcome.js';
+import { markSvg, sketchMarkSvg } from './welcome.js';
 
 const api = () => window.electronAPI;
 const LATER_MS = 4 * 60 * 60 * 1000; // "Later" asks again after 4 hours (or at the next start)
@@ -184,16 +184,16 @@ function openScreen({ manual = false } = {}) {
   lang.setAttribute('aria-label', 'Language');
   top.append(brand, lang);
 
-  // The gauge: the THETA172 protractor; the needle and the red arc show the progress
-  const gauge = el('div', 'upd-gauge th-dial');
-  gauge.innerHTML = `${dialSvg()}<div class="th-markbox">${markSvg()}</div>`; // static
-  gauge.setAttribute('role', 'progressbar');
-  gauge.setAttribute('aria-valuemin', '0');
-  gauge.setAttribute('aria-valuemax', '100');
-  const readout = el('p', 'upd-readout');
-  const pctEl = el('span', 'upd-readout__pct', '000%');
-  const thetaEl = el('span', 'upd-readout__deg', 'θ = 000°');
-  readout.append(pctEl, thetaEl);
+  // The mark, sketched in pen and inked; the progress is a big number and a thin line
+  const mark = el('div', 'upd-mark');
+  mark.innerHTML = sketchMarkSvg('upd-sketch'); // static
+  const pctEl = el('p', 'upd-pct', '0%');
+  const line = el('div', 'upd-line');
+  const lineFill = el('span', 'upd-line__fill');
+  line.append(lineFill);
+  line.setAttribute('role', 'progressbar');
+  line.setAttribute('aria-valuemin', '0');
+  line.setAttribute('aria-valuemax', '100');
   const eyebrow = el('p', 'upd-eyebrow', 'Update');
   const title = el('h1', 'upd-title');
   const sub = el('p', 'upd-sub');
@@ -217,21 +217,17 @@ function openScreen({ manual = false } = {}) {
   installNow.hidden = true;
   foot.append(later, installNow);
 
-  const left = el('div', 'upd-left');
-  left.append(gauge, readout);
   const words = el('div', 'upd-words');
-  words.append(eyebrow, title, sub, steps);
+  words.append(mark, eyebrow, title, sub, pctEl, line, steps);
   const main = el('div', 'upd-main');
-  main.append(left, words);
+  main.append(words);
   const side = el('div', 'upd-side');
   side.append(tip, tipNav);
   const body = el('div', 'upd-body');
   body.append(main, side);
   root.append(top, body, foot);
   document.body.append(root);
-  const mark = gauge.querySelector('.th-mark');
-  setTimeout(() => mark.classList.add('go'), reducedMotion() ? 0 : 350);
-  setTimeout(() => root.classList.add('is-dial'), reducedMotion() ? 0 : 700);
+  requestAnimationFrame(() => root.classList.add('is-drawing'));
 
   // Tips: start somewhere different each time
   const order = TIPS.map((_, i) => i).sort(() => Math.random() - 0.5);
@@ -263,22 +259,17 @@ function openScreen({ manual = false } = {}) {
   paintLang();
   showTip(0);
 
-  // The needle follows the progress smoothly; while installing it keeps turning
-  const needle = gauge.querySelector('.needle');
-  const sweep = gauge.querySelector('.sweep');
+  // The number counts smoothly to the real percentage
   let target = 0;
-  let theta = 0;
-  let spinning = false;
+  let shown = 0;
   let raf = 0;
   let last = performance.now();
   const frame = (now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (spinning) theta = (theta + dt * 140) % 360;
-    else theta += (target - theta) * (1 - Math.exp(-dt * 6));
-    needle.setAttribute('transform', `rotate(${(-theta).toFixed(2)})`);
-    sweep.setAttribute('d', spinning ? arcPath(359.9) : arcPath(theta));
-    thetaEl.textContent = `θ = ${String(Math.round(theta) % 360).padStart(3, '0')}°`;
+    shown += (target - shown) * (1 - Math.exp(-dt * 6));
+    if (Math.abs(target - shown) < 0.3) shown = target;
+    pctEl.textContent = `${Math.round(shown)}%`;
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
@@ -316,11 +307,11 @@ function openScreen({ manual = false } = {}) {
       later.hidden = false;
       later.textContent = 'Close';
     }
-    target = pct * 3.6;
-    spinning = st === 'installing';
-    pctEl.textContent = `${String(pct).padStart(3, '0')}%`;
-    gauge.setAttribute('aria-valuenow', String(pct));
+    target = pct;
+    lineFill.style.transform = `scaleX(${pct / 100})`;
+    line.setAttribute('aria-valuenow', String(pct));
     root.classList.toggle('is-done', pct >= 100);
+    root.classList.toggle('is-installing', st === 'installing');
     const order2 = STEP_NAMES.map(([id]) => id);
     for (const li of steps.children) {
       const k = order2.indexOf(li.dataset.step);

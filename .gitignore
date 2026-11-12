@@ -35,3 +35,7 @@ tmp/
 
 # Bundled Python + uv (downloaded by scripts/fetch-python.cjs)
 vendor/
+
+# The owner license key must never be committed (it normally lives in ~/.theta172)
+license-private.pem
+*license-private*.pem
